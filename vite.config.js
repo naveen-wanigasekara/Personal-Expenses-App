@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "icons/*"],
       manifest: {
-        name: "Ledger — Expense Tracker",
-        short_name: "Ledger",
+        name: "Personal Expenses Tracker",
+        short_name: "Expensetracker",
         description:
           "Personal expense tracker with budgets, credit cards, and cloud sync.",
         theme_color: "#0d1117",
