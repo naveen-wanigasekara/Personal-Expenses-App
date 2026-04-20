@@ -1505,12 +1505,23 @@ function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDelete
 
 /* ─── AMOUNT INPUT ─────────────────────────────────────────── */
 function AmountInput({ value, onChange, placeholder, className }) {
-  const fmt2 = (v) => (v !== "" && v !== undefined && +v !== 0) ? Number(v).toFixed(2) : "";
-  const [display, setDisplay] = useState(() => fmt2(value));
+  const fmtFull = (v) => {
+    const n = Number(v);
+    if (!v && v !== 0 || isNaN(n) || n === 0) return "";
+    const [i, d] = n.toFixed(2).split(".");
+    return parseInt(i, 10).toLocaleString("en-US") + "." + d;
+  };
+  const fmtLive = (raw) => {
+    const parts = raw.split(".");
+    const i = parts[0] ? parseInt(parts[0], 10).toLocaleString("en-US") : "";
+    return raw.includes(".") ? i + "." + parts[1] : i;
+  };
+
+  const [display, setDisplay] = useState(() => fmtFull(value));
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!focused) setDisplay(fmt2(value));
+    if (!focused) setDisplay(fmtFull(value));
   }, [value, focused]);
 
   return (
@@ -1520,14 +1531,19 @@ function AmountInput({ value, onChange, placeholder, className }) {
       className={className}
       value={display}
       placeholder={placeholder}
-      onChange={(e) => { setDisplay(e.target.value); onChange(e.target.value); }}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, "");
+        if (!/^\d*\.?\d*$/.test(raw)) return;
+        setDisplay(fmtLive(raw));
+        onChange(raw);
+      }}
       onFocus={(e) => { setFocused(true); e.target.select(); }}
       onBlur={(e) => {
         setFocused(false);
-        const n = parseFloat(e.target.value);
-        const formatted = !isNaN(n) && n !== 0 ? n.toFixed(2) : "";
+        const n = parseFloat(e.target.value.replace(/,/g, ""));
+        const formatted = !isNaN(n) && n !== 0 ? fmtFull(n) : "";
         setDisplay(formatted);
-        onChange(formatted);
+        onChange(!isNaN(n) && n !== 0 ? String(n) : "");
       }}
     />
   );
@@ -1729,6 +1745,7 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
 function AddModal({ cards, onClose, onSave }) {
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
   const [category, setCategory] = useState("loan");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -1761,6 +1778,15 @@ function AddModal({ cards, onClose, onSave }) {
     else if (type === "card-interest") { tx.category = "card-interest"; tx.cardId = cardId; }
     else if (type === "card-payment") { tx.cardId = cardId; }
     onSave(tx);
+  };
+
+  const handleAmountChange = (e) => {
+    const raw = e.target.value.replace(/,/g, "");
+    if (!/^\d*\.?\d*$/.test(raw)) return;
+    setAmount(raw);
+    const parts = raw.split(".");
+    const intPart = parts[0] ? parseInt(parts[0], 10).toLocaleString("en-US") : "";
+    setDisplayAmount(raw.includes(".") ? intPart + "." + parts[1] : intPart);
   };
 
   const valid = amount && +amount > 0 && (!isCardType || cardId);
@@ -1804,8 +1830,8 @@ function AddModal({ cards, onClose, onSave }) {
 
         <div className="amount-input">
           <span className="amt-cur">{CURRENCY}</span>
-          <input type="number" value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+          <input type="text" value={displayAmount}
+            onChange={handleAmountChange}
             placeholder="0.00" autoFocus inputMode="decimal" />
         </div>
 
@@ -1881,6 +1907,21 @@ function CardFormModal({ card, onClose, onSave }) {
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
   const [openingBalance, setOpeningBalance] = useState(card?.openingBalance || "");
+
+  const fmtLive = (raw) => {
+    const parts = raw.split(".");
+    const i = parts[0] ? parseInt(parts[0], 10).toLocaleString("en-US") : "";
+    return raw.includes(".") ? i + "." + parts[1] : i;
+  };
+  const numericChange = (e, setRaw, setDisplay) => {
+    const raw = e.target.value.replace(/,/g, "");
+    if (!/^\d*\.?\d*$/.test(raw)) return;
+    setRaw(raw);
+    setDisplay(fmtLive(raw));
+  };
+
+  const [displayLimit, setDisplayLimit] = useState(() => limit ? fmtLive(String(limit)) : "");
+  const [displayOpeningBalance, setDisplayOpeningBalance] = useState(() => openingBalance ? fmtLive(String(openingBalance)) : "");
   const [colorIdx, setColorIdx] = useState(
     card?.colors ? CARD_COLORS.findIndex((c) => c[0] === card.colors[0])
       : Math.floor(Math.random() * CARD_COLORS.length)
@@ -1926,16 +1967,16 @@ function CardFormModal({ card, onClose, onSave }) {
         <label className="field-lbl">Credit limit</label>
         <div className="big-input">
           <span className="big-cur">{CURRENCY}</span>
-          <input type="number" value={limit}
-            onChange={(e) => setLimit(e.target.value)}
+          <input type="text" value={displayLimit}
+            onChange={(e) => numericChange(e, setLimit, setDisplayLimit)}
             placeholder="0.00" inputMode="decimal" />
         </div>
 
         <label className="field-lbl">Current outstanding balance {card ? "" : "(optional)"}</label>
         <div className="big-input">
           <span className="big-cur">{CURRENCY}</span>
-          <input type="number" value={openingBalance}
-            onChange={(e) => setOpeningBalance(e.target.value)}
+          <input type="text" value={displayOpeningBalance}
+            onChange={(e) => numericChange(e, setOpeningBalance, setDisplayOpeningBalance)}
             placeholder="0.00" inputMode="decimal" />
         </div>
         <div className="hint">
