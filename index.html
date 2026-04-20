@@ -2,9 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <meta name="theme-color" content="#0d1117" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover"
+    />
+
+    <!-- Primary -->
     <title>Ledger — Expense Tracker</title>
+    <meta
+      name="description"
+      content="Personal expense tracker for Sri Lanka. Track LKR income, expenses, credit cards, and budgets with cloud sync."
+    />
+
+    <!-- Theme & app colors -->
+    <meta name="theme-color" content="#0d1117" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- iOS PWA support (Apple ignores manifest.json) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ledger" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <!-- Standard icon + favicon -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" />
+
+    <!-- Open Graph / Twitter (for sharing) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Ledger — Expense Tracker" />
+    <meta
+      property="og:description"
+      content="Track LKR income, expenses, credit cards & budgets with cloud sync."
+    />
+    <meta property="og:image" content="/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>

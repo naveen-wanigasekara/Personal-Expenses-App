@@ -7,6 +7,7 @@ import {
   Wallet, BarChart3, Target, ArrowUp, ArrowDown, Sparkles,
   Lock, Unlock, Copy, CreditCard, Percent, AlertTriangle,
   Edit2, LogOut, Mail, KeyRound, UserPlus, Loader2,
+  Download, RefreshCw,
 } from "lucide-react";
 import {
   supabase, signUp, signIn, signOut, getUser,
@@ -14,6 +15,7 @@ import {
   fetchCards, upsertCard, deleteCard,
   fetchBudgets, upsertBudget,
 } from "./supabase.js";
+import { usePWA } from "./usePWA.js";
 
 /* ─── CATEGORIES ──────────────────────────────────────────── */
 const EXPENSE_CATEGORIES = [
@@ -434,6 +436,8 @@ function MainApp({ user }) {
     <div className="app">
       <div className="app-glow" />
 
+      <PWABanners />
+
       {errorBanner && (
         <div className="error-banner">{errorBanner}</div>
       )}
@@ -515,6 +519,41 @@ function NavBtn({ icon: Icon, label, active, onClick }) {
       <Icon size={18} strokeWidth={active ? 2.5 : 2} />
       <span>{label}</span>
     </button>
+  );
+}
+
+/* ─── PWA BANNERS (install prompt + update available) ────── */
+function PWABanners() {
+  const { canInstall, install, needsRefresh, updateApp } = usePWA();
+  const [dismissed, setDismissed] = useState(
+    () => sessionStorage.getItem("install-dismissed") === "1"
+  );
+
+  const handleDismiss = () => {
+    sessionStorage.setItem("install-dismissed", "1");
+    setDismissed(true);
+  };
+
+  return (
+    <>
+      {needsRefresh && (
+        <div className="pwa-banner update">
+          <RefreshCw size={14} />
+          <span>A new version is available</span>
+          <button onClick={updateApp}>Refresh</button>
+        </div>
+      )}
+      {canInstall && !dismissed && !needsRefresh && (
+        <div className="pwa-banner install">
+          <Download size={14} />
+          <span>Install Ledger to your home screen</span>
+          <button onClick={install}>Install</button>
+          <button className="pwa-x" onClick={handleDismiss} aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1904,6 +1943,16 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 /* ── ERROR BANNER ── */
 .error-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: var(--danger-soft); color: var(--danger); padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 500; z-index: 200; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: slideDownBanner 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes slideDownBanner { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+/* ── PWA BANNERS ── */
+.pwa-banner { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); width: calc(100% - 28px); max-width: 416px; padding: 10px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; z-index: 150; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: slideDownBanner 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.pwa-banner.install { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(125, 211, 192, 0.3); }
+.pwa-banner.update { background: var(--in-soft); color: var(--in); border: 1px solid rgba(110, 231, 168, 0.3); }
+.pwa-banner span { flex: 1; min-width: 0; }
+.pwa-banner button { background: var(--ink); color: var(--bg); border: none; padding: 6px 12px; border-radius: 100px; font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0; }
+.pwa-banner button:hover { opacity: 0.85; }
+.pwa-banner .pwa-x { background: transparent; color: inherit; padding: 4px; opacity: 0.6; }
+.pwa-banner .pwa-x:hover { opacity: 1; }
 
 /* ── HERO ── */
 .hero { padding: 14px 4px 0; margin-bottom: 22px; }
