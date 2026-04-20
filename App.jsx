@@ -7,7 +7,7 @@ import {
   Wallet, BarChart3, Target, ArrowUp, ArrowDown, Sparkles,
   Lock, Unlock, Copy, CreditCard, Percent, AlertTriangle,
   Edit2, LogOut, Mail, KeyRound, UserPlus, Loader2,
-  Download, RefreshCw,
+  Download, RefreshCw, MessageCircle,
 } from "lucide-react";
 import {
   supabase, signUp, signIn, signOut, getUser,
@@ -587,6 +587,12 @@ function SettingsModal({ user, onClose }) {
           </div>
         </div>
 
+        <a className="save-btn support-btn"
+          href="https://wa.me/94705025330"
+          target="_blank" rel="noopener noreferrer">
+          <MessageCircle size={16} /> Contact Support
+        </a>
+
         <button className="save-btn danger-btn" onClick={handleSignOut} disabled={signingOut}>
           {signingOut ? <Loader2 size={16} className="spin" /> : <LogOut size={16} />}
           Sign out
@@ -613,15 +619,56 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const utilization = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
 
+  const [filterCat, setFilterCat] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  useEffect(() => { setFilterCat("all"); setFilterType("all"); }, [viewMonth]);
+
+  const last6months = useMemo(() => {
+    const out = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      out.push(monthKey(d));
+    }
+    return out;
+  }, []);
+
+  const filtered = useMemo(() => {
+    return transactions.filter((t) => {
+      const typeMatch = filterType === "all"
+        || (filterType === "card" && ["card-purchase", "card-payment", "card-interest"].includes(t.type))
+        || (filterType === "income" && t.type === "income")
+        || (filterType === "expense" && t.type === "expense");
+      const catMatch = filterCat === "all" || t.category === filterCat;
+      return typeMatch && catMatch;
+    });
+  }, [transactions, filterCat, filterType]);
+
+  const activeCats = useMemo(() => {
+    const ids = new Set(transactions.map((t) => t.category));
+    const pool = filterType === "income"
+      ? INCOME_CATEGORIES
+      : filterType === "expense" || filterType === "card"
+        ? EXPENSE_CATEGORIES
+        : [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
+    return pool.filter((c) => ids.has(c.id));
+  }, [transactions, filterType]);
+
   const grouped = useMemo(() => {
     const g = {};
-    transactions.forEach((t) => {
+    filtered.forEach((t) => {
       const k = new Date(t.date).toDateString();
       if (!g[k]) g[k] = [];
       g[k].push(t);
     });
     return Object.entries(g).sort(([a], [b]) => new Date(b) - new Date(a));
-  }, [transactions]);
+  }, [filtered]);
 
   const getCardName = (id) => cards.find((c) => c.id === id)?.name || "Card";
 
@@ -632,12 +679,13 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
   const initial = (user.email || "?")[0].toUpperCase();
 
   return (
-    <div className="view">
+    <div className="view view-home">
+      <div className="home-header">
       <div className="hero">
         <div className="hero-top">
           <div>
             <div className="hero-meta">{isCurrentMonth ? `Good ${greeting}` : "Viewing"}</div>
-            <h1 className="hero-title">Your money.</h1>
+            <h1 className="hero-title">Your Money</h1>
           </div>
           <div className="hero-right">
             <div className="month-pill">
@@ -753,14 +801,43 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
 
       <div className="section-hd">
         <h2>Transactions</h2>
-        <span className="count">{transactions.length}</span>
+        <span className="count">
+          {filtered.length}{filtered.length !== transactions.length ? `/${transactions.length}` : ""}
+        </span>
       </div>
 
-      {transactions.length === 0 ? (
+      <div className="tx-filters">
+        <select className="fselect" value={viewMonth}
+          onChange={(e) => setViewMonth(e.target.value)}>
+          {last6months.map((mk) => {
+            const [y, mo] = mk.split("-");
+            const lbl = new Date(+y, +mo - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+            return <option key={mk} value={mk}>{lbl}</option>;
+          })}
+        </select>
+        <select className="fselect" value={filterType}
+          onChange={(e) => { setFilterType(e.target.value); setFilterCat("all"); }}>
+          <option value="all">All types</option>
+          <option value="income">Income</option>
+          <option value="expense">Cash Purchase</option>
+          <option value="card">CC Purchase</option>
+        </select>
+        <select className="fselect" value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}>
+          <option value="all">All categories</option>
+          {activeCats.map((c) => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+      </div>
+
+      <div className="tx-scroll">
+      {filtered.length === 0 ? (
         <div className="empty">
           <div className="empty-icon"><Sparkles size={28} strokeWidth={1.5} /></div>
-          <div className="empty-title">Nothing here yet</div>
-          <div className="empty-sub">Tap + to record your first entry</div>
+          <div className="empty-title">{transactions.length === 0 ? "Nothing here yet" : "No matches"}</div>
+          <div className="empty-sub">{transactions.length === 0 ? "Tap + to record your first entry" : "Try a different filter"}</div>
         </div>
       ) : (
         <div className="tx-list">
@@ -789,6 +866,7 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -849,7 +927,7 @@ function DashView({ transactions, getEffectivePlan, cards }) {
   const last6 = useMemo(() => {
     const out = [];
     const now = new Date();
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 2; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const k = monthKey(d);
       const inMonth = transactions.filter((t) => monthKey(t.date) === k);
@@ -933,8 +1011,6 @@ function DashView({ transactions, getEffectivePlan, cards }) {
       .sort((a, b) => b.val - a.val);
   }, [transactions, thisMonth, currentPlan]);
 
-  const avgSpend = last6.length ? last6.reduce((s, m) => s + m.expenses, 0) / last6.length : 0;
-  const spendChange = prevStats?.expenses ? ((thisStats.expenses - prevStats.expenses) / prevStats.expenses) * 100 : 0;
   const budgetProgress = currentPlan?.expense?.total ? (thisStats.expenses / currentPlan.expense.total) * 100 : 0;
   const incomeProgress = currentPlan?.income?.total ? (thisStats.income / currentPlan.income.total) * 100 : 0;
   const hasPlan = currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0;
@@ -947,37 +1023,31 @@ function DashView({ transactions, getEffectivePlan, cards }) {
     <div className="view">
       <div className="page-hd">
         <div className="page-eyebrow">Overview</div>
-        <h1 className="page-title">Insights.</h1>
+        <h1 className="page-title">Insights</h1>
       </div>
 
-      {cards.length > 0 && (
-        <div className="card debt-card">
-          <div className="card-hd">
-            <h3>Credit health</h3>
-            <span className="card-sub">{cards.length} card{cards.length > 1 ? "s" : ""}</span>
+      <div className="metric-grid">
+        <div className="metric">
+          <div className="metric-top">
+            <span className="metric-label">Cash in hand</span>
           </div>
-          <div className="debt-grid">
-            <div className="debt-stat">
-              <div className="debt-label">Outstanding</div>
-              <div className="debt-val">{CURRENCY} {fmtCompact(totalCardDebt)}</div>
-            </div>
-            <div className="debt-stat">
-              <div className="debt-label">Available</div>
-              <div className="debt-val in-color">{CURRENCY} {fmtCompact(totalLimit - totalCardDebt)}</div>
-            </div>
+          <div className={`metric-val sm ${thisStats.net < 0 ? "neg" : ""}`}>
+            {CURRENCY} {fmtCompact(Math.abs(thisStats.net))}
           </div>
-          <div className="ct-util-top" style={{ marginTop: 4 }}>
-            <span>Overall utilization</span>
-            <span className={totalUtil > 90 ? "over" : totalUtil > 70 ? "warn" : ""}>
-              {totalUtil.toFixed(0)}%
-            </span>
-          </div>
-          <div className="ct-util-bar">
-            <div className={`ct-util-fill ${totalUtil > 90 ? "over" : totalUtil > 70 ? "warn" : ""}`}
-              style={{ width: `${Math.min(totalUtil, 100)}%` }} />
+          <div className={`metric-delta ${thisStats.net >= 0 ? "down" : "up"}`}>
+            {thisStats.net >= 0 ? "Surplus" : "Deficit"}
           </div>
         </div>
-      )}
+        <div className="metric">
+          <div className="metric-top">
+            <span className="metric-label">Credit card</span>
+          </div>
+          <div className={`metric-val sm ${totalCardDebt > 0 ? "neg" : ""}`}>
+            {CURRENCY} {fmtCompact(totalCardDebt)}
+          </div>
+          <div className="metric-delta">Outstanding</div>
+        </div>
+      </div>
 
       {hasPlan && (
         <div className="card plan-card">
@@ -1210,21 +1280,6 @@ function DashView({ transactions, getEffectivePlan, cards }) {
         )}
       </div>
 
-      <div className="metric-grid metric-single">
-        <div className="metric">
-          <div className="metric-top">
-            <span className="metric-label">Avg. spend</span>
-            <span className="metric-chip">6mo</span>
-          </div>
-          <div className="metric-val">{CURRENCY} {fmtCompact(avgSpend)}</div>
-          {spendChange !== 0 && (
-            <div className={`metric-delta ${spendChange > 0 ? "up" : "down"}`}>
-              {spendChange > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-              {Math.abs(spendChange).toFixed(0)}% vs last
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1236,6 +1291,11 @@ function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx })
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const totalAvailable = totalLimit - totalDebt;
   const totalUtil = totalLimit ? (totalDebt / totalLimit) * 100 : 0;
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   // Re-derive selected card from latest cards array so balance stays current
   const currentSelected = selectedCard ? cards.find((c) => c.id === selectedCard.id) : null;
@@ -1252,52 +1312,55 @@ function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx })
   }
 
   return (
-    <div className="view">
-      <div className="page-hd">
-        <div className="page-eyebrow">Credit</div>
-        <h1 className="page-title">Cards.</h1>
+    <div className="view view-cards">
+      <div className="cards-header">
+        <div className="page-hd">
+          <div className="page-eyebrow">Credit</div>
+          <h1 className="page-title">Cards</h1>
+        </div>
+
+        {cards.length > 0 && (
+          <div className="summary-card">
+            <div className="summary-row">
+              <div className="summary-col">
+                <div className="summary-label">Total debt</div>
+                <div className="summary-val out-color">{CURRENCY} {fmtCompact(totalDebt)}</div>
+              </div>
+              <div className="summary-divider" />
+              <div className="summary-col">
+                <div className="summary-label">Available</div>
+                <div className="summary-val in-color">{CURRENCY} {fmtCompact(totalAvailable)}</div>
+              </div>
+            </div>
+            <div className="summary-savings">
+              <span>Utilization</span>
+              <strong className={totalUtil > 70 ? "neg" : "pos"}>
+                {totalUtil.toFixed(0)}% of {CURRENCY} {fmtCompact(totalLimit)}
+              </strong>
+            </div>
+          </div>
+        )}
+
+        <button className="add-card-btn" onClick={onNew}>
+          <Plus size={16} /> Add a card
+        </button>
       </div>
 
-      {cards.length > 0 && (
-        <div className="summary-card">
-          <div className="summary-row">
-            <div className="summary-col">
-              <div className="summary-label">Total debt</div>
-              <div className="summary-val out-color">{CURRENCY} {fmtCompact(totalDebt)}</div>
-            </div>
-            <div className="summary-divider" />
-            <div className="summary-col">
-              <div className="summary-label">Available</div>
-              <div className="summary-val in-color">{CURRENCY} {fmtCompact(totalAvailable)}</div>
-            </div>
+      <div className="cards-scroll">
+        {cards.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon"><CreditCard size={26} strokeWidth={1.5} /></div>
+            <div className="empty-title">No cards yet</div>
+            <div className="empty-sub">Add a card to start tracking</div>
           </div>
-          <div className="summary-savings">
-            <span>Utilization</span>
-            <strong className={totalUtil > 70 ? "neg" : "pos"}>
-              {totalUtil.toFixed(0)}% of {CURRENCY} {fmtCompact(totalLimit)}
-            </strong>
+        ) : (
+          <div className="cards-stack">
+            {cards.map((card) => (
+              <CardTile key={card.id} card={card} onClick={() => setSelectedCard(card)} />
+            ))}
           </div>
-        </div>
-      )}
-
-      <button className="add-card-btn" onClick={onNew}>
-        <Plus size={16} /> Add a card
-      </button>
-
-      {cards.length === 0 ? (
-        <div className="empty">
-          <div className="empty-icon"><CreditCard size={26} strokeWidth={1.5} /></div>
-          <div className="empty-title">No cards yet</div>
-          <div className="empty-sub">Add a card to start tracking</div>
-        </div>
-      ) : (
-        <div className="cards-stack">
-          {cards.map((card) => (
-            <CardTile key={card.id} card={card} onClick={() => setSelectedCard(card)} />
-          ))}
-        </div>
-      )}
-      <div style={{ height: "80px" }} />
+        )}
+      </div>
     </div>
   );
 }
@@ -1440,6 +1503,36 @@ function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDelete
   );
 }
 
+/* ─── AMOUNT INPUT ─────────────────────────────────────────── */
+function AmountInput({ value, onChange, placeholder, className }) {
+  const fmt2 = (v) => (v !== "" && v !== undefined && +v !== 0) ? Number(v).toFixed(2) : "";
+  const [display, setDisplay] = useState(() => fmt2(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDisplay(fmt2(value));
+  }, [value, focused]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className={className}
+      value={display}
+      placeholder={placeholder}
+      onChange={(e) => { setDisplay(e.target.value); onChange(e.target.value); }}
+      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onBlur={(e) => {
+        setFocused(false);
+        const n = parseFloat(e.target.value);
+        const formatted = !isNaN(n) && n !== 0 ? n.toFixed(2) : "";
+        setDisplay(formatted);
+        onChange(formatted);
+      }}
+    />
+  );
+}
+
 /* ─── BUDGET ──────────────────────────────────────────────── */
 function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, fixedPlan, setFixedPlan }) {
   const [mode, setMode] = useState("fixed");
@@ -1449,7 +1542,12 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
   const [saved, setSaved] = useState(false);
 
   useEffect(() => { setFixedEdit(fixedPlan); }, [fixedPlan]);
-  useEffect(() => { setMonthEdit(monthPlans[viewMonth] || emptyPlan()); }, [viewMonth, monthPlans]);
+  useEffect(() => { setMonthEdit(monthPlans[viewMonth] || JSON.parse(JSON.stringify(fixedPlan))); }, [viewMonth, monthPlans]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -1485,144 +1583,144 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
   const plannedSavings = incomeTotal - expenseTotal;
 
   return (
-    <div className="view">
-      <div className="page-hd">
-        <div className="page-eyebrow">Plan</div>
-        <h1 className="page-title">Budget.</h1>
-      </div>
+    <div className="view view-budget">
+      <div className="budget-header">
+        <div className="page-hd">
+          <div className="page-eyebrow">Plan</div>
+          <h1 className="page-title">Budget</h1>
+        </div>
 
-      <div className="mode-toggle">
-        <div className={`mode-slider ${mode}`} />
-        <button className={isFixed ? "active" : ""} onClick={() => setMode("fixed")}>
-          <Lock size={13} strokeWidth={2.5} /> Fixed plan
-        </button>
-        <button className={!isFixed ? "active" : ""} onClick={() => setMode("month")}>
-          <Unlock size={13} strokeWidth={2.5} /> This month
-        </button>
-      </div>
+        <div className="mode-toggle">
+          <div className={`mode-slider ${mode}`} />
+          <button className={isFixed ? "active" : ""} onClick={() => setMode("fixed")}>
+            <Lock size={13} strokeWidth={2.5} /> Fixed plan
+          </button>
+          <button className={!isFixed ? "active" : ""} onClick={() => setMode("month")}>
+            <Unlock size={13} strokeWidth={2.5} /> This month
+          </button>
+        </div>
 
-      {isFixed ? (
-        <div className="mode-desc">Your default recurring plan. Applied every month unless overridden.</div>
-      ) : (
-        <>
-          <div className="month-pill month-pill-full">
-            <button onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button>
-            <span>{monthLabel(viewMonth)}</span>
-            <button onClick={() => changeMonth(1)}><ChevronRight size={16} /></button>
-          </div>
-          {(fixedPlan.income?.total > 0 || fixedPlan.expense?.total > 0) && (
-            <button className="copy-btn" onClick={copyFromFixed}>
-              <Copy size={12} /> Copy from fixed plan
-            </button>
-          )}
-        </>
-      )}
-
-      {(incomeTotal > 0 || expenseTotal > 0) && (
-        <div className="summary-card">
-          <div className="summary-row">
-            <div className="summary-col">
-              <div className="summary-label">Income target</div>
-              <div className="summary-val in-color">{CURRENCY} {fmtCompact(incomeTotal)}</div>
+        {isFixed ? (
+          <div className="mode-desc">Your default recurring plan. Applied every month unless overridden.</div>
+        ) : (
+          <>
+            <div className="month-pill month-pill-full">
+              <button onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button>
+              <span>{monthLabel(viewMonth)}</span>
+              <button onClick={() => changeMonth(1)}><ChevronRight size={16} /></button>
             </div>
-            <div className="summary-divider" />
-            <div className="summary-col">
-              <div className="summary-label">Expense budget</div>
-              <div className="summary-val out-color">{CURRENCY} {fmtCompact(expenseTotal)}</div>
-            </div>
-          </div>
-          {incomeTotal > 0 && expenseTotal > 0 && (
-            <div className="summary-savings">
-              <span>Planned savings</span>
-              <strong className={plannedSavings >= 0 ? "pos" : "neg"}>
-                {CURRENCY} {fmt(plannedSavings)} · {((plannedSavings / incomeTotal) * 100).toFixed(0)}%
-              </strong>
-            </div>
-          )}
-        </div>
-      )}
+            {(fixedPlan.income?.total > 0 || fixedPlan.expense?.total > 0) && (
+              <button className="copy-btn" onClick={copyFromFixed}>
+                <Copy size={12} /> Copy from fixed plan
+              </button>
+            )}
+          </>
+        )}
 
-      <div className="side-toggle">
-        <div className={`side-slider ${side}`} />
-        <button className={side === "income" ? "active" : ""} onClick={() => setSide("income")}>
-          <ArrowUp size={13} strokeWidth={2.5} /> Income
-        </button>
-        <button className={side === "expense" ? "active" : ""} onClick={() => setSide("expense")}>
-          <ArrowDown size={13} strokeWidth={2.5} /> Expenses
-        </button>
-      </div>
-
-      <div className="card">
-        <label className="field-lbl">
-          {side === "income"
-            ? (isFixed ? "Fixed monthly income target" : "This month's income target")
-            : (isFixed ? "Fixed monthly expense budget" : "This month's expense budget")}
-        </label>
-        <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
-          <span className="big-cur">{CURRENCY}</span>
-          <input type="number" value={total}
-            onChange={(e) => updateTotal(e.target.value)}
-            placeholder="0.00" inputMode="decimal" />
-        </div>
-        <div className="hint">
-          {side === "income" ? "The total you expect to earn across all sources"
-            : "The total you plan to spend across all categories"}
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-hd">
-          <h3>By category</h3>
-          {+total > 0 && (
-            <span className={`alloc ${remaining < 0 ? "neg" : ""}`}>
-              {CURRENCY} {fmtCompact(Math.abs(remaining))} {remaining < 0 ? "over" : "unallocated"}
-            </span>
-          )}
-        </div>
-        <div className="cat-budgets">
-          {catList.map((c) => {
-            const Icon = c.icon;
-            const actual = isFixed ? 0 : (actuals[c.id] || 0);
-            const limit = +cats[c.id] || 0;
-            const pct = limit && !isFixed ? (actual / limit) * 100 : 0;
-            return (
-              <div key={c.id} className="cat-budget">
-                <div className="cb-top">
-                  <div className="cb-left">
-                    <div className="cb-icon" style={{ background: `${c.color}1a`, color: c.color }}>
-                      <Icon size={14} strokeWidth={2} />
-                    </div>
-                    <span className="cb-name">{c.label}</span>
-                  </div>
-                  <div className="cb-input">
-                    <span>{CURRENCY}</span>
-                    <input type="number" value={cats[c.id] || ""}
-                      onChange={(e) => updateCat(c.id, e.target.value)}
-                      placeholder="0" inputMode="decimal" />
-                  </div>
-                </div>
-                {limit > 0 && !isFixed && (
-                  <>
-                    <div className="cb-bar">
-                      <div className={`cb-fill ${side === "expense" ? (pct > 100 ? "over" : pct > 80 ? "warn" : "") : ""}`}
-                        style={{ width: `${Math.min(pct, 100)}%`,
-                          background: side === "expense" ? (pct > 100 ? undefined : c.color) : c.color }} />
-                    </div>
-                    <div className="cb-foot">
-                      {CURRENCY} {fmt(actual)} / {CURRENCY} {fmt(limit)} · {pct.toFixed(0)}%
-                    </div>
-                  </>
-                )}
+        {(incomeTotal > 0 || expenseTotal > 0) && (
+          <div className="summary-card">
+            <div className="summary-row">
+              <div className="summary-col">
+                <div className="summary-label">Income target</div>
+                <div className="summary-val in-color">{CURRENCY} {fmtCompact(incomeTotal)}</div>
               </div>
-            );
-          })}
+              <div className="summary-divider" />
+              <div className="summary-col">
+                <div className="summary-label">Expense budget</div>
+                <div className="summary-val out-color">{CURRENCY} {fmtCompact(expenseTotal)}</div>
+              </div>
+            </div>
+            {incomeTotal > 0 && expenseTotal > 0 && (
+              <div className="summary-savings">
+                <span>Planned savings</span>
+                <strong className={plannedSavings >= 0 ? "pos" : "neg"}>
+                  {CURRENCY} {fmt(plannedSavings)} · {((plannedSavings / incomeTotal) * 100).toFixed(0)}%
+                </strong>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="side-toggle">
+          <div className={`side-slider ${side}`} />
+          <button className={side === "income" ? "active" : ""} onClick={() => setSide("income")}>
+            <ArrowUp size={13} strokeWidth={2.5} /> Income
+          </button>
+          <button className={side === "expense" ? "active" : ""} onClick={() => setSide("expense")}>
+            <ArrowDown size={13} strokeWidth={2.5} /> Expenses
+          </button>
+        </div>
+
+        <div className="card">
+          <label className="field-lbl">
+            {side === "income"
+              ? (isFixed ? "Fixed monthly income target" : "This month's income target")
+              : (isFixed ? "Fixed monthly expense budget" : "This month's expense budget")}
+          </label>
+          <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
+            <span className="big-cur">{CURRENCY}</span>
+            <AmountInput value={total} onChange={updateTotal} placeholder="0.00" />
+          </div>
+          <div className="hint">
+            {side === "income" ? "The total you expect to earn across all sources"
+              : "The total you plan to spend across all categories"}
+          </div>
         </div>
       </div>
 
-      <button className={`save-btn ${saved ? "saved" : ""}`} onClick={handleSave}>
-        {saved ? <><Check size={17} strokeWidth={2.5} /> Saved</> : (isFixed ? "Save fixed plan" : "Save for this month")}
-      </button>
-      <div style={{ height: "80px" }} />
+      <div className="budget-scroll">
+        <div className="card">
+          <div className="card-hd">
+            <h3>By category</h3>
+            {+total > 0 && (
+              <span className={`alloc ${remaining < 0 ? "neg" : ""}`}>
+                {CURRENCY} {fmtCompact(Math.abs(remaining))} {remaining < 0 ? "over" : "unallocated"}
+              </span>
+            )}
+          </div>
+          <div className="cat-budgets">
+            {catList.map((c) => {
+              const Icon = c.icon;
+              const actual = isFixed ? 0 : (actuals[c.id] || 0);
+              const limit = +cats[c.id] || 0;
+              const pct = limit && !isFixed ? (actual / limit) * 100 : 0;
+              return (
+                <div key={c.id} className="cat-budget">
+                  <div className="cb-top">
+                    <div className="cb-left">
+                      <div className="cb-icon" style={{ background: `${c.color}1a`, color: c.color }}>
+                        <Icon size={14} strokeWidth={2} />
+                      </div>
+                      <span className="cb-name">{c.label}</span>
+                    </div>
+                    <div className="cb-input">
+                      <span>{CURRENCY}</span>
+                      <AmountInput value={cats[c.id] || ""} onChange={(v) => updateCat(c.id, v)} placeholder="0.00" />
+                    </div>
+                  </div>
+                  {limit > 0 && !isFixed && (
+                    <>
+                      <div className="cb-bar">
+                        <div className={`cb-fill ${side === "expense" ? (pct > 100 ? "over" : pct > 80 ? "warn" : "") : ""}`}
+                          style={{ width: `${Math.min(pct, 100)}%`,
+                            background: side === "expense" ? (pct > 100 ? undefined : c.color) : c.color }} />
+                      </div>
+                      <div className="cb-foot">
+                        {CURRENCY} {fmt(actual)} / {CURRENCY} {fmt(limit)} · {pct.toFixed(0)}%
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <button className={`save-btn ${saved ? "saved" : ""}`} onClick={handleSave}>
+          {saved ? <><Check size={17} strokeWidth={2.5} /> Saved</> : (isFixed ? "Save fixed plan" : "Save for this month")}
+        </button>
+        <div style={{ height: "80px" }} />
+      </div>
     </div>
   );
 }
@@ -2025,6 +2123,28 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .empty-sub { font-size: 13px; color: var(--ink-faint); }
 .empty-sm { padding: 24px; text-align: center; color: var(--ink-faint); font-size: 13px; }
 
+/* ── BUDGET LAYOUT ── */
+.view-budget { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
+.budget-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
+.budget-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.budget-scroll::-webkit-scrollbar { display: none; }
+
+/* ── CARDS LAYOUT ── */
+.view-cards { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
+.cards-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
+.cards-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.cards-scroll::-webkit-scrollbar { display: none; }
+
+/* ── HOME LAYOUT ── */
+.view-home { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
+.home-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
+.tx-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tx-scroll::-webkit-scrollbar { display: none; }
+
+/* ── TX FILTERS ── */
+.tx-filters { display: flex; gap: 8px; margin-bottom: 16px; }
+.fselect { flex: 1; min-width: 0; appearance: none; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--border); border-radius: var(--radius); color: var(--ink); font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.04em; padding: 8px 28px 8px 10px; cursor: pointer; text-overflow: ellipsis; }
+
 /* ── TX LIST ── */
 .tx-list { display: flex; flex-direction: column; gap: 18px; }
 .tx-date { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); padding: 0 4px 8px; }
@@ -2137,6 +2257,9 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 /* ── METRICS ── */
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
 .metric-grid.metric-single { grid-template-columns: 1fr; }
+.metric-grid.metric-triple { grid-template-columns: 1fr 1fr 1fr; }
+.metric-val.sm { font-size: 20px; }
+.metric-val.warn { color: var(--warn); }
 .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .metric-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .metric-label { font-size: 11px; color: var(--ink-faint); font-weight: 500; }
@@ -2163,8 +2286,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; position: relative; }
 .bar { flex: 1; max-width: 12px; border-radius: 3px 3px 0 0; transition: height 0.7s cubic-bezier(0.22, 1, 0.36, 1); min-height: 2px; }
 .bar.in { background: var(--in); } .bar.out { background: var(--out); }
-.plan-line { position: absolute; height: 2px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.8); transition: bottom 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
-.plan-line.in-line { background: var(--in); opacity: 0.75; } .plan-line.out-line { background: var(--out); opacity: 0.75; }
+.plan-line { position: absolute; height: 2px; border-radius: 2px; background: var(--bud); opacity: 0.9; box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.6); transition: bottom 0.7s cubic-bezier(0.22, 1, 0.36, 1); z-index: 2; }
+.plan-line.in-line { } .plan-line.out-line { }
 .bar-lbl { margin-top: 10px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
 
 /* ── CAT LIST V2 ── */
@@ -2255,6 +2378,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .save-btn:active { transform: translateY(0); }
 .save-btn.saved { background: var(--in); }
 .save-btn.disabled, .save-btn:disabled { background: var(--surface-2); color: var(--ink-faint); cursor: not-allowed; }
+.save-btn.support-btn { background: #e9f9f0; color: #1a7a45; text-decoration: none; }
+.save-btn.support-btn:hover { background: #25d366; color: #fff; }
 .save-btn.danger-btn { background: var(--danger-soft); color: var(--danger); }
 .save-btn.danger-btn:hover:not(:disabled) { background: var(--danger); color: white; box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3); }
 
@@ -2275,7 +2400,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .account-since { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
 
 .type-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.type-chip { background: var(--surface); border: 1px solid var(--border); color: var(--ink-soft); padding: 7px 11px; border-radius: 100px; font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; }
+.type-chip { appearance: none; -webkit-appearance: none; background: var(--surface); border: 1px solid var(--border); color: var(--ink-soft); padding: 0 12px; height: 30px; border-radius: 100px; font-family: var(--sans); font-size: 11px; font-weight: 500; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; box-sizing: border-box; flex-shrink: 0; }
 .type-chip:hover { background: var(--surface-2); color: var(--ink); }
 .type-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .type-chip.card.active { background: var(--neutral); color: var(--bg); border-color: var(--neutral); }
