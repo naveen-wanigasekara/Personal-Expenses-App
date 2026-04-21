@@ -7,7 +7,7 @@ import {
   Wallet, BarChart3, Target, ArrowUp, ArrowDown, Sparkles,
   Lock, Unlock, Copy, CreditCard, Percent, AlertTriangle,
   Edit2, LogOut, Mail, KeyRound, UserPlus, Loader2,
-  Download, RefreshCw, MessageCircle,
+  Download, RefreshCw, MessageCircle, HelpCircle, BookOpen, ChevronDown,
 } from "lucide-react";
 import {
   supabase, signUp, signIn, signOut, getUser,
@@ -292,6 +292,7 @@ function MainApp({ user }) {
   const [errorBanner, setErrorBanner] = useState(null);
   const [userCats, setUserCats] = useState(() => loadUserCats(user.id));
   const [showCatsModal, setShowCatsModal] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const allExpCats = userCats.expense;
   const allIncCats = userCats.income;
@@ -596,7 +597,12 @@ function MainApp({ user }) {
       {showSettings && (
         <SettingsModal user={user} onClose={() => setShowSettings(false)}
           onOpenCategories={() => { setShowSettings(false); setShowCatsModal(true); }}
+          onOpenHelp={() => { setShowSettings(false); setShowHelp(true); }}
         />
+      )}
+
+      {showHelp && (
+        <HelpModal onClose={() => setShowHelp(false)} />
       )}
 
       {showCatsModal && (
@@ -656,8 +662,174 @@ function PWABanners() {
   );
 }
 
+/* ─── HELP MODAL ──────────────────────────────────────────── */
+const HELP_SECTIONS = [
+  {
+    id: "getting-started",
+    title: "Getting Started",
+    icon: "🚀",
+    items: [
+      { q: "Signing up & logging in", a: "Tap Sign Up (new user) or Sign In (existing user). Enter your email and password. After signing up, confirm your account via the email you receive. Your data syncs to the cloud automatically — accessible from any device." },
+      { q: "Installing the app", a: "When prompted, install the app to your home screen for a native experience. Tap the Install banner at the top of the screen and follow your device's prompt." },
+    ],
+  },
+  {
+    id: "navigation",
+    title: "Navigation",
+    icon: "🧭",
+    items: [
+      { q: "What are the four tabs?", a: "Insights — your financial dashboard with summaries and charts.\nLedger — full transaction history.\nCards — credit card management.\nBudget — income targets and spending limits." },
+      { q: "How do I add a transaction quickly?", a: "Tap the + button (floating action button) from any screen to open the Add Transaction form." },
+    ],
+  },
+  {
+    id: "transactions",
+    title: "Adding Transactions",
+    icon: "💳",
+    items: [
+      { q: "What transaction types are there?", a: "Expense — cash or bank debit purchase.\nIncome — salary, bonus, passive income, etc.\nCard Purchase — something bought on credit.\nCard Payment — paying off your credit card bill.\nCard Interest — interest or fees charged by the bank." },
+      { q: "How do I record a card purchase?", a: "Tap +, choose Card Purchase, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category." },
+      { q: "How do I record paying my credit card bill?", a: "Tap +, choose Card Payment, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals." },
+      { q: "What is the Note field for?", a: "An optional short description for the transaction, e.g. \"Lunch with client\" or \"Monthly salary\". It appears in the transaction list." },
+    ],
+  },
+  {
+    id: "ledger",
+    title: "Ledger Tab",
+    icon: "📋",
+    items: [
+      { q: "How are transactions displayed?", a: "Transactions are grouped by date with a daily subtotal. Each entry shows the category icon, description, and amount. Green + = income, red − = expense. Card transactions show a card name badge." },
+      { q: "How do I filter transactions?", a: "Use the three dropdowns at the top to filter by month (last 6 months), transaction type (All, Income, Cash Purchase, Card Purchase), or category. The bar shows how many transactions match." },
+      { q: "How do I delete a transaction?", a: "Tap the transaction row to expand it, then tap the delete icon that appears." },
+    ],
+  },
+  {
+    id: "cards",
+    title: "Cards Tab",
+    icon: "💳",
+    items: [
+      { q: "How do I add a credit card?", a: "Tap + Add Card and fill in the card name (e.g. \"AMEX Gold\"), credit limit, opening balance (any existing debt when you start), and choose a colour theme." },
+      { q: "What does the utilization bar show?", a: "It shows your current balance as a percentage of your credit limit. Below 70% is normal, 70–90% shows a yellow warning, and above 90% shows a red danger indicator." },
+      { q: "What can I see in Card Detail?", a: "Tap any card to see this month's total purchases, payments, and interest; a full activity list; and edit/delete options for the card." },
+      { q: "What happens if I delete a card?", a: "Deleting a card removes the card record but does NOT delete its linked transactions. Those transactions remain in the Ledger." },
+    ],
+  },
+  {
+    id: "budget",
+    title: "Budget Tab",
+    icon: "🎯",
+    items: [
+      { q: "What is the Fixed Plan?", a: "Your default budget that applies automatically to every month. Set it once and it repeats. Use it for your regular monthly income targets and spending limits." },
+      { q: "What is a Month Override?", a: "A custom budget for a specific month that overrides the Fixed Plan without changing it. Useful for unusual months like holidays or large one-off purchases." },
+      { q: "How do I set income targets?", a: "In the Budget tab, enter a total expected income for the month and break it down per category (e.g. Rs. 150,000 from Fixed Income)." },
+      { q: "How do I set expense budgets?", a: "Enter a total spending limit and per-category limits (e.g. Rs. 30,000 for Groceries). The Planned Savings summary shows: Income Target − Expense Budget." },
+      { q: "What do the budget progress bar colours mean?", a: "Green — within budget. Yellow — above 80% of budget. Red — over budget." },
+      { q: "What is Copy Fixed Plan?", a: "Tap this button to pre-fill the current month with your Fixed Plan values. You can then adjust individual categories for that month without affecting the fixed default." },
+    ],
+  },
+  {
+    id: "insights",
+    title: "Insights Tab",
+    icon: "📊",
+    items: [
+      { q: "What does the top summary show?", a: "Net Balance — income minus expenses for the selected month. Income vs. Expenses — totals at a glance. Card Debt Summary — total debt and utilization across all cards." },
+      { q: "What is Plan vs. Actual?", a: "A comparison of your budgeted plan against what actually happened: income target vs. actual income, expense budget vs. actual spending, and planned vs. actual savings." },
+      { q: "What is the Cashflow Chart?", a: "A 3-month bar chart showing income and expenses side by side, with budget target lines overlaid. Use the ← → arrows to navigate between months." },
+      { q: "What is the running balance?", a: "The cumulative total of all income minus all expenses across all time — not just the selected month. It shows your overall financial trajectory since you started using the app." },
+    ],
+  },
+  {
+    id: "categories",
+    title: "Custom Categories",
+    icon: "🏷️",
+    items: [
+      { q: "How do I add a custom category?", a: "Go to Settings → Manage categories, or tap + Add directly inside the Add Transaction form. Enter a name (max 28 characters), pick an icon and colour, then choose Income or Expense." },
+      { q: "Can I delete built-in categories?", a: "No. The built-in defaults (e.g. Groceries, Fixed Income) cannot be removed. You can only edit or delete custom categories you've created." },
+    ],
+  },
+  {
+    id: "tips",
+    title: "Tips & Best Practices",
+    icon: "💡",
+    items: [
+      { q: "Avoid double-counting card spending", a: "Always use Card Purchase (not Expense) when buying something on credit, and Card Payment (not Expense) when paying your bill. This keeps your card balance and expense totals accurate." },
+      { q: "Getting the most from budgets", a: "Set a Fixed Plan first to establish your baseline. Then use Month Overrides for unusual months. Review Insights at month-end to compare plan vs. actual and spot overspending categories." },
+      { q: "Currency & number formatting", a: "All amounts are in Sri Lankan Rupees (Rs. / LKR). Large numbers display in compact form, e.g. Rs. 1.2M. Numbers are formatted automatically — just type digits." },
+    ],
+  },
+];
+
+function HelpModal({ onClose }) {
+  const [openSection, setOpenSection] = useState(null);
+  const [openItem, setOpenItem] = useState(null);
+
+  const toggleSection = (id) => {
+    setOpenSection((prev) => (prev === id ? null : id));
+    setOpenItem(null);
+  };
+
+  const toggleItem = (key) => {
+    setOpenItem((prev) => (prev === key ? null : key));
+  };
+
+  return (
+    <div className="backdrop" onClick={onClose}>
+      <div className="sheet help-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div className="sheet-hd">
+          <h2>Help &amp; Guide</h2>
+          <button className="close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <p className="help-intro">Tap a section to explore, then tap a question for the answer.</p>
+
+        <div className="help-sections">
+          {HELP_SECTIONS.map((section) => {
+            const isOpen = openSection === section.id;
+            return (
+              <div key={section.id} className={`help-section ${isOpen ? "open" : ""}`}>
+                <button className="help-section-hd" onClick={() => toggleSection(section.id)}>
+                  <span className="help-section-icon">{section.icon}</span>
+                  <span className="help-section-title">{section.title}</span>
+                  <ChevronDown size={15} className={`help-chevron ${isOpen ? "rotated" : ""}`} />
+                </button>
+
+                {isOpen && (
+                  <div className="help-items">
+                    {section.items.map((item, i) => {
+                      const key = `${section.id}-${i}`;
+                      const isItemOpen = openItem === key;
+                      return (
+                        <div key={key} className={`help-item ${isItemOpen ? "open" : ""}`}>
+                          <button className="help-item-q" onClick={() => toggleItem(key)}>
+                            <span>{item.q}</span>
+                            <ChevronDown size={13} className={`help-chevron ${isItemOpen ? "rotated" : ""}`} />
+                          </button>
+                          {isItemOpen && (
+                            <div className="help-item-a">
+                              {item.a.split("\n").map((line, li) => (
+                                <p key={li}>{line}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ height: 20 }} />
+      </div>
+    </div>
+  );
+}
+
 /* ─── SETTINGS MODAL ──────────────────────────────────────── */
-function SettingsModal({ user, onClose, onOpenCategories }) {
+function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp }) {
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -689,6 +861,12 @@ function SettingsModal({ user, onClose, onOpenCategories }) {
         <button className="settings-menu-row" onClick={onOpenCategories}>
           <MoreHorizontal size={16} />
           <span>Manage categories</span>
+          <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
+        </button>
+
+        <button className="settings-menu-row" onClick={onOpenHelp}>
+          <HelpCircle size={16} />
+          <span>Help &amp; user guide</span>
           <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
         </button>
 
@@ -2763,6 +2941,28 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 
 .sheet::-webkit-scrollbar { width: 4px; }
 .sheet::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 100px; }
+
+/* Help Modal */
+.help-sheet { padding-bottom: 8px; }
+.help-intro { font-size: 13px; color: var(--ink-faint); margin: 0 0 16px; line-height: 1.5; }
+.help-sections { display: flex; flex-direction: column; gap: 8px; }
+.help-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.help-section-hd { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 14px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; text-align: left; transition: background 0.15s; }
+.help-section-hd:hover { background: var(--surface-2); }
+.help-section.open .help-section-hd { background: var(--surface-2); }
+.help-section-icon { font-size: 16px; flex-shrink: 0; }
+.help-section-title { flex: 1; }
+.help-chevron { color: var(--ink-faint); flex-shrink: 0; transition: transform 0.2s ease; }
+.help-chevron.rotated { transform: rotate(180deg); }
+.help-items { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.help-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.help-item-q { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 11px 12px; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft); cursor: pointer; text-align: left; transition: color 0.15s; }
+.help-item-q:hover { color: var(--ink); }
+.help-item.open .help-item-q { color: var(--accent); }
+.help-item-q span { flex: 1; }
+.help-item-a { padding: 0 12px 12px; border-top: 1px solid var(--border); }
+.help-item-a p { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 8px 0 0; }
+.help-item-a p:first-child { margin-top: 10px; }
 
 @media (max-width: 380px) {
   .view { padding: 16px 14px 24px; }
