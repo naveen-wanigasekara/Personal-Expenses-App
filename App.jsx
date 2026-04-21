@@ -42,10 +42,61 @@ const INCOME_CATEGORIES = [
   { id: "other-income", label: "Other Income", icon: MoreHorizontal, color: "#8a8075" },
 ];
 
-const getCat = (id, type) => {
-  const list = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+const ICON_MAP = {
+  Briefcase, Repeat, Gift, TrendingDown, TrendingUp, Wallet, Target,
+  Landmark, HomeIcon, Zap, ShoppingCart, Heart, Car, ShoppingBag,
+  Film, ShieldAlert, PiggyBank, MoreHorizontal, Percent,
+};
+const getIconName = (ic) =>
+  Object.entries(ICON_MAP).find(([, v]) => v === ic)?.[0] || "MoreHorizontal";
+const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, icon]) => ({ name, icon }));
+const CUSTOM_CAT_COLORS = [
+  "#e0654a", "#c98a5a", "#e3a847", "#7ba05b", "#4a9b7a", "#d96477",
+  "#5a8ba3", "#9878c0", "#e08a5f", "#c64a6f", "#a594f9", "#8a8075",
+];
+
+const getCat = (id, type, expList, incList) => {
+  const list = type === "income" ? (incList || INCOME_CATEGORIES) : (expList || EXPENSE_CATEGORIES);
   return list.find((c) => c.id === id) || list[list.length - 1];
 };
+
+function loadUserCats(userId) {
+  try {
+    const stored = localStorage.getItem(`user_cats_${userId}`);
+    if (stored) {
+      const raw = JSON.parse(stored);
+      return {
+        income: (raw.income || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+        expense: (raw.expense || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+      };
+    }
+    // migrate from old custom_cats format
+    const old = localStorage.getItem(`custom_cats_${userId}`);
+    const oldCustom = old ? JSON.parse(old) : { income: [], expense: [] };
+    return {
+      income: [
+        ...INCOME_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+        ...(oldCustom.income || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+      ],
+      expense: [
+        ...EXPENSE_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+        ...(oldCustom.expense || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+      ],
+    };
+  } catch {
+    return {
+      income: INCOME_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+      expense: EXPENSE_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+    };
+  }
+}
+
+function saveUserCats(userId, cats) {
+  localStorage.setItem(`user_cats_${userId}`, JSON.stringify({
+    income: cats.income.map(({ icon: _, ...r }) => r),
+    expense: cats.expense.map(({ icon: _, ...r }) => r),
+  }));
+}
 
 const CURRENCY = "Rs.";
 
@@ -239,6 +290,37 @@ function MainApp({ user }) {
   const [showSettings, setShowSettings] = useState(false);
   const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
   const [errorBanner, setErrorBanner] = useState(null);
+  const [userCats, setUserCats] = useState(() => loadUserCats(user.id));
+  const [showCatsModal, setShowCatsModal] = useState(false);
+
+  const allExpCats = userCats.expense;
+  const allIncCats = userCats.income;
+
+  const addCat = useCallback((type, cat) => {
+    setUserCats((prev) => {
+      const next = { ...prev, [type]: [...prev[type], cat] };
+      saveUserCats(user.id, next);
+      return next;
+    });
+  }, [user.id]);
+
+  const editCat = useCallback((type, id, updates) => {
+    setUserCats((prev) => {
+      const next = { ...prev, [type]: prev[type].map((c) => c.id === id ? { ...c, ...updates } : c) };
+      saveUserCats(user.id, next);
+      return next;
+    });
+  }, [user.id]);
+
+  const deleteCat = useCallback((type, id) => {
+    setUserCats((prev) => {
+      const next = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
+      saveUserCats(user.id, next);
+      return next;
+    });
+  }, [user.id]);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [tab]);
 
   /* Initial data load from Supabase */
   useEffect(() => {
@@ -448,10 +530,8 @@ function MainApp({ user }) {
             stats={monthStats}
             viewMonth={viewMonth} setViewMonth={setViewMonth}
             transactions={monthStats.list} onDelete={deleteTx}
-            plan={getEffectivePlan(viewMonth)}
             cards={cardsWithBalance}
-            user={user}
-            onOpenSettings={() => setShowSettings(true)}
+            allExpCats={allExpCats} allIncCats={allIncCats}
           />
         )}
         {tab === "dashboard" && (
@@ -459,6 +539,10 @@ function MainApp({ user }) {
             transactions={transactions}
             getEffectivePlan={getEffectivePlan}
             cards={cardsWithBalance}
+            viewMonth={viewMonth} setViewMonth={setViewMonth}
+            user={user}
+            onOpenSettings={() => setShowSettings(true)}
+            allExpCats={allExpCats} allIncCats={allIncCats}
           />
         )}
         {tab === "cards" && (
@@ -476,6 +560,7 @@ function MainApp({ user }) {
             viewMonth={viewMonth} setViewMonth={setViewMonth}
             stats={monthStats}
             fixedPlan={fixedPlan} setFixedPlan={saveFixedPlan}
+            allExpCats={allExpCats} allIncCats={allIncCats}
           />
         )}
       </main>
@@ -485,8 +570,8 @@ function MainApp({ user }) {
       </button>
 
       <nav className="nav">
-        <NavBtn icon={Wallet} label="Ledger" active={tab === "home"} onClick={() => setTab("home")} />
         <NavBtn icon={BarChart3} label="Insights" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
+        <NavBtn icon={Wallet} label="Ledger" active={tab === "home"} onClick={() => setTab("home")} />
         <NavBtn icon={CreditCard} label="Cards" active={tab === "cards"} onClick={() => setTab("cards")} />
         <NavBtn icon={Target} label="Budget" active={tab === "budget"} onClick={() => setTab("budget")} />
       </nav>
@@ -495,6 +580,8 @@ function MainApp({ user }) {
         <AddModal
           cards={cardsWithBalance} onClose={() => setShowAdd(false)}
           onSave={(tx) => { addTx(tx); setShowAdd(false); }}
+          allExpCats={allExpCats} allIncCats={allIncCats}
+          onAddCat={addCat}
         />
       )}
 
@@ -507,7 +594,19 @@ function MainApp({ user }) {
       )}
 
       {showSettings && (
-        <SettingsModal user={user} onClose={() => setShowSettings(false)} />
+        <SettingsModal user={user} onClose={() => setShowSettings(false)}
+          onOpenCategories={() => { setShowSettings(false); setShowCatsModal(true); }}
+        />
+      )}
+
+      {showCatsModal && (
+        <CategoriesModal
+          userCats={userCats}
+          onClose={() => setShowCatsModal(false)}
+          onAdd={addCat}
+          onEdit={editCat}
+          onDelete={deleteCat}
+        />
       )}
     </div>
   );
@@ -558,7 +657,7 @@ function PWABanners() {
 }
 
 /* ─── SETTINGS MODAL ──────────────────────────────────────── */
-function SettingsModal({ user, onClose }) {
+function SettingsModal({ user, onClose, onOpenCategories }) {
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -587,6 +686,12 @@ function SettingsModal({ user, onClose }) {
           </div>
         </div>
 
+        <button className="settings-menu-row" onClick={onOpenCategories}>
+          <MoreHorizontal size={16} />
+          <span>Manage categories</span>
+          <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
+        </button>
+
         <a className="save-btn support-btn"
           href="https://wa.me/94705025330"
           target="_blank" rel="noopener noreferrer">
@@ -604,21 +709,7 @@ function SettingsModal({ user, onClose }) {
 }
 
 /* ─── HOME / LEDGER ───────────────────────────────────────── */
-function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan, cards, user, onOpenSettings }) {
-  const changeMonth = (dir) => {
-    const [y, m] = viewMonth.split("-").map(Number);
-    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
-  };
-
-  const incomeTarget = plan?.income?.total || 0;
-  const expenseBudget = plan?.expense?.total || 0;
-  const incomeProgress = incomeTarget ? (stats.income / incomeTarget) * 100 : 0;
-  const budgetUsed = expenseBudget ? (stats.expenses / expenseBudget) * 100 : 0;
-
-  const totalCardDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
-  const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
-  const utilization = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
-
+function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, cards, allExpCats, allIncCats }) {
   const [filterCat, setFilterCat] = useState("all");
   const [filterType, setFilterType] = useState("all");
 
@@ -672,133 +763,9 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
 
   const getCardName = (id) => cards.find((c) => c.id === id)?.name || "Card";
 
-  const greeting = getTimeOfDay();
-  const isCurrentMonth = viewMonth === monthKey(new Date());
-  const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
-
-  const initial = (user.email || "?")[0].toUpperCase();
-
   return (
     <div className="view view-home">
       <div className="home-header">
-      <div className="hero">
-        <div className="hero-top">
-          <div>
-            <div className="hero-meta">{isCurrentMonth ? `Good ${greeting}` : "Viewing"}</div>
-            <h1 className="hero-title">Your Money</h1>
-          </div>
-          <div className="hero-right">
-            <div className="month-pill">
-              <button onClick={() => changeMonth(-1)} aria-label="Previous month">
-                <ChevronLeft size={16} />
-              </button>
-              <span>{mLbl.slice(0, 3)} {yLbl}</span>
-              <button onClick={() => changeMonth(1)} aria-label="Next month">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <button className="avatar-btn" onClick={onOpenSettings} aria-label="Account">
-              {initial}
-            </button>
-          </div>
-        </div>
-
-        <div className="balance">
-          <div className="balance-label">Net {isCurrentMonth ? "this month" : ""}</div>
-          <div className={`balance-amt ${stats.net < 0 ? "neg" : ""}`}>
-            <span className="balance-sign">{stats.net < 0 ? "−" : ""}</span>
-            <span className="balance-cur">{CURRENCY}</span>
-            <span className="balance-num">{fmt(Math.abs(stats.net))}</span>
-          </div>
-
-          <div className="inout">
-            <div className="io-cell">
-              <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
-              <div className="io-text">
-                <div className="io-label">In</div>
-                <div className="io-val">{CURRENCY} {fmtCompact(stats.income)}</div>
-              </div>
-            </div>
-            <div className="io-cell">
-              <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
-              <div className="io-text">
-                <div className="io-label">Out</div>
-                <div className="io-val">{CURRENCY} {fmtCompact(stats.expenses)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {cards.length > 0 && totalCardDebt !== 0 && (
-        <div className="debt-banner">
-          <div className="db-left">
-            <CreditCard size={16} />
-            <div>
-              <div className="db-label">Card debt</div>
-              <div className="db-val">{CURRENCY} {fmt(totalCardDebt)}</div>
-            </div>
-          </div>
-          <div className="db-right">
-            <div className={`db-util ${utilization > 70 ? "warn" : ""} ${utilization > 90 ? "over" : ""}`}>
-              {utilization.toFixed(0)}% used
-            </div>
-            <div className="db-limit">of {CURRENCY} {fmtCompact(totalLimit)}</div>
-          </div>
-        </div>
-      )}
-
-      {(incomeTarget > 0 || expenseBudget > 0) && (
-        <div className="pulse-pair">
-          {incomeTarget > 0 && (
-            <div className="pulse-item">
-              <div className="pi-top">
-                <span className="pi-label">
-                  <span className="pi-tag pi-in">Income</span>
-                  Target
-                  {plan?.source === "fixed" && <Lock size={10} />}
-                </span>
-                <span className={`pi-pct ${incomeProgress >= 100 ? "good" : ""}`}>
-                  {incomeProgress.toFixed(0)}%
-                </span>
-              </div>
-              <div className="pi-track">
-                <div className="pi-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
-              </div>
-              <div className="pi-foot">
-                <span>{CURRENCY} {fmtCompact(stats.income)} / {CURRENCY} {fmtCompact(incomeTarget)}</span>
-              </div>
-            </div>
-          )}
-
-          {expenseBudget > 0 && (
-            <div className="pulse-item">
-              <div className="pi-top">
-                <span className="pi-label">
-                  <span className="pi-tag pi-out">Budget</span>
-                  {plan?.source === "fixed" && <Lock size={10} />}
-                </span>
-                <span className={`pi-pct ${budgetUsed > 100 ? "over" : budgetUsed > 80 ? "warn" : ""}`}>
-                  {budgetUsed.toFixed(0)}%
-                </span>
-              </div>
-              <div className="pi-track">
-                <div
-                  className={`pi-fill out ${budgetUsed > 100 ? "over" : budgetUsed > 80 ? "warn" : ""}`}
-                  style={{ width: `${Math.min(budgetUsed, 100)}%` }}
-                />
-              </div>
-              <div className="pi-foot">
-                <span>{CURRENCY} {fmtCompact(stats.expenses)} / {CURRENCY} {fmtCompact(expenseBudget)}</span>
-                <span className={budgetUsed > 100 ? "pi-over" : "pi-left"}>
-                  {budgetUsed > 100 ? "over" : `${CURRENCY} ${fmtCompact(Math.abs(expenseBudget - stats.expenses))} left`}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="section-hd">
         <h2>Transactions</h2>
         <span className="count">
@@ -858,7 +825,8 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
                 <div className="tx-stack">
                   {items.map((t) => (
                     <TxRow key={t.id} tx={t} onDelete={onDelete}
-                      cardName={t.cardId ? getCardName(t.cardId) : null} />
+                      cardName={t.cardId ? getCardName(t.cardId) : null}
+                      allExpCats={allExpCats} allIncCats={allIncCats} />
                   ))}
                 </div>
               </div>
@@ -871,21 +839,21 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, plan
   );
 }
 
-function TxRow({ tx, onDelete, cardName }) {
+function TxRow({ tx, onDelete, cardName, allExpCats, allIncCats }) {
   const [open, setOpen] = useState(false);
 
   let cat, sign, color;
   if (tx.type === "income") {
-    cat = getCat(tx.category, "income"); sign = "+"; color = "income";
+    cat = getCat(tx.category, "income", allExpCats, allIncCats); sign = "+"; color = "income";
   } else if (tx.type === "card-payment") {
     cat = { label: "Card Payment", icon: CreditCard, color: "#a594f9" };
     sign = "↔"; color = "neutral";
   } else if (tx.type === "card-interest") {
-    cat = getCat("card-interest", "expense"); sign = "−"; color = "expense";
+    cat = getCat("card-interest", "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
   } else if (tx.type === "card-purchase") {
-    cat = getCat(tx.category, "expense"); sign = "−"; color = "expense";
+    cat = getCat(tx.category, "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
   } else {
-    cat = getCat(tx.category, "expense"); sign = "−"; color = "expense";
+    cat = getCat(tx.category, "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
   }
   const Icon = cat.icon;
 
@@ -923,12 +891,22 @@ function TxRow({ tx, onDelete, cardName }) {
 }
 
 /* ─── DASHBOARD ───────────────────────────────────────────── */
-function DashView({ transactions, getEffectivePlan, cards }) {
+function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats }) {
+  const changeMonth = (dir) => {
+    const [y, m] = viewMonth.split("-").map(Number);
+    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
+  };
+
+  const isCurrentMonth = viewMonth === monthKey(new Date());
+  const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
+  const initial = (user.email || "?")[0].toUpperCase();
+  const greeting = getTimeOfDay();
+
   const last6 = useMemo(() => {
     const out = [];
-    const now = new Date();
+    const [vy, vm] = viewMonth.split("-").map(Number);
     for (let i = 2; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(vy, vm - 1 - i, 1);
       const k = monthKey(d);
       const inMonth = transactions.filter((t) => monthKey(t.date) === k);
       const income = inMonth.filter((t) => t.type === "income").reduce((s, t) => s + +t.amount, 0);
@@ -944,17 +922,15 @@ function DashView({ transactions, getEffectivePlan, cards }) {
       });
     }
     return out;
-  }, [transactions, getEffectivePlan]);
+  }, [transactions, getEffectivePlan, viewMonth]);
 
   const maxBar = Math.max(...last6.flatMap((m) => [m.income, m.expenses, m.incomeTarget, m.expenseBudget]), 1);
-  const thisMonth = monthKey(new Date());
   const thisStats = last6[last6.length - 1];
-  const prevStats = last6[last6.length - 2];
-  const currentPlan = getEffectivePlan(thisMonth);
+  const currentPlan = getEffectivePlan(viewMonth);
 
   const expCatSpend = useMemo(() => {
     const inMonth = transactions.filter(
-      (t) => monthKey(t.date) === thisMonth &&
+      (t) => monthKey(t.date) === viewMonth &&
         (t.type === "expense" || t.type === "card-purchase" || t.type === "card-interest")
     );
     const by = {};
@@ -974,7 +950,7 @@ function DashView({ transactions, getEffectivePlan, cards }) {
           pct: total ? (val / total) * 100 : 0,
           budgetPct: budgeted ? (val / budgeted) * 100 : null,
           remaining: budgeted ? budgeted - val : null,
-          cat: getCat(id, "expense"),
+          cat: getCat(id, "expense", allExpCats, allIncCats),
         };
       })
       .sort((a, b) => {
@@ -984,10 +960,10 @@ function DashView({ transactions, getEffectivePlan, cards }) {
         if (a.val !== b.val) return b.val - a.val;
         return (b.budgeted || 0) - (a.budgeted || 0);
       });
-  }, [transactions, thisMonth, currentPlan]);
+  }, [transactions, viewMonth, currentPlan]);
 
   const incCatEarn = useMemo(() => {
-    const inMonth = transactions.filter((t) => monthKey(t.date) === thisMonth && t.type === "income");
+    const inMonth = transactions.filter((t) => monthKey(t.date) === viewMonth && t.type === "income");
     const by = {};
     inMonth.forEach((t) => { by[t.category] = (by[t.category] || 0) + +t.amount; });
     const total = Object.values(by).reduce((s, v) => s + v, 0);
@@ -1005,11 +981,21 @@ function DashView({ transactions, getEffectivePlan, cards }) {
           pct: total ? (val / total) * 100 : 0,
           budgetPct: budgeted ? (val / budgeted) * 100 : null,
           remaining: budgeted ? budgeted - val : null,
-          cat: getCat(id, "income"),
+          cat: getCat(id, "income", allExpCats, allIncCats),
         };
       })
       .sort((a, b) => b.val - a.val);
-  }, [transactions, thisMonth, currentPlan]);
+  }, [transactions, viewMonth, currentPlan]);
+
+  const runningBalance = useMemo(() => {
+    return transactions
+      .filter((t) => monthKey(t.date) <= viewMonth)
+      .reduce((sum, t) => {
+        if (t.type === "income") return sum + +t.amount;
+        if (t.type === "expense" || t.type === "card-purchase" || t.type === "card-interest") return sum - +t.amount;
+        return sum;
+      }, 0);
+  }, [transactions, viewMonth]);
 
   const budgetProgress = currentPlan?.expense?.total ? (thisStats.expenses / currentPlan.expense.total) * 100 : 0;
   const incomeProgress = currentPlan?.income?.total ? (thisStats.income / currentPlan.income.total) * 100 : 0;
@@ -1021,33 +1007,127 @@ function DashView({ transactions, getEffectivePlan, cards }) {
 
   return (
     <div className="view">
-      <div className="page-hd">
-        <div className="page-eyebrow">Overview</div>
-        <h1 className="page-title">Insights</h1>
+      <div className="hero">
+        <div className="hero-top">
+          <div>
+            <div className="hero-meta">{isCurrentMonth ? `Good ${greeting}` : "Viewing"}</div>
+            <h1 className="hero-title">Your Money</h1>
+          </div>
+          <div className="hero-right">
+            <div className="month-pill">
+              <button onClick={() => changeMonth(-1)} aria-label="Previous month">
+                <ChevronLeft size={16} />
+              </button>
+              <span>{mLbl.slice(0, 3)} {yLbl}</span>
+              <button onClick={() => changeMonth(1)} aria-label="Next month">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <button className="avatar-btn" onClick={onOpenSettings} aria-label="Account">
+              {initial}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="metric-grid">
-        <div className="metric">
-          <div className="metric-top">
-            <span className="metric-label">Cash in hand</span>
+      <div className="balance" style={{ marginBottom: '20px' }}>
+        <div className="balance-label">Net {isCurrentMonth ? "this month" : ""}</div>
+        <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
+          <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
+          <span className="balance-cur">{CURRENCY}</span>
+          <span className="balance-num">{fmt(Math.abs(thisStats.net))}</span>
+        </div>
+        <div className="inout">
+          <div className="io-cell">
+            <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
+            <div className="io-text">
+              <div className="io-label">In</div>
+              <div className="io-val">{CURRENCY} {fmtCompact(thisStats.income)}</div>
+            </div>
           </div>
-          <div className={`metric-val sm ${thisStats.net < 0 ? "neg" : ""}`}>
-            {CURRENCY} {fmtCompact(Math.abs(thisStats.net))}
-          </div>
-          <div className={`metric-delta ${thisStats.net >= 0 ? "down" : "up"}`}>
-            {thisStats.net >= 0 ? "Surplus" : "Deficit"}
+          <div className="io-cell">
+            <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
+            <div className="io-text">
+              <div className="io-label">Out</div>
+              <div className="io-val">{CURRENCY} {fmtCompact(thisStats.expenses)}</div>
+            </div>
           </div>
         </div>
-        <div className="metric">
-          <div className="metric-top">
-            <span className="metric-label">Credit card</span>
-          </div>
-          <div className={`metric-val sm ${totalCardDebt > 0 ? "neg" : ""}`}>
-            {CURRENCY} {fmtCompact(totalCardDebt)}
-          </div>
-          <div className="metric-delta">Outstanding</div>
+        <div className="running-bal">
+          <span className="running-bal-label">Running balance</span>
+          <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
+            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmtCompact(Math.abs(runningBalance))}
+          </span>
         </div>
       </div>
+
+      {cards.length > 0 && totalCardDebt !== 0 && (
+        <div className="debt-banner">
+          <div className="db-left">
+            <CreditCard size={16} />
+            <div>
+              <div className="db-label">Card debt</div>
+              <div className="db-val">{CURRENCY} {fmt(totalCardDebt)}</div>
+            </div>
+          </div>
+          <div className="db-right">
+            <div className={`db-util ${totalUtil > 70 ? "warn" : ""} ${totalUtil > 90 ? "over" : ""}`}>
+              {totalUtil.toFixed(0)}% used
+            </div>
+            <div className="db-limit">of {CURRENCY} {fmtCompact(totalLimit)}</div>
+          </div>
+        </div>
+      )}
+
+      {(currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0) && (
+        <div className="pulse-pair">
+          {currentPlan?.income?.total > 0 && (
+            <div className="pulse-item">
+              <div className="pi-top">
+                <span className="pi-label">
+                  <span className="pi-tag pi-in">Income</span>
+                  Target
+                  {currentPlan?.source === "fixed" && <Lock size={10} />}
+                </span>
+                <span className={`pi-pct ${incomeProgress >= 100 ? "good" : ""}`}>
+                  {incomeProgress.toFixed(0)}%
+                </span>
+              </div>
+              <div className="pi-track">
+                <div className="pi-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
+              </div>
+              <div className="pi-foot">
+                <span>{CURRENCY} {fmtCompact(thisStats.income)} / {CURRENCY} {fmtCompact(currentPlan.income.total)}</span>
+              </div>
+            </div>
+          )}
+          {currentPlan?.expense?.total > 0 && (
+            <div className="pulse-item">
+              <div className="pi-top">
+                <span className="pi-label">
+                  <span className="pi-tag pi-out">Budget</span>
+                  {currentPlan?.source === "fixed" && <Lock size={10} />}
+                </span>
+                <span className={`pi-pct ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}>
+                  {budgetProgress.toFixed(0)}%
+                </span>
+              </div>
+              <div className="pi-track">
+                <div
+                  className={`pi-fill out ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}
+                  style={{ width: `${Math.min(budgetProgress, 100)}%` }}
+                />
+              </div>
+              <div className="pi-foot">
+                <span>{CURRENCY} {fmtCompact(thisStats.expenses)} / {CURRENCY} {fmtCompact(currentPlan.expense.total)}</span>
+                <span className={budgetProgress > 100 ? "pi-over" : "pi-left"}>
+                  {budgetProgress > 100 ? "over" : `${CURRENCY} ${fmtCompact(Math.abs(currentPlan.expense.total - thisStats.expenses))} left`}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {hasPlan && (
         <div className="card plan-card">
@@ -1550,7 +1630,7 @@ function AmountInput({ value, onChange, placeholder, className }) {
 }
 
 /* ─── BUDGET ──────────────────────────────────────────────── */
-function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, fixedPlan, setFixedPlan }) {
+function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, fixedPlan, setFixedPlan, allExpCats, allIncCats }) {
   const [mode, setMode] = useState("fixed");
   const [side, setSide] = useState("expense");
   const [fixedEdit, setFixedEdit] = useState(fixedPlan);
@@ -1591,7 +1671,7 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
 
   const allocated = Object.values(cats).reduce((s, v) => s + (+v || 0), 0);
   const remaining = +total - allocated;
-  const catList = side === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const catList = side === "income" ? allIncCats : allExpCats;
   const actuals = side === "income" ? stats.byIncCat : stats.byExpCat;
 
   const incomeTotal = plan.income?.total || 0;
@@ -1600,7 +1680,6 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
 
   return (
     <div className="view view-budget">
-      <div className="budget-header">
         <div className="page-hd">
           <div className="page-eyebrow">Plan</div>
           <h1 className="page-title">Budget</h1>
@@ -1627,7 +1706,12 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
             </div>
             {(fixedPlan.income?.total > 0 || fixedPlan.expense?.total > 0) && (
               <button className="copy-btn" onClick={copyFromFixed}>
-                <Copy size={12} /> Copy from fixed plan
+                <div className="copy-btn-icon"><Copy size={15} /></div>
+                <div className="copy-btn-text">
+                  <span className="copy-btn-title">Copy from fixed plan</span>
+                  <span className="copy-btn-sub">Apply your fixed budget to this month</span>
+                </div>
+                <ChevronRight size={15} className="copy-btn-arrow" />
               </button>
             )}
           </>
@@ -1682,9 +1766,7 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
               : "The total you plan to spend across all categories"}
           </div>
         </div>
-      </div>
 
-      <div className="budget-scroll">
         <div className="card">
           <div className="card-hd">
             <h3>By category</h3>
@@ -1736,13 +1818,164 @@ function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, 
           {saved ? <><Check size={17} strokeWidth={2.5} /> Saved</> : (isFixed ? "Save fixed plan" : "Save for this month")}
         </button>
         <div style={{ height: "80px" }} />
+    </div>
+  );
+}
+
+/* ─── CATEGORIES MODAL ────────────────────────────────────── */
+function CategoriesModal({ userCats, onClose, onAdd, onEdit, onDelete }) {
+  const [tab, setTab] = useState("expense");
+  const [editingCat, setEditingCat] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const cats = tab === "expense" ? userCats.expense : userCats.income;
+
+  return (
+    <div className="backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div className="sheet-hd">
+          <h2>Categories</h2>
+          <button className="close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div className="mode-toggle" style={{ marginBottom: 12 }}>
+          <div className={`mode-slider ${tab === "expense" ? "left" : "right"}`} />
+          <button className={tab === "expense" ? "active" : ""} onClick={() => setTab("expense")}>
+            <ArrowDown size={13} strokeWidth={2.5} /> Expense
+          </button>
+          <button className={tab === "income" ? "active" : ""} onClick={() => setTab("income")}>
+            <ArrowUp size={13} strokeWidth={2.5} /> Income
+          </button>
+        </div>
+
+        <div className="manage-cat-list">
+          {cats.map((c) => {
+            const Icon = c.icon;
+            return (
+              <div key={c.id} className="manage-cat-row">
+                <div className="manage-cat-icon" style={{ background: `${c.color}26`, color: c.color }}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <span className="manage-cat-label">{c.label}</span>
+                <button className="manage-cat-btn" onClick={() => setEditingCat({ ...c, type: tab })} aria-label="Edit">
+                  <Edit2 size={14} />
+                </button>
+                <button className="manage-cat-btn danger" onClick={() => onDelete(tab, c.id)} aria-label="Delete">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <button className="save-btn" style={{ marginTop: 8 }} onClick={() => setShowAdd(true)}>
+          <Plus size={15} /> Add category
+        </button>
+
+        <div style={{ height: 16 }} />
+
+        {editingCat && (
+          <CategoryFormModal
+            editing={editingCat}
+            initialType={tab}
+            onClose={() => setEditingCat(null)}
+            onSave={(type, updated) => { onEdit(type, editingCat.id, updated); setEditingCat(null); }}
+          />
+        )}
+
+        {showAdd && (
+          <CategoryFormModal
+            initialType={tab}
+            onClose={() => setShowAdd(false)}
+            onSave={(type, cat) => { onAdd(type, cat); setShowAdd(false); }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── CATEGORY FORM MODAL ─────────────────────────────────── */
+function CategoryFormModal({ initialType, editing, onClose, onSave }) {
+  const isEditing = !!editing;
+  const [type, setType] = useState(initialType || "expense");
+  const [label, setLabel] = useState(editing?.label || "");
+  const [iconName, setIconName] = useState(editing?.iconName || "MoreHorizontal");
+  const [color, setColor] = useState(editing?.color || "#8a8075");
+
+  const handleSave = () => {
+    if (!label.trim()) return;
+    onSave(type, {
+      ...(editing || {}),
+      id: editing?.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      label: label.trim(),
+      iconName,
+      icon: ICON_MAP[iconName] || MoreHorizontal,
+      color,
+    });
+  };
+
+  return (
+    <div className="backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div className="sheet-hd">
+          <h2>{isEditing ? "Edit category" : "New category"}</h2>
+          <button className="close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {!isEditing && (
+          <div className="mode-toggle" style={{ marginBottom: 16 }}>
+            <div className={`mode-slider ${type === "expense" ? "left" : "right"}`} />
+            <button className={type === "expense" ? "active" : ""} onClick={() => setType("expense")}>
+              <ArrowDown size={13} strokeWidth={2.5} /> Expense
+            </button>
+            <button className={type === "income" ? "active" : ""} onClick={() => setType("income")}>
+              <ArrowUp size={13} strokeWidth={2.5} /> Income
+            </button>
+          </div>
+        )}
+
+        <label className="field-lbl">Name</label>
+        <input type="text" className="text-input" value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. Pet Care, Freelance…" maxLength={28} autoFocus />
+
+        <label className="field-lbl">Icon</label>
+        <div className="icon-picker">
+          {ICON_OPTIONS.map(({ name, icon: Icon }) => (
+            <button key={name}
+              className={`icon-opt ${iconName === name ? "active" : ""}`}
+              onClick={() => setIconName(name)}
+              style={iconName === name ? { borderColor: color, background: `${color}20` } : {}}>
+              <Icon size={17} strokeWidth={2} style={{ color: iconName === name ? color : undefined }} />
+            </button>
+          ))}
+        </div>
+
+        <label className="field-lbl">Color</label>
+        <div className="color-picker">
+          {CUSTOM_CAT_COLORS.map((c) => (
+            <button key={c} className={`color-opt ${color === c ? "active" : ""}`}
+              onClick={() => setColor(c)}
+              style={{ background: c }}>
+              {color === c && <Check size={11} strokeWidth={3} color="#fff" />}
+            </button>
+          ))}
+        </div>
+
+        <button className={`save-btn ${!label.trim() ? "disabled" : ""}`}
+          onClick={handleSave} disabled={!label.trim()}>
+          {isEditing ? "Save changes" : "Add category"}
+        </button>
       </div>
     </div>
   );
 }
 
 /* ─── ADD MODAL ───────────────────────────────────────────── */
-function AddModal({ cards, onClose, onSave }) {
+function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) {
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
@@ -1753,9 +1986,10 @@ function AddModal({ cards, onClose, onSave }) {
 
   const isCardType = type === "card-purchase" || type === "card-payment" || type === "card-interest";
 
-  const cats = type === "income" ? INCOME_CATEGORIES
+  const [showCatForm, setShowCatForm] = useState(false);
+  const cats = type === "income" ? allIncCats
     : type === "card-interest" ? [getCat("card-interest", "expense")]
-      : type === "card-payment" ? [] : EXPENSE_CATEGORIES;
+      : type === "card-payment" ? [] : allExpCats;
 
   useEffect(() => {
     if (type === "income") setCategory("fixed");
@@ -1864,7 +2098,7 @@ function AddModal({ cards, onClose, onSave }) {
           </>
         )}
 
-        {cats.length > 1 && type !== "card-interest" && type !== "card-payment" && (
+        {cats.length > 0 && type !== "card-interest" && type !== "card-payment" && (
           <>
             <label className="field-lbl">Category</label>
             <div className="cat-grid">
@@ -1882,8 +2116,26 @@ function AddModal({ cards, onClose, onSave }) {
                   </button>
                 );
               })}
+              <button className="cat-btn cat-btn-add" onClick={() => setShowCatForm(true)}>
+                <div className="cb-btn-icon" style={{ background: "var(--surface-2)", color: "var(--ink-faint)" }}>
+                  <Plus size={14} strokeWidth={2} />
+                </div>
+                <span>New</span>
+              </button>
             </div>
           </>
+        )}
+
+        {showCatForm && (
+          <CategoryFormModal
+            initialType={type === "income" ? "income" : "expense"}
+            onClose={() => setShowCatForm(false)}
+            onSave={(catType, cat) => {
+              onAddCat(catType, cat);
+              setCategory(cat.id);
+              setShowCatForm(false);
+            }}
+          />
         )}
 
         <label className="field-lbl">Note</label>
@@ -2124,6 +2376,10 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .io-text { flex: 1; min-width: 0; }
 .io-label { font-size: 11px; color: var(--ink-faint); margin-bottom: 1px; }
 .io-val { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.running-bal { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 10px; }
+.running-bal-label { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.running-bal-amt { font-size: 15px; font-weight: 700; color: var(--in); font-variant-numeric: tabular-nums; }
+.running-bal-amt.neg { color: var(--out); }
 
 /* ── DEBT BANNER ── */
 .debt-banner { background: linear-gradient(135deg, rgba(255, 148, 120, 0.08), rgba(165, 148, 249, 0.08)); border: 1px solid var(--border-2); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -2165,10 +2421,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .empty-sm { padding: 24px; text-align: center; color: var(--ink-faint); font-size: 13px; }
 
 /* ── BUDGET LAYOUT ── */
-.view-budget { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
-.budget-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
-.budget-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.budget-scroll::-webkit-scrollbar { display: none; }
+.view-budget { height: 100dvh; overflow-y: auto; padding: 20px 18px 120px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.view-budget::-webkit-scrollbar { display: none; }
 
 /* ── CARDS LAYOUT ── */
 .view-cards { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
@@ -2373,15 +2627,20 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .mode-toggle, .side-toggle { position: relative; display: flex; background: var(--surface); border: 1px solid var(--border); padding: 4px; border-radius: 12px; margin-bottom: 12px; }
 .mode-slider, .side-slider { position: absolute; top: 4px; bottom: 4px; width: calc(50% - 4px); border-radius: 9px; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
 .mode-slider { background: var(--accent); }
-.mode-slider.fixed { transform: translateX(0); } .mode-slider.month { transform: translateX(100%); }
+.mode-slider.fixed, .mode-slider.left { transform: translateX(0); } .mode-slider.month, .mode-slider.right { transform: translateX(100%); }
 .side-slider { background: var(--ink); }
 .side-slider.income { transform: translateX(0); } .side-slider.expense { transform: translateX(100%); }
 .mode-toggle button, .side-toggle button { flex: 1; position: relative; z-index: 1; background: none; border: none; padding: 10px; border-radius: 9px; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft); cursor: pointer; transition: color 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .mode-toggle button.active, .side-toggle button.active { color: var(--bg); }
 .side-toggle { margin-top: 16px; margin-bottom: 14px; }
 .mode-desc { font-family: var(--serif); font-size: 14px; color: var(--ink-soft); padding: 2px 8px 14px; line-height: 1.4; }
-.copy-btn { background: var(--surface); border: 1px solid var(--border); color: var(--ink-soft); padding: 8px 12px; border-radius: 100px; font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0 0 12px auto; transition: all 0.15s; }
-.copy-btn:hover { background: var(--surface-2); color: var(--ink); }
+.copy-btn { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; transition: all 0.15s; text-align: left; }
+.copy-btn:hover { background: var(--surface-2); border-color: var(--accent); }
+.copy-btn-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.copy-btn-text { flex: 1; min-width: 0; }
+.copy-btn-title { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.copy-btn-sub { display: block; font-size: 11px; color: var(--ink-faint); }
+.copy-btn-arrow { color: var(--ink-faint); flex-shrink: 0; }
 
 /* ── SUMMARY CARD ── */
 .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
@@ -2463,8 +2722,34 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .cat-btn { background: var(--surface); border: 1.5px solid transparent; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--ink); transition: all 0.15s; text-align: left; }
 .cat-btn:hover { background: var(--surface-2); }
+.cat-btn-add { border-style: dashed; border-color: var(--border-2); }
+.cat-btn-add:hover { border-color: var(--accent); color: var(--accent); }
 .cb-btn-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .cat-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── CATEGORIES MODAL ── */
+.manage-cat-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; max-height: 42dvh; overflow-y: auto; scrollbar-width: none; }
+.manage-cat-list::-webkit-scrollbar { display: none; }
+.manage-cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.manage-cat-row:last-child { border-bottom: none; }
+.manage-cat-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.manage-cat-label { flex: 1; font-size: 14px; font-weight: 500; }
+.manage-cat-btn { background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 6px; display: flex; align-items: center; border-radius: 7px; transition: all 0.15s; }
+.manage-cat-btn:hover { background: var(--surface-2); color: var(--ink); }
+.manage-cat-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
+.settings-menu-row { width: 100%; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; margin-bottom: 12px; transition: background 0.15s; }
+.settings-menu-row:hover { background: var(--surface-2); }
+
+/* ── CATEGORY FORM ── */
+.icon-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+.icon-opt { background: var(--surface); border: 1.5px solid transparent; border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-soft); transition: all 0.15s; }
+.icon-opt:hover { background: var(--surface-2); color: var(--ink); }
+.icon-opt.active { color: var(--ink); }
+.color-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px; }
+.color-opt { height: 36px; border-radius: 10px; border: 2.5px solid transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.color-opt:hover { transform: scale(1.08); }
+.color-opt.active { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(255,255,255,0.5); }
+
 
 .text-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 13px 14px; font-family: inherit; font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; }
 .text-input:focus { border-color: var(--accent); }
