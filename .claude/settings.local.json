@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -n \"function HomeView\" c:\\\\\\\\Users\\\\\\\\wanigasekara\\\\\\\\Projects\\\\\\\\personal-expenses-app\\\\\\\\App.jsx)"
+      "Bash(grep -n \"function HomeView\" c:\\\\\\\\Users\\\\\\\\wanigasekara\\\\\\\\Projects\\\\\\\\personal-expenses-app\\\\\\\\App.jsx)",
+      "Bash(xargs ls *)"
     ]
   }
 }

@@ -14,6 +14,7 @@ import {
   fetchTransactions, insertTransaction, deleteTransaction,
   fetchCards, upsertCard, deleteCard,
   fetchBudgets, upsertBudget,
+  initCrypto, clearCrypto,
 } from "./supabase.js";
 import { usePWA } from "./usePWA.js";
 
@@ -163,19 +164,31 @@ const emptyPlan = () => ({
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cryptoReady, setCryptoReady] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user?.id) {
+        await initCrypto(session.user.id);
+        setCryptoReady(true);
+      }
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      if (session?.user?.id) {
+        await initCrypto(session.user.id);
+        setCryptoReady(true);
+      } else {
+        clearCrypto();
+        setCryptoReady(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) {
+  if (loading || (session && !cryptoReady)) {
     return (
       <>
         <style>{CSS}</style>

@@ -8,11 +8,11 @@ create table if not exists public.transactions (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   type text not null check (type in ('income', 'expense', 'card-purchase', 'card-payment', 'card-interest')),
-  amount numeric not null check (amount > 0),
-  category text,
+  amount text not null,            -- encrypted
+  category text,                   -- encrypted
   card_id text,
-  note text default '',
-  date date not null,
+  note text default '',            -- encrypted
+  date text not null,              -- encrypted
   created_at timestamptz default now()
 );
 
@@ -26,10 +26,10 @@ create index if not exists transactions_user_card_idx
 create table if not exists public.cards (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  credit_limit numeric not null default 0,
-  opening_balance numeric not null default 0,
-  colors jsonb,                     -- ['#5b21b6', '#7c3aed']
+  name text not null,              -- encrypted
+  credit_limit text not null,      -- encrypted
+  opening_balance text not null,   -- encrypted
+  colors text,                     -- encrypted
   created_at timestamptz default now()
 );
 
@@ -41,10 +41,10 @@ create index if not exists cards_user_idx on public.cards (user_id);
 create table if not exists public.budgets (
   user_id uuid not null references auth.users(id) on delete cascade,
   month_key text not null,         -- 'fixed' or 'YYYY-MM'
-  income_total numeric default 0,
-  income_categories jsonb default '{}'::jsonb,
-  expense_total numeric default 0,
-  expense_categories jsonb default '{}'::jsonb,
+  income_total text,               -- encrypted
+  income_categories text,          -- encrypted
+  expense_total text,              -- encrypted
+  expense_categories text,         -- encrypted
   updated_at timestamptz default now(),
   primary key (user_id, month_key)
 );

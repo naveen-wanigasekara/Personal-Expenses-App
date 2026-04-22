@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  initCrypto, clearCrypto,
+  encryptFields, decryptFields,
+} from "./crypto.js";
 
-// Replace these with your actual Supabase project credentials
-// Get them from: https://app.supabase.com → your project → Settings → API
+export { initCrypto, clearCrypto };
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "YOUR_SUPABASE_URL_HERE";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY_HERE";
 
@@ -12,6 +16,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: true,
   },
 });
+
+const TX_ENC     = ["amount", "category", "note", "date"];
+const CARD_ENC   = ["name", "credit_limit", "opening_balance", "colors"];
+const BUDGET_ENC = ["income_total", "income_categories", "expense_total", "expense_categories"];
 
 /* ─── AUTH HELPERS ────────────────────────────────────────── */
 export async function signUp(email, password) {
@@ -43,20 +51,23 @@ export async function fetchTransactions(userId) {
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: false });
+    .eq("user_id", userId);
   if (error) throw error;
-  return data || [];
+  const rows = await Promise.all((data || []).map((r) => decryptFields(r, TX_ENC)));
+  // Sort client-side because the date column is stored encrypted
+  rows.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return rows;
 }
 
 export async function insertTransaction(tx) {
+  const enc = await encryptFields(tx, TX_ENC);
   const { data, error } = await supabase
     .from("transactions")
-    .insert([tx])
+    .insert([enc])
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return decryptFields(data, TX_ENC);
 }
 
 export async function deleteTransaction(id) {
@@ -72,17 +83,18 @@ export async function fetchCards(userId) {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data || [];
+  return Promise.all((data || []).map((r) => decryptFields(r, CARD_ENC)));
 }
 
 export async function upsertCard(card) {
+  const enc = await encryptFields(card, CARD_ENC);
   const { data, error } = await supabase
     .from("cards")
-    .upsert(card)
+    .upsert(enc)
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return decryptFields(data, CARD_ENC);
 }
 
 export async function deleteCard(id) {
@@ -97,15 +109,16 @@ export async function fetchBudgets(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
-  return data || [];
+  return Promise.all((data || []).map((r) => decryptFields(r, BUDGET_ENC)));
 }
 
 export async function upsertBudget(budget) {
+  const enc = await encryptFields(budget, BUDGET_ENC);
   const { data, error } = await supabase
     .from("budgets")
-    .upsert(budget, { onConflict: "user_id,month_key" })
+    .upsert(enc, { onConflict: "user_id,month_key" })
     .select()
     .single();
   if (error) throw error;
-  return data;
+  return decryptFields(data, BUDGET_ENC);
 }
