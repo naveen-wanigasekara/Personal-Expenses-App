@@ -328,7 +328,7 @@ function AuthScreen() {
 
 /* ─── MAIN APP (authenticated) ────────────────────────────── */
 function MainApp({ user }) {
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("dashboard");
   const [loaded, setLoaded] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [cards, setCards] = useState([]);
