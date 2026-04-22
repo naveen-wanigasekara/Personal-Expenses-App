@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useContext, createContext } from "react";
 import {
   Plus, X, Trash2, ChevronLeft, ChevronRight, Check,
   Landmark, Home as HomeIcon, Zap, ShoppingCart, Heart, Car,
@@ -7,7 +7,7 @@ import {
   Wallet, BarChart3, Target, ArrowUp, ArrowDown, Sparkles,
   Lock, Unlock, Copy, CreditCard, Percent, AlertTriangle,
   Edit2, LogOut, Mail, KeyRound, UserPlus, Loader2,
-  Download, RefreshCw, MessageCircle, HelpCircle, BookOpen, ChevronDown,
+  Download, RefreshCw, MessageCircle, HelpCircle, BookOpen, ChevronDown, DollarSign,
 } from "lucide-react";
 import {
   supabase, signUp, signIn, signOut, getUser,
@@ -98,7 +98,29 @@ function saveUserCats(userId, cats) {
   }));
 }
 
-const CURRENCY = "Rs.";
+const CurrencyCtx = createContext("Rs.");
+
+const CURRENCIES = [
+  { code: "LKR", symbol: "Rs.", label: "Sri Lankan Rupee" },
+  { code: "USD", symbol: "$",   label: "US Dollar" },
+  { code: "EUR", symbol: "€",   label: "Euro" },
+  { code: "GBP", symbol: "£",   label: "British Pound" },
+  { code: "AUD", symbol: "A$",  label: "Australian Dollar" },
+  { code: "INR", symbol: "₹",   label: "Indian Rupee" },
+  { code: "CAD", symbol: "C$",  label: "Canadian Dollar" },
+  { code: "SGD", symbol: "S$",  label: "Singapore Dollar" },
+  { code: "JPY", symbol: "¥",   label: "Japanese Yen" },
+  { code: "NZD", symbol: "NZ$", label: "New Zealand Dollar" },
+  { code: "MYR", symbol: "RM",  label: "Malaysian Ringgit" },
+  { code: "CHF", symbol: "CHF", label: "Swiss Franc" },
+];
+
+function loadUserCurrency(userId) {
+  return localStorage.getItem(`user_currency_${userId}`) || "Rs.";
+}
+function saveUserCurrency(userId, sym) {
+  localStorage.setItem(`user_currency_${userId}`, sym);
+}
 
 const CARD_COLORS = [
   ["#5b21b6", "#7c3aed"], ["#065f46", "#059669"],
@@ -293,6 +315,11 @@ function MainApp({ user }) {
   const [userCats, setUserCats] = useState(() => loadUserCats(user.id));
   const [showCatsModal, setShowCatsModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [currency, setCurrency] = useState(() => loadUserCurrency(user.id));
+  const updateCurrency = useCallback((sym) => {
+    setCurrency(sym);
+    saveUserCurrency(user.id, sym);
+  }, [user.id]);
 
   const allExpCats = userCats.expense;
   const allIncCats = userCats.income;
@@ -516,6 +543,7 @@ function MainApp({ user }) {
   }
 
   return (
+    <CurrencyCtx.Provider value={currency}>
     <div className="app">
       <div className="app-glow" />
 
@@ -598,6 +626,7 @@ function MainApp({ user }) {
         <SettingsModal user={user} onClose={() => setShowSettings(false)}
           onOpenCategories={() => { setShowSettings(false); setShowCatsModal(true); }}
           onOpenHelp={() => { setShowSettings(false); setShowHelp(true); }}
+          currency={currency} onChangeCurrency={updateCurrency}
         />
       )}
 
@@ -615,6 +644,7 @@ function MainApp({ user }) {
         />
       )}
     </div>
+    </CurrencyCtx.Provider>
   );
 }
 
@@ -829,8 +859,9 @@ function HelpModal({ onClose }) {
 }
 
 /* ─── SETTINGS MODAL ──────────────────────────────────────── */
-function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp }) {
+function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, currency, onChangeCurrency }) {
   const [signingOut, setSigningOut] = useState(false);
+  const activeCurrency = CURRENCIES.find((c) => c.symbol === currency) || CURRENCIES[0];
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -870,6 +901,27 @@ function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp }) {
           <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
         </button>
 
+        <div className="settings-menu-row settings-currency-row">
+          <DollarSign size={16} />
+          <span>Currency</span>
+          <div className="currency-picker" style={{ marginLeft: "auto" }}>
+            <span className="currency-code">{activeCurrency.code}</span>
+            <ChevronDown size={13} style={{ color: "var(--ink-faint)" }} />
+            <select
+              className="currency-select-overlay"
+              value={currency}
+              onChange={(e) => onChangeCurrency(e.target.value)}
+              aria-label="Select currency"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.symbol}>
+                  {c.code} ({c.symbol}) — {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <a className="save-btn support-btn"
           href="https://wa.me/94705025330"
           target="_blank" rel="noopener noreferrer">
@@ -888,6 +940,7 @@ function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp }) {
 
 /* ─── HOME / LEDGER ───────────────────────────────────────── */
 function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, cards, allExpCats, allIncCats }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [filterCat, setFilterCat] = useState("all");
   const [filterType, setFilterType] = useState("all");
 
@@ -1018,6 +1071,7 @@ function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, card
 }
 
 function TxRow({ tx, onDelete, cardName, allExpCats, allIncCats }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [open, setOpen] = useState(false);
 
   let cat, sign, color;
@@ -1070,6 +1124,7 @@ function TxRow({ tx, onDelete, cardName, allExpCats, allIncCats }) {
 
 /* ─── DASHBOARD ───────────────────────────────────────────── */
 function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
     setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
@@ -1170,7 +1225,7 @@ function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMon
       .filter((t) => monthKey(t.date) <= viewMonth)
       .reduce((sum, t) => {
         if (t.type === "income") return sum + +t.amount;
-        if (t.type === "expense" || t.type === "card-purchase" || t.type === "card-interest") return sum - +t.amount;
+        if (t.type === "expense" || t.type === "card-payment") return sum - +t.amount;
         return sum;
       }, 0);
   }, [transactions, viewMonth]);
@@ -1209,7 +1264,7 @@ function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMon
       </div>
 
       <div className="balance" style={{ marginBottom: '20px' }}>
-        <div className="balance-label">Net {isCurrentMonth ? "this month" : ""}</div>
+        <div className="balance-label">Net this month</div>
         <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
           <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
           <span className="balance-cur">{CURRENCY}</span>
@@ -1232,7 +1287,7 @@ function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMon
           </div>
         </div>
         <div className="running-bal">
-          <span className="running-bal-label">Running balance</span>
+          <span className="running-bal-label">Cash in Hand</span>
           <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
             {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmtCompact(Math.abs(runningBalance))}
           </span>
@@ -1544,6 +1599,7 @@ function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMon
 
 /* ─── CARDS VIEW ──────────────────────────────────────────── */
 function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [selectedCard, setSelectedCard] = useState(null);
   const totalDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
@@ -1624,6 +1680,7 @@ function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx })
 }
 
 function CardTile({ card, onClick }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const [from, to] = card.colors || CARD_COLORS[0];
   const available = (+card.limit || 0) - card.currentBalance;
@@ -1665,6 +1722,7 @@ function CardTile({ card, onClick }) {
 }
 
 function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const available = (+card.limit || 0) - card.currentBalance;
@@ -1809,6 +1867,7 @@ function AmountInput({ value, onChange, placeholder, className }) {
 
 /* ─── BUDGET ──────────────────────────────────────────────── */
 function BudgetView({ monthPlans, setMonthPlan, viewMonth, setViewMonth, stats, fixedPlan, setFixedPlan, allExpCats, allIncCats }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [mode, setMode] = useState("fixed");
   const [side, setSide] = useState("expense");
   const [fixedEdit, setFixedEdit] = useState(fixedPlan);
@@ -2154,6 +2213,7 @@ function CategoryFormModal({ initialType, editing, onClose, onSave }) {
 
 /* ─── ADD MODAL ───────────────────────────────────────────── */
 function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
@@ -2164,7 +2224,6 @@ function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) 
 
   const isCardType = type === "card-purchase" || type === "card-payment" || type === "card-interest";
 
-  const [showCatForm, setShowCatForm] = useState(false);
   const cats = type === "income" ? allIncCats
     : type === "card-interest" ? [getCat("card-interest", "expense")]
       : type === "card-payment" ? [] : allExpCats;
@@ -2294,26 +2353,8 @@ function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) 
                   </button>
                 );
               })}
-              <button className="cat-btn cat-btn-add" onClick={() => setShowCatForm(true)}>
-                <div className="cb-btn-icon" style={{ background: "var(--surface-2)", color: "var(--ink-faint)" }}>
-                  <Plus size={14} strokeWidth={2} />
-                </div>
-                <span>New</span>
-              </button>
             </div>
           </>
-        )}
-
-        {showCatForm && (
-          <CategoryFormModal
-            initialType={type === "income" ? "income" : "expense"}
-            onClose={() => setShowCatForm(false)}
-            onSave={(catType, cat) => {
-              onAddCat(catType, cat);
-              setCategory(cat.id);
-              setShowCatForm(false);
-            }}
-          />
         )}
 
         <label className="field-lbl">Note</label>
@@ -2334,6 +2375,7 @@ function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) 
 
 /* ─── CARD FORM MODAL ─────────────────────────────────────── */
 function CardFormModal({ card, onClose, onSave }) {
+  const CURRENCY = useContext(CurrencyCtx);
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
   const [openingBalance, setOpeningBalance] = useState(card?.openingBalance || "");
@@ -2484,7 +2526,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
-.app { max-width: 440px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; overflow-x: hidden; padding-bottom: 110px; }
+.app { max-width: 440px; margin: 0 auto; min-height: 100dvh; background: var(--bg); position: relative; overflow-x: hidden; padding-bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px)); }
 .app-glow { position: fixed; top: -180px; left: 50%; transform: translateX(-50%); width: 560px; height: 420px; background: radial-gradient(circle, rgba(125, 211, 192, 0.08), transparent 60%); pointer-events: none; z-index: 0; }
 .content { position: relative; z-index: 1; }
 .view { padding: 20px 18px 24px; animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
@@ -2599,19 +2641,19 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .empty-sm { padding: 24px; text-align: center; color: var(--ink-faint); font-size: 13px; }
 
 /* ── BUDGET LAYOUT ── */
-.view-budget { height: 100dvh; overflow-y: auto; padding: 20px 18px 120px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.view-budget { height: 100dvh; overflow-y: auto; padding: 20px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px)); -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .view-budget::-webkit-scrollbar { display: none; }
 
 /* ── CARDS LAYOUT ── */
 .view-cards { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
 .cards-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
-.cards-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.cards-scroll { flex: 1; overflow-y: auto; padding: 0 18px max(120px, calc(env(safe-area-inset-bottom) + 100px)); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .cards-scroll::-webkit-scrollbar { display: none; }
 
 /* ── HOME LAYOUT ── */
 .view-home { display: flex; flex-direction: column; height: 100dvh; padding: 0; overflow: hidden; }
 .home-header { flex-shrink: 0; padding: 20px 18px 0; background: var(--bg); }
-.tx-scroll { flex: 1; overflow-y: auto; padding: 0 18px 120px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tx-scroll { flex: 1; overflow-y: auto; padding: 0 18px max(120px, calc(env(safe-area-inset-bottom) + 100px)); -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .tx-scroll::-webkit-scrollbar { display: none; }
 
 /* ── TX FILTERS ── */
@@ -2642,10 +2684,10 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .tx-del:hover { background: var(--danger); color: white; }
 
 /* ── FAB / NAV ── */
-.fab { position: fixed; right: max(calc(50% - 220px + 20px), 20px); bottom: 90px; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #0d1117; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(125, 211, 192, 0.28); z-index: 50; transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+.fab { position: fixed; right: max(calc(50% - 220px + 20px), 20px); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 76px); width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #0d1117; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(125, 211, 192, 0.28); z-index: 50; transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
 .fab:hover { transform: scale(1.08); }
 .fab:active { transform: scale(0.95); }
-.nav { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 416px; background: rgba(27, 33, 48, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-2); border-radius: 100px; padding: 5px; display: flex; z-index: 40; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); }
+.nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 416px; background: rgba(27, 33, 48, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-2); border-radius: 100px; padding: 5px; display: flex; z-index: 40; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); }
 .nav-btn { flex: 1; background: none; border: none; color: var(--ink-faint); padding: 8px 4px; border-radius: 100px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: inherit; font-size: 9px; font-weight: 500; transition: all 0.2s; }
 .nav-btn.active { background: var(--ink); color: var(--bg); }
 
@@ -2864,7 +2906,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 /* ── MODAL ── */
 .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: flex-end; animation: fadeBk 0.2s ease; }
 @keyframes fadeBk { from { opacity: 0; } to { opacity: 1; } }
-.sheet { width: 100%; max-width: 440px; margin: 0 auto; background: var(--bg-2); border: 1px solid var(--border-2); border-bottom: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 12px 18px 24px; max-height: 92vh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.sheet { width: 100%; max-width: 440px; margin: 0 auto; background: var(--bg-2); border: 1px solid var(--border-2); border-bottom: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 12px 18px max(24px, calc(env(safe-area-inset-bottom) + 16px)); max-height: 92dvh; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .sheet-handle { width: 36px; height: 4px; background: var(--border-2); border-radius: 100px; margin: 0 auto 16px; }
 .sheet-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
@@ -2917,6 +2959,11 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .manage-cat-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
 .settings-menu-row { width: 100%; display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-family: inherit; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; margin-bottom: 12px; transition: background 0.15s; }
 .settings-menu-row:hover { background: var(--surface-2); }
+.settings-currency-row { cursor: default; }
+.settings-currency-row:hover { background: var(--surface); }
+.currency-picker { position: relative; display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+.currency-code { font-size: 13px; font-weight: 600; color: var(--ink); font-family: var(--mono); letter-spacing: 0.05em; }
+.currency-select-overlay { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; width: 100%; }
 
 /* ── CATEGORY FORM ── */
 .icon-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
