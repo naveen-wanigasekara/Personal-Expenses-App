@@ -762,10 +762,10 @@ const HELP_SECTIONS = [
     title: "Insights Tab",
     icon: "📊",
     items: [
-      { q: "What does the top summary show?", a: "Net Balance — income minus expenses for the selected month. Income vs. Expenses — totals at a glance. Card Debt Summary — total debt and utilization across all cards." },
+      { q: "What does the top summary show?", a: "Net This Month — income minus expenses for the selected month. Income vs. Expenses — totals at a glance. Cash in Hand — your actual available cash balance. Card Debt Summary — total debt and utilization across all cards." },
+      { q: "What is Cash in Hand?", a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank." },
       { q: "What is Plan vs. Actual?", a: "A comparison of your budgeted plan against what actually happened: income target vs. actual income, expense budget vs. actual spending, and planned vs. actual savings." },
       { q: "What is the Cashflow Chart?", a: "A 3-month bar chart showing income and expenses side by side, with budget target lines overlaid. Use the ← → arrows to navigate between months." },
-      { q: "What is the running balance?", a: "The cumulative total of all income minus all expenses across all time — not just the selected month. It shows your overall financial trajectory since you started using the app." },
     ],
   },
   {
@@ -773,7 +773,7 @@ const HELP_SECTIONS = [
     title: "Custom Categories",
     icon: "🏷️",
     items: [
-      { q: "How do I add a custom category?", a: "Go to Settings → Manage categories, or tap + Add directly inside the Add Transaction form. Enter a name (max 28 characters), pick an icon and colour, then choose Income or Expense." },
+      { q: "How do I add a custom category?", a: "Go to Account → Manage categories. Enter a name (max 28 characters), pick an icon and colour, then choose Income or Expense." },
       { q: "Can I delete built-in categories?", a: "No. The built-in defaults (e.g. Groceries, Fixed Income) cannot be removed. You can only edit or delete custom categories you've created." },
     ],
   },
@@ -784,7 +784,8 @@ const HELP_SECTIONS = [
     items: [
       { q: "Avoid double-counting card spending", a: "Always use Card Purchase (not Expense) when buying something on credit, and Card Payment (not Expense) when paying your bill. This keeps your card balance and expense totals accurate." },
       { q: "Getting the most from budgets", a: "Set a Fixed Plan first to establish your baseline. Then use Month Overrides for unusual months. Review Insights at month-end to compare plan vs. actual and spot overspending categories." },
-      { q: "Currency & number formatting", a: "All amounts are in Sri Lankan Rupees (Rs. / LKR). Large numbers display in compact form, e.g. Rs. 1.2M. Numbers are formatted automatically — just type digits." },
+      { q: "Changing your currency", a: "Tap your avatar (top-right on Insights) to open Account settings. Tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app." },
+      { q: "Number formatting", a: "Large numbers display in compact form, e.g. 1.2M or 450K. Numbers are formatted automatically — just type digits and the app handles the rest." },
     ],
   },
 ];
@@ -889,15 +890,15 @@ function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, currency, 
           </div>
         </div>
 
-        <button className="settings-menu-row" onClick={onOpenCategories}>
-          <MoreHorizontal size={16} />
-          <span>Manage categories</span>
-          <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
-        </button>
-
         <button className="settings-menu-row" onClick={onOpenHelp}>
           <HelpCircle size={16} />
           <span>Help &amp; user guide</span>
+          <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
+        </button>
+
+        <button className="settings-menu-row" onClick={onOpenCategories}>
+          <MoreHorizontal size={16} />
+          <span>Manage categories</span>
           <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
         </button>
 
@@ -920,6 +921,16 @@ function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, currency, 
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="privacy-card">
+          <div className="privacy-card-header">
+            <Lock size={15} />
+            <span>Privacy &amp; Security</span>
+          </div>
+          <p className="privacy-card-body">
+            Your financial data is end-to-end encrypted and securely stored in the cloud, and only you can access it—we never share, sell, or read your personal information, ensuring it remains 100% private with secure cloud sync.
+          </p>
         </div>
 
         <a className="save-btn support-btn"
@@ -2961,6 +2972,9 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .settings-menu-row:hover { background: var(--surface-2); }
 .settings-currency-row { cursor: default; }
 .settings-currency-row:hover { background: var(--surface); }
+.privacy-card { background: rgba(125, 211, 192, 0.06); border: 1px solid rgba(125, 211, 192, 0.18); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; }
+.privacy-card-header { display: flex; align-items: center; gap: 8px; color: var(--accent); font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.privacy-card-body { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0; }
 .currency-picker { position: relative; display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
 .currency-code { font-size: 13px; font-weight: 600; color: var(--ink); font-family: var(--mono); letter-spacing: 0.05em; }
 .currency-select-overlay { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 16px; width: 100%; }
