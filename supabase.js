@@ -31,6 +31,12 @@ export async function getUser() {
   return data.user;
 }
 
+export async function resetPassword(email) {
+  return await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+}
+
 /* ─── DATA API ────────────────────────────────────────────── */
 /* Transactions */
 export async function fetchTransactions(userId) {

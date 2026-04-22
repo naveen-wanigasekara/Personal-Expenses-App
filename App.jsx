@@ -10,7 +10,7 @@ import {
   Download, RefreshCw, MessageCircle, HelpCircle, BookOpen, ChevronDown, DollarSign,
 } from "lucide-react";
 import {
-  supabase, signUp, signIn, signOut, getUser,
+  supabase, signUp, signIn, signOut, getUser, resetPassword,
   fetchTransactions, insertTransaction, deleteTransaction,
   fetchCards, upsertCard, deleteCard,
   fetchBudgets, upsertBudget,
@@ -203,16 +203,17 @@ export default function App() {
 
 /* ─── AUTH SCREEN ─────────────────────────────────────────── */
 function AuthScreen() {
-  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+  const [mode, setMode] = useState("signin"); // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
+  const switchMode = (next) => { setMode(next); setErr(null); setMsg(null); };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) return;
     setBusy(true); setErr(null); setMsg(null);
 
     try {
@@ -220,6 +221,10 @@ function AuthScreen() {
         const { error } = await signUp(email, password);
         if (error) throw error;
         setMsg("Check your email for a confirmation link to complete signup.");
+      } else if (mode === "forgot") {
+        const { error } = await resetPassword(email);
+        if (error) throw error;
+        setMsg("Password reset link sent — check your inbox.");
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
@@ -243,11 +248,13 @@ function AuthScreen() {
         </div>
 
         <h1 className="auth-title">
-          {mode === "signup" ? "Create your account" : "Welcome back"}
+          {mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset your password" : "Welcome back"}
         </h1>
         <p className="auth-sub">
           {mode === "signup"
             ? "Start tracking income, expenses, and budgets."
+            : mode === "forgot"
+            ? "Enter your email and we'll send you a reset link."
             : "Sign in to your account to continue."}
         </p>
 
@@ -262,35 +269,55 @@ function AuthScreen() {
             />
           </div>
 
-          <label className="field-lbl">Password</label>
-          <div className="auth-input">
-            <KeyRound size={15} />
-            <input
-              type="password"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" required minLength={6}
-            />
-          </div>
+          {mode !== "forgot" && (
+            <>
+              <div className="auth-pw-row">
+                <label className="field-lbl">Password</label>
+                {mode === "signin" && (
+                  <button type="button" className="forgot-link" onClick={() => switchMode("forgot")}>
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="auth-input">
+                <KeyRound size={15} />
+                <input
+                  type="password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" required minLength={6}
+                />
+              </div>
+            </>
+          )}
 
           {err && <div className="auth-err">{err}</div>}
           {msg && <div className="auth-msg">{msg}</div>}
 
-          <button type="submit" className="save-btn" disabled={busy || !email || !password}>
-            {busy ? <><Loader2 size={16} className="spin" /> Please wait...</> : (mode === "signup" ? "Create account" : "Sign in")}
+          <button type="submit" className="save-btn" disabled={busy || !email || (mode !== "forgot" && !password)}>
+            {busy
+              ? <><Loader2 size={16} className="spin" /> Please wait...</>
+              : mode === "signup" ? "Create account"
+              : mode === "forgot" ? "Send reset link"
+              : "Sign in"}
           </button>
         </form>
 
         <div className="auth-switch">
-          {mode === "signup" ? (
+          {mode === "forgot" ? (
+            <>
+              Remember your password?{" "}
+              <button onClick={() => switchMode("signin")}>Sign in</button>
+            </>
+          ) : mode === "signup" ? (
             <>
               Already have an account?{" "}
-              <button onClick={() => { setMode("signin"); setErr(null); setMsg(null); }}>Sign in</button>
+              <button onClick={() => switchMode("signin")}>Sign in</button>
             </>
           ) : (
             <>
               Don't have an account?{" "}
-              <button onClick={() => { setMode("signup"); setErr(null); setMsg(null); }}>Sign up</button>
+              <button onClick={() => switchMode("signup")}>Sign up</button>
             </>
           )}
         </div>
@@ -2558,6 +2585,10 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .auth-input input::placeholder { color: var(--ink-faint); }
 .auth-err { background: var(--danger-soft); color: var(--danger); padding: 10px 12px; border-radius: 10px; font-size: 12px; margin: 4px 0 12px; }
 .auth-msg { background: var(--in-soft); color: var(--in); padding: 10px 12px; border-radius: 10px; font-size: 12px; margin: 4px 0 12px; line-height: 1.4; }
+.auth-pw-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
+.auth-pw-row .field-lbl { margin-bottom: 0; }
+.forgot-link { background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; padding: 0; }
+.forgot-link:hover { text-decoration: underline; }
 .auth-switch { text-align: center; margin-top: 20px; font-size: 13px; color: var(--ink-soft); }
 .auth-switch button { background: none; border: none; color: var(--accent); font-weight: 600; font-family: inherit; font-size: 13px; cursor: pointer; padding: 0; }
 .auth-switch button:hover { text-decoration: underline; }
