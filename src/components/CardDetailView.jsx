@@ -18,7 +18,7 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
   const thisMonthInterest = thisMonthTx.filter((t) => t.type === "card-interest").reduce((s, t) => s + +t.amount, 0);
 
   return (
-    <div className="view">
+    <div className="view view-card-detail">
       <div className="detail-head">
         <button className="back-btn" onClick={onBack}><ChevronLeft size={18} /></button>
         <div className="detail-actions">
@@ -98,7 +98,6 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
           {sorted.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} cardName={card.name} />)}
         </div>
       )}
-      <div style={{ height: "80px" }} />
     </div>
   );
 }

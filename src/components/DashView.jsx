@@ -170,7 +170,7 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         <div className="running-bal">
           <span className="running-bal-label">Cash in Hand</span>
           <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
-            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmtCompact(Math.abs(runningBalance))}
+            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(runningBalance))}
           </span>
         </div>
       </div>
