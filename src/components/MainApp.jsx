@@ -331,17 +331,17 @@ export default function MainApp({ user }) {
         </main>
 
         {!showAdd && !editingTx && !showCardForm && !showSettings && !showHelp && !showCatsModal && !childModalOpen && (
-          <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add transaction">
-            <Plus size={22} strokeWidth={2.5} />
-          </button>
+          <nav className="nav">
+            <NavBtn icon={BarChart3} label="Insights" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
+            <NavBtn icon={Wallet} label="Ledger" active={tab === "home"} onClick={() => setTab("home")} />
+            <button className="nav-add" onClick={() => setShowAdd(true)} aria-label="New entry">
+              <Plus size={22} strokeWidth={2.5} />
+              <span>New</span>
+            </button>
+            <NavBtn icon={CreditCard} label="Cards" active={tab === "cards"} onClick={() => setTab("cards")} />
+            <NavBtn icon={Target} label="Budget" active={tab === "budget"} onClick={() => setTab("budget")} />
+          </nav>
         )}
-
-        <nav className="nav">
-          <NavBtn icon={BarChart3} label="Insights" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
-          <NavBtn icon={Wallet} label="Ledger" active={tab === "home"} onClick={() => setTab("home")} />
-          <NavBtn icon={CreditCard} label="Cards" active={tab === "cards"} onClick={() => setTab("cards")} />
-          <NavBtn icon={Target} label="Budget" active={tab === "budget"} onClick={() => setTab("budget")} />
-        </nav>
 
         {showAdd && (
           <AddModal

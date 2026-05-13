@@ -8,6 +8,11 @@ import { fmtCompact } from "../utils/format.js";
 export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat, editing }) {
   const isEditing = !!editing;
   const CURRENCY = useContext(CurrencyCtx);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
   const [type, setType] = useState(editing?.type || "expense");
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
   const [category, setCategory] = useState(editing?.category || "loan");

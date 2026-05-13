@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X, HelpCircle, MoreHorizontal, ChevronRight, DollarSign,
   Lock, MessageCircle, LogOut, Loader2, ChevronDown,
@@ -9,6 +9,11 @@ import { CURRENCIES } from "../constants/currencies.js";
 export default function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, currency, onChangeCurrency }) {
   const [signingOut, setSigningOut] = useState(false);
   const activeCurrency = CURRENCIES.find((c) => c.symbol === currency) || CURRENCIES[0];
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   const handleSignOut = async () => {
     setSigningOut(true);

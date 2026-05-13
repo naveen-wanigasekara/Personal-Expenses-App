@@ -105,6 +105,8 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .balance-num { font-variant-numeric: tabular-nums; }
 
 .inout { display: flex; gap: 10px; }
+.inout-section { margin-bottom: 10px; }
+.summary-net { margin-bottom: 4px; }
 .io-cell { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; display: flex; align-items: center; gap: 10px; }
 .io-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .io-in { background: var(--in-soft); color: var(--in); }
@@ -112,7 +114,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .io-text { flex: 1; min-width: 0; }
 .io-label { font-size: 11px; color: var(--ink-faint); margin-bottom: 1px; }
 .io-val { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.running-bal { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 10px; }
+.running-bal { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 10px; margin-bottom: 16px; }
 .running-bal-label { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
 .running-bal-amt { font-size: 15px; font-weight: 700; color: var(--in); font-variant-numeric: tabular-nums; }
 .running-bal-amt.neg { color: var(--out); }
@@ -224,13 +226,13 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .text-btn { background: none; border: none; color: var(--ink-soft); font-size: 12px; font-family: inherit; cursor: pointer; padding: 8px 0; width: 100%; text-align: center; transition: color 0.15s; }
 .text-btn:hover { color: var(--ink); }
 
-/* ── FAB / NAV ── */
-.fab { position: fixed; right: max(calc(50% - 220px + 20px), 20px); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 76px); width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #0d1117; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(125, 211, 192, 0.28); z-index: 50; transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
-.fab:hover { transform: scale(1.08); }
-.fab:active { transform: scale(0.95); }
-.nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 416px; background: rgba(27, 33, 48, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-2); border-radius: 100px; padding: 5px; display: flex; z-index: 40; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); }
+/* ── NAV ── */
+.nav { position: fixed; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 416px; background: rgba(27, 33, 48, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-2); border-radius: 100px; padding: 5px; display: flex; align-items: center; z-index: 40; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); overflow: visible; }
 .nav-btn { flex: 1; background: none; border: none; color: var(--ink-faint); padding: 8px 4px; border-radius: 100px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: inherit; font-size: 9px; font-weight: 500; transition: all 0.2s; }
 .nav-btn.active { background: var(--ink); color: var(--bg); }
+.nav-add { flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #0d1117; border: 3px solid rgba(27, 33, 48, 0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; font-family: inherit; font-size: 8px; font-weight: 700; letter-spacing: 0.03em; margin-top: -20px; box-shadow: 0 4px 20px rgba(125, 211, 192, 0.45), 0 0 0 1px rgba(125, 211, 192, 0.2); transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+.nav-add:hover { transform: scale(1.08) translateY(-2px); box-shadow: 0 8px 28px rgba(125, 211, 192, 0.55), 0 0 0 1px rgba(125, 211, 192, 0.3); }
+.nav-add:active { transform: scale(0.94); }
 
 /* ── PAGE HEADER ── */
 .page-hd { padding: 14px 4px 18px; }

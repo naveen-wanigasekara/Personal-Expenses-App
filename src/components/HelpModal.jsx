@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { HELP_SECTIONS } from "../constants/helpContent.js";
 
 export default function HelpModal({ onClose }) {
   const [openSection, setOpenSection] = useState(null);
   const [openItem, setOpenItem] = useState(null);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   const toggleSection = (id) => {
     setOpenSection((prev) => (prev === id ? null : id));

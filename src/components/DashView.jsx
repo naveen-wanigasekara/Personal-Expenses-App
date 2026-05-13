@@ -6,6 +6,10 @@ import { getCat } from "../constants/categories.js";
 import { loadInsightsLayout, saveInsightsLayout } from "../utils/storage.js";
 
 const SECTION_DEFS = [
+  { id: "net_this_month", label: "Net This Month",    desc: "Income minus expenses for the selected month" },
+  { id: "income_in",      label: "In",                desc: "Total income received this month" },
+  { id: "expense_out",    label: "Out",               desc: "Total expenses spent this month" },
+  { id: "cash_in_hand",   label: "Cash in Hand",      desc: "Cumulative cash balance across all time" },
   { id: "card_debt",      label: "Card Debt",         desc: "Total credit card balance and utilization" },
   { id: "budget_pulse",   label: "Budget Progress",   desc: "Income target and expense budget bars" },
   { id: "plan_vs_actual", label: "Plan vs. Actual",   desc: "Detailed budget comparison" },
@@ -30,7 +34,11 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const [showCustomize, setShowCustomize] = useState(false);
   const [sections, setSections] = useState(() => mergeLayout(loadInsightsLayout(user.id)));
 
-  useEffect(() => { onModalChange?.(showCustomize); }, [showCustomize]);
+  useEffect(() => {
+    onModalChange?.(showCustomize);
+    document.body.style.overflow = showCustomize ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [showCustomize]);
 
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -161,6 +169,46 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const resetSections = () => updateSections(SECTION_DEFS.map((s) => ({ ...s, visible: true })));
 
   const sectionContent = {
+    net_this_month: (
+      <div className="summary-net">
+        <div className="balance-label">Net this month</div>
+        <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
+          <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
+          <span className="balance-cur">{CURRENCY}</span>
+          <span className="balance-num">{fmt(Math.abs(thisStats.net))}</span>
+        </div>
+      </div>
+    ),
+
+    income_in: (
+      <div className="io-cell">
+        <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
+        <div className="io-text">
+          <div className="io-label">In</div>
+          <div className="io-val">{CURRENCY} {fmt(thisStats.income)}</div>
+        </div>
+      </div>
+    ),
+
+    expense_out: (
+      <div className="io-cell">
+        <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
+        <div className="io-text">
+          <div className="io-label">Out</div>
+          <div className="io-val">{CURRENCY} {fmt(thisStats.expenses)}</div>
+        </div>
+      </div>
+    ),
+
+    cash_in_hand: (
+      <div className="running-bal">
+        <span className="running-bal-label">Cash in Hand</span>
+        <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
+          {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(runningBalance))}
+        </span>
+      </div>
+    ),
+
     card_debt: cards.length > 0 && totalCardDebt !== 0 ? (
       <div className="debt-banner">
         <div className="db-left">
@@ -490,41 +538,37 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         </div>
       </div>
 
-      <div className="balance" style={{ marginBottom: "20px" }}>
-        <div className="balance-label">Net this month</div>
-        <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
-          <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
-          <span className="balance-cur">{CURRENCY}</span>
-          <span className="balance-num">{fmt(Math.abs(thisStats.net))}</span>
-        </div>
-        <div className="inout">
-          <div className="io-cell">
-            <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
-            <div className="io-text">
-              <div className="io-label">In</div>
-              <div className="io-val">{CURRENCY} {fmt(thisStats.income)}</div>
-            </div>
-          </div>
-          <div className="io-cell">
-            <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
-            <div className="io-text">
-              <div className="io-label">Out</div>
-              <div className="io-val">{CURRENCY} {fmt(thisStats.expenses)}</div>
-            </div>
-          </div>
-        </div>
-        <div className="running-bal">
-          <span className="running-bal-label">Cash in Hand</span>
-          <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
-            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(runningBalance))}
-          </span>
-        </div>
-      </div>
-
-      {sections.filter((s) => s.visible).map((s) => {
-        const content = sectionContent[s.id];
-        return content ? <Fragment key={s.id}>{content}</Fragment> : null;
-      })}
+      {(() => {
+        const isInOut = (id) => id === "income_in" || id === "expense_out";
+        const visible = sections.filter((s) => s.visible);
+        const result = [];
+        let i = 0;
+        while (i < visible.length) {
+          const cur = visible[i];
+          const next = visible[i + 1];
+          if (isInOut(cur.id) && next && isInOut(next.id) && cur.id !== next.id) {
+            result.push(
+              <div key="inout-pair" className="inout inout-section">
+                {sectionContent[cur.id]}
+                {sectionContent[next.id]}
+              </div>
+            );
+            i += 2;
+          } else if (isInOut(cur.id)) {
+            result.push(
+              <div key={cur.id} className="inout inout-section">
+                {sectionContent[cur.id]}
+              </div>
+            );
+            i++;
+          } else {
+            const content = sectionContent[cur.id];
+            if (content) result.push(<Fragment key={cur.id}>{content}</Fragment>);
+            i++;
+          }
+        }
+        return result;
+      })()}
 
       {showCustomize && (
         <div className="backdrop" onClick={() => setShowCustomize(false)}>

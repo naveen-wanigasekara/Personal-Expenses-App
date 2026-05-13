@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { X, Check, CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
@@ -6,6 +6,11 @@ import { fmt } from "../utils/format.js";
 
 export default function CardFormModal({ card, onClose, onSave }) {
   const CURRENCY = useContext(CurrencyCtx);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
   const [openingBalance, setOpeningBalance] = useState(card?.openingBalance || "");

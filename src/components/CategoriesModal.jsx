@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Edit2, Trash2, ArrowDown, ArrowUp, Plus } from "lucide-react";
 import CategoryFormModal from "./CategoryFormModal.jsx";
 
 export default function CategoriesModal({ userCats, onClose, onAdd, onEdit, onDelete }) {
   const [tab, setTab] = useState("expense");
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
   const [editingCat, setEditingCat] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
 
