@@ -13,8 +13,9 @@ export const HELP_SECTIONS = [
     title: "Navigation",
     icon: "🧭",
     items: [
-      { q: "What are the four tabs?", a: "Insights — your financial dashboard with summaries and charts.\nLedger — full transaction history.\nCards — credit card management.\nBudget — income targets and spending limits." },
-      { q: "How do I add a transaction quickly?", a: "Tap the + button (floating action button) from any screen to open the Add Transaction form." },
+      { q: "What are the tabs at the bottom?", a: "The bottom bar has four tabs and a central action button.\nInsights — your financial dashboard with summaries and charts.\nLedger — full transaction history.\nCards — credit card management.\nBudget — income targets and spending limits.\nThe teal circle in the centre is the New Entry button." },
+      { q: "How do I add a new transaction?", a: "Tap the teal New button in the centre of the bottom navigation bar. It is raised above the bar and glows green so it is easy to spot. The button is available on all four tabs." },
+      { q: "Why does the bottom bar disappear sometimes?", a: "The navigation bar and New button automatically hide whenever a popup or form is open, so the screen stays uncluttered. They reappear as soon as you close the popup." },
     ],
   },
   {
@@ -23,8 +24,8 @@ export const HELP_SECTIONS = [
     icon: "💳",
     items: [
       { q: "What transaction types are there?", a: "Expense — cash or bank debit purchase.\nIncome — salary, bonus, passive income, etc.\nCard Purchase — something bought on credit.\nCard Payment — paying off your credit card bill.\nCard Interest — interest or fees charged by the bank." },
-      { q: "How do I record a card purchase?", a: "Tap +, choose Card Purchase, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category." },
-      { q: "How do I record paying my credit card bill?", a: "Tap +, choose Card Payment, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals." },
+      { q: "How do I record a card purchase?", a: "Tap the New button in the navigation bar, choose Card Purchase, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category." },
+      { q: "How do I record paying my credit card bill?", a: "Tap the New button in the navigation bar, choose Card Payment, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals." },
       { q: "What is the Note field for?", a: "An optional short description for the transaction, e.g. \"Lunch with client\" or \"Monthly salary\". It appears in the transaction list as the primary label." },
       { q: "Can I edit a transaction after saving it?", a: "Yes. In the Ledger or Card Detail, tap the transaction to expand it and tap Edit. The form opens pre-filled — update any field (type, amount, category, note, date, or card) and tap Save changes." },
     ],
@@ -70,9 +71,9 @@ export const HELP_SECTIONS = [
     title: "Insights Tab",
     icon: "📊",
     items: [
-      { q: "What does the top summary show?", a: "Net This Month — income minus expenses for the selected month. In / Out — full income and expense totals. Cash in Hand — your cumulative available cash balance. Below the summary, customisable sections show card debt, budget progress, charts, and category breakdowns." },
+      { q: "What does the Insights tab show?", a: "Everything on the Insights tab is customisable. By default you see: Net This Month (income minus expenses), In (total income), Out (total expenses), Cash in Hand (cumulative available cash), and below those, Card Debt, Budget Progress, Plan vs. Actual, Cashflow chart, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any of these ten sections." },
       { q: "What is Cash in Hand?", a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank." },
-      { q: "How do I customise which sections appear?", a: "Tap the sliders icon (⊟) in the top-right of the Insights tab to open the Customise sheet. Toggle sections on or off with the eye icon, and reorder them using the up/down arrows. Your layout is saved automatically and persists across sessions. Tap Reset to default to restore the original order and visibility." },
+      { q: "How do I customise which sections appear?", a: "Tap the sliders icon in the top-right of the Insights tab to open the Customise sheet. All ten sections are listed — including Net This Month, In, Out, and Cash in Hand. Toggle any section on or off with the eye icon, and reorder them with the up/down arrows. Your layout is saved automatically. Tap Reset to default to restore the original order and visibility." },
       { q: "What is Plan vs. Actual?", a: "A comparison of your budgeted plan against what actually happened: income target vs. actual income, expense budget vs. actual spending, and planned vs. actual savings." },
       { q: "What is the Cashflow Chart?", a: "A 3-month bar chart showing income and expenses side by side, with budget target lines overlaid. Use the ← → arrows to navigate between months." },
       { q: "What are the Income and Expense Breakdown sections?", a: "These show how much was earned or spent per category this month. If a category has a budget or target set, a progress bar shows how close you are, plus the amount remaining or over. Categories are sorted by amount spent, with over-budget ones highlighted at the top." },
