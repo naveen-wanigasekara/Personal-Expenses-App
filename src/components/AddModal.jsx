@@ -1,19 +1,27 @@
 import { useState, useEffect, useContext } from "react";
-import { X, ArrowDown, ArrowUp, CreditCard, Percent } from "lucide-react";
+import { X, ArrowDown, ArrowUp, CreditCard, Percent, DollarSign, IndianRupeeIcon, CoinsIcon, DollarSignIcon, CircleDollarSignIcon, LucideDollarSign } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
 import { getCat } from "../constants/categories.js";
 import { fmtCompact } from "../utils/format.js";
 
-export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat }) {
+export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCats, onAddCat, editing }) {
+  const isEditing = !!editing;
   const CURRENCY = useContext(CurrencyCtx);
-  const [type, setType] = useState("expense");
-  const [amount, setAmount] = useState("");
-  const [displayAmount, setDisplayAmount] = useState("");
-  const [category, setCategory] = useState("loan");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [cardId, setCardId] = useState(cards[0]?.id || "");
+  const [type, setType] = useState(editing?.type || "expense");
+  const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
+  const [category, setCategory] = useState(editing?.category || "loan");
+  const [note, setNote] = useState(editing?.note || "");
+  const [date, setDate] = useState(editing?.date || new Date().toISOString().slice(0, 10));
+  const [cardId, setCardId] = useState(editing?.cardId || cards[0]?.id || "");
+
+  const [displayAmount, setDisplayAmount] = useState(() => {
+    if (!editing) return "";
+    const n = Number(editing.amount);
+    if (!n) return "";
+    const [i, d] = n.toFixed(2).split(".");
+    return parseInt(i, 10).toLocaleString("en-US") + "." + d;
+  });
 
   const isCardType = type === "card-purchase" || type === "card-payment" || type === "card-interest";
 
@@ -22,6 +30,7 @@ export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCat
       : type === "card-payment" ? [] : allExpCats;
 
   useEffect(() => {
+    if (isEditing) return;
     if (type === "income") setCategory("fixed");
     else if (type === "card-interest") setCategory("card-interest");
     else if (type === "card-payment") setCategory("");
@@ -56,8 +65,8 @@ export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCat
   const valid = amount && +amount > 0 && (!isCardType || cardId);
 
   const typeOptions = [
-    { id: "expense", label: "Expense", icon: ArrowDown },
-    { id: "income", label: "Income", icon: ArrowUp },
+    { id: "income", label: "Income", icon: ArrowDown },
+    { id: "expense", label: "Cash Purchase", icon: LucideDollarSign },
     { id: "card-purchase", label: "Card Purchase", icon: CreditCard, needCard: true },
     { id: "card-payment", label: "Card Payment", icon: CreditCard, needCard: true },
     { id: "card-interest", label: "Card Interest", icon: Percent, needCard: true },
@@ -69,7 +78,7 @@ export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCat
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-hd">
-          <h2>New entry</h2>
+          <h2>{isEditing ? "Edit entry" : "New entry"}</h2>
           <button className="close-btn" onClick={onClose}><X size={18} /></button>
         </div>
 
@@ -159,7 +168,7 @@ export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCat
           onChange={(e) => setDate(e.target.value)} />
 
         <button className={`save-btn ${!valid ? "disabled" : ""}`} onClick={handleSave} disabled={!valid}>
-          Record
+          {isEditing ? "Save changes" : "Record"}
         </button>
       </div>
     </div>

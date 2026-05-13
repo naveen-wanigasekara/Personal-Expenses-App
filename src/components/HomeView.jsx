@@ -5,7 +5,7 @@ import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "../constants/categories.j
 import { fmt, monthKey } from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
-export default function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, cards, allExpCats, allIncCats }) {
+export default function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, onEdit, cards, allExpCats, allIncCats }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [filterCat, setFilterCat] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -119,7 +119,7 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
                   </div>
                   <div className="tx-stack">
                     {items.map((t) => (
-                      <TxRow key={t.id} tx={t} onDelete={onDelete}
+                      <TxRow key={t.id} tx={t} onDelete={onDelete} onEdit={onEdit}
                         cardName={t.cardId ? getCardName(t.cardId) : null}
                         allExpCats={allExpCats} allIncCats={allIncCats} />
                     ))}

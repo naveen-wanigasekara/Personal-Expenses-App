@@ -48,3 +48,14 @@ export function loadUserCurrency(userId) {
 export function saveUserCurrency(userId, sym) {
   localStorage.setItem(`user_currency_${userId}`, sym);
 }
+
+export function loadInsightsLayout(userId) {
+  try {
+    const raw = localStorage.getItem(`insights_layout_${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export function saveInsightsLayout(userId, layout) {
+  localStorage.setItem(`insights_layout_${userId}`, JSON.stringify(layout));
+}

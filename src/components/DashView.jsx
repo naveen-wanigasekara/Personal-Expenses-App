@@ -1,11 +1,37 @@
-import { useState, useMemo, useContext } from "react";
-import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown, CreditCard, Lock } from "lucide-react";
+import { useState, useMemo, useContext, useEffect, Fragment } from "react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUp, ArrowDown, CreditCard, Lock, SlidersHorizontal, Eye, EyeOff, X } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact, monthKey, monthLabel, getTimeOfDay } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
+import { loadInsightsLayout, saveInsightsLayout } from "../utils/storage.js";
 
-export default function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats }) {
+const SECTION_DEFS = [
+  { id: "card_debt",      label: "Card Debt",         desc: "Total credit card balance and utilization" },
+  { id: "budget_pulse",   label: "Budget Progress",   desc: "Income target and expense budget bars" },
+  { id: "plan_vs_actual", label: "Plan vs. Actual",   desc: "Detailed budget comparison" },
+  { id: "cashflow",       label: "Cashflow",          desc: "3-month income vs. expenses chart" },
+  { id: "income_cats",    label: "Income Breakdown",  desc: "Where your income came from" },
+  { id: "expense_cats",   label: "Expense Breakdown", desc: "Where your money went" },
+];
+
+function mergeLayout(saved) {
+  if (!saved) return SECTION_DEFS.map((s) => ({ ...s, visible: true }));
+  const validIds = new Set(SECTION_DEFS.map((s) => s.id));
+  const valid = saved
+    .filter((s) => validIds.has(s.id))
+    .map((s) => ({ ...SECTION_DEFS.find((d) => d.id === s.id), visible: s.visible }));
+  const savedIds = new Set(saved.map((s) => s.id));
+  const missing = SECTION_DEFS.filter((s) => !savedIds.has(s.id)).map((s) => ({ ...s, visible: true }));
+  return [...valid, ...missing];
+}
+
+export default function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats, onModalChange }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const [showCustomize, setShowCustomize] = useState(false);
+  const [sections, setSections] = useState(() => mergeLayout(loadInsightsLayout(user.id)));
+
+  useEffect(() => { onModalChange?.(showCustomize); }, [showCustomize]);
+
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
     setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
@@ -119,211 +145,169 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const totalUtil = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
 
-  return (
-    <div className="view">
-      <div className="hero">
-        <div className="hero-top">
+  const updateSections = (next) => {
+    setSections(next);
+    saveInsightsLayout(user.id, next.map(({ id, visible }) => ({ id, visible })));
+  };
+  const toggleSection = (id) => updateSections(sections.map((s) => s.id === id ? { ...s, visible: !s.visible } : s));
+  const moveSection = (id, dir) => {
+    const idx = sections.findIndex((s) => s.id === id);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= sections.length) return;
+    const next = [...sections];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    updateSections(next);
+  };
+  const resetSections = () => updateSections(SECTION_DEFS.map((s) => ({ ...s, visible: true })));
+
+  const sectionContent = {
+    card_debt: cards.length > 0 && totalCardDebt !== 0 ? (
+      <div className="debt-banner">
+        <div className="db-left">
+          <CreditCard size={16} />
           <div>
-            <div className="hero-meta">{isCurrentMonth ? `Good ${greeting}` : "Viewing"}</div>
-            <h1 className="hero-title">Your Money</h1>
+            <div className="db-label">Card debt</div>
+            <div className="db-val">{CURRENCY} {fmt(totalCardDebt)}</div>
           </div>
-          <div className="hero-right">
-            <div className="month-pill">
-              <button onClick={() => changeMonth(-1)} aria-label="Previous month">
-                <ChevronLeft size={16} />
-              </button>
-              <span>{mLbl.slice(0, 3)} {yLbl}</span>
-              <button onClick={() => changeMonth(1)} aria-label="Next month">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <button className="avatar-btn" onClick={onOpenSettings} aria-label="Account">
-              {initial}
-            </button>
+        </div>
+        <div className="db-right">
+          <div className={`db-util ${totalUtil > 70 ? "warn" : ""} ${totalUtil > 90 ? "over" : ""}`}>
+            {totalUtil.toFixed(0)}% used
           </div>
+          <div className="db-limit">of {CURRENCY} {fmtCompact(totalLimit)}</div>
         </div>
       </div>
+    ) : null,
 
-      <div className="balance" style={{ marginBottom: "20px" }}>
-        <div className="balance-label">Net this month</div>
-        <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
-          <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
-          <span className="balance-cur">{CURRENCY}</span>
-          <span className="balance-num">{fmt(Math.abs(thisStats.net))}</span>
-        </div>
-        <div className="inout">
-          <div className="io-cell">
-            <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
-            <div className="io-text">
-              <div className="io-label">In</div>
-              <div className="io-val">{CURRENCY} {fmtCompact(thisStats.income)}</div>
+    budget_pulse: (currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0) ? (
+      <div className="pulse-pair">
+        {currentPlan?.income?.total > 0 && (
+          <div className="pulse-item">
+            <div className="pi-top">
+              <span className="pi-label">
+                <span className="pi-tag pi-in">Income</span>
+                Target
+                {currentPlan?.source === "fixed" && <Lock size={10} />}
+              </span>
+              <span className={`pi-pct ${incomeProgress >= 100 ? "good" : ""}`}>
+                {incomeProgress.toFixed(0)}%
+              </span>
+            </div>
+            <div className="pi-track">
+              <div className="pi-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
+            </div>
+            <div className="pi-foot">
+              <span>{CURRENCY} {fmtCompact(thisStats.income)} / {CURRENCY} {fmtCompact(currentPlan.income.total)}</span>
             </div>
           </div>
-          <div className="io-cell">
-            <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
-            <div className="io-text">
-              <div className="io-label">Out</div>
-              <div className="io-val">{CURRENCY} {fmtCompact(thisStats.expenses)}</div>
+        )}
+        {currentPlan?.expense?.total > 0 && (
+          <div className="pulse-item">
+            <div className="pi-top">
+              <span className="pi-label">
+                <span className="pi-tag pi-out">Budget</span>
+                {currentPlan?.source === "fixed" && <Lock size={10} />}
+              </span>
+              <span className={`pi-pct ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}>
+                {budgetProgress.toFixed(0)}%
+              </span>
+            </div>
+            <div className="pi-track">
+              <div
+                className={`pi-fill out ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}
+                style={{ width: `${Math.min(budgetProgress, 100)}%` }}
+              />
+            </div>
+            <div className="pi-foot">
+              <span>{CURRENCY} {fmtCompact(thisStats.expenses)} / {CURRENCY} {fmtCompact(currentPlan.expense.total)}</span>
+              <span className={budgetProgress > 100 ? "pi-over" : "pi-left"}>
+                {budgetProgress > 100 ? "over" : `${CURRENCY} ${fmtCompact(Math.abs(currentPlan.expense.total - thisStats.expenses))} left`}
+              </span>
             </div>
           </div>
-        </div>
-        <div className="running-bal">
-          <span className="running-bal-label">Cash in Hand</span>
-          <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
-            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(runningBalance))}
-          </span>
-        </div>
+        )}
       </div>
+    ) : null,
 
-      {cards.length > 0 && totalCardDebt !== 0 && (
-        <div className="debt-banner">
-          <div className="db-left">
-            <CreditCard size={16} />
-            <div>
-              <div className="db-label">Card debt</div>
-              <div className="db-val">{CURRENCY} {fmt(totalCardDebt)}</div>
+    plan_vs_actual: hasPlan ? (
+      <div className="card plan-card">
+        <div className="card-hd">
+          <h3>Plan vs. Actual</h3>
+          <span className="card-sub">This month</span>
+        </div>
+        {currentPlan?.income?.total > 0 && (
+          <div className="plan-row">
+            <div className="plan-info">
+              <div className="plan-label">
+                <span className="pi-tag pi-in">Income</span> Target
+              </div>
+              <div className="plan-nums">
+                <span className="plan-actual">{CURRENCY} {fmtCompact(thisStats.income)}</span>
+                <span className="plan-vs">of {CURRENCY} {fmtCompact(currentPlan.income.total)}</span>
+              </div>
+            </div>
+            <div className="plan-bar">
+              <div className="plan-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
+            </div>
+            <div className="plan-pct">
+              <span className={incomeProgress >= 100 ? "good" : ""}>{incomeProgress.toFixed(0)}% achieved</span>
+              {incomeProgress < 100 && (
+                <span className="plan-gap">{CURRENCY} {fmtCompact(currentPlan.income.total - thisStats.income)} to go</span>
+              )}
+              {incomeProgress >= 100 && (
+                <span className="plan-gap good">+{CURRENCY} {fmtCompact(thisStats.income - currentPlan.income.total)} over</span>
+              )}
             </div>
           </div>
-          <div className="db-right">
-            <div className={`db-util ${totalUtil > 70 ? "warn" : ""} ${totalUtil > 90 ? "over" : ""}`}>
-              {totalUtil.toFixed(0)}% used
+        )}
+        {currentPlan?.expense?.total > 0 && (
+          <div className="plan-row">
+            <div className="plan-info">
+              <div className="plan-label">
+                <span className="pi-tag pi-out">Expenses</span> Budget
+                {currentPlan.source === "fixed" && <Lock size={10} />}
+              </div>
+              <div className="plan-nums">
+                <span className="plan-actual">{CURRENCY} {fmtCompact(thisStats.expenses)}</span>
+                <span className="plan-vs">of {CURRENCY} {fmtCompact(currentPlan.expense.total)}</span>
+              </div>
             </div>
-            <div className="db-limit">of {CURRENCY} {fmtCompact(totalLimit)}</div>
+            <div className="plan-bar">
+              <div className={`plan-fill out ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}
+                style={{ width: `${Math.min(budgetProgress, 100)}%` }} />
+            </div>
+            <div className="plan-pct">
+              <span className={budgetProgress > 100 ? "bad" : budgetProgress > 80 ? "warn-t" : ""}>
+                {budgetProgress.toFixed(0)}% used
+              </span>
+              <span className={budgetProgress > 100 ? "plan-gap bad" : "plan-gap"}>
+                {budgetProgress > 100
+                  ? `${CURRENCY} ${fmtCompact(thisStats.expenses - currentPlan.expense.total)} over`
+                  : `${CURRENCY} ${fmtCompact(currentPlan.expense.total - thisStats.expenses)} left`}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
-
-      {(currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0) && (
-        <div className="pulse-pair">
-          {currentPlan?.income?.total > 0 && (
-            <div className="pulse-item">
-              <div className="pi-top">
-                <span className="pi-label">
-                  <span className="pi-tag pi-in">Income</span>
-                  Target
-                  {currentPlan?.source === "fixed" && <Lock size={10} />}
-                </span>
-                <span className={`pi-pct ${incomeProgress >= 100 ? "good" : ""}`}>
-                  {incomeProgress.toFixed(0)}%
-                </span>
-              </div>
-              <div className="pi-track">
-                <div className="pi-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
-              </div>
-              <div className="pi-foot">
-                <span>{CURRENCY} {fmtCompact(thisStats.income)} / {CURRENCY} {fmtCompact(currentPlan.income.total)}</span>
-              </div>
+        )}
+        {currentPlan?.income?.total > 0 && currentPlan?.expense?.total > 0 && (
+          <div className="plan-summary">
+            <div className="plan-sum-row">
+              <span>Planned savings</span>
+              <strong className={currentPlan.income.total - currentPlan.expense.total >= 0 ? "pos" : "neg"}>
+                {CURRENCY} {fmtCompact(currentPlan.income.total - currentPlan.expense.total)}
+              </strong>
             </div>
-          )}
-          {currentPlan?.expense?.total > 0 && (
-            <div className="pulse-item">
-              <div className="pi-top">
-                <span className="pi-label">
-                  <span className="pi-tag pi-out">Budget</span>
-                  {currentPlan?.source === "fixed" && <Lock size={10} />}
-                </span>
-                <span className={`pi-pct ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}>
-                  {budgetProgress.toFixed(0)}%
-                </span>
-              </div>
-              <div className="pi-track">
-                <div
-                  className={`pi-fill out ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}
-                  style={{ width: `${Math.min(budgetProgress, 100)}%` }}
-                />
-              </div>
-              <div className="pi-foot">
-                <span>{CURRENCY} {fmtCompact(thisStats.expenses)} / {CURRENCY} {fmtCompact(currentPlan.expense.total)}</span>
-                <span className={budgetProgress > 100 ? "pi-over" : "pi-left"}>
-                  {budgetProgress > 100 ? "over" : `${CURRENCY} ${fmtCompact(Math.abs(currentPlan.expense.total - thisStats.expenses))} left`}
-                </span>
-              </div>
+            <div className="plan-sum-row">
+              <span>Actual net</span>
+              <strong className={thisStats.net >= 0 ? "pos" : "neg"}>
+                {CURRENCY} {fmtCompact(thisStats.net)}
+              </strong>
             </div>
-          )}
-        </div>
-      )}
-
-      {hasPlan && (
-        <div className="card plan-card">
-          <div className="card-hd">
-            <h3>Plan vs. Actual</h3>
-            <span className="card-sub">This month</span>
           </div>
+        )}
+      </div>
+    ) : null,
 
-          {currentPlan?.income?.total > 0 && (
-            <div className="plan-row">
-              <div className="plan-info">
-                <div className="plan-label">
-                  <span className="pi-tag pi-in">Income</span> Target
-                </div>
-                <div className="plan-nums">
-                  <span className="plan-actual">{CURRENCY} {fmtCompact(thisStats.income)}</span>
-                  <span className="plan-vs">of {CURRENCY} {fmtCompact(currentPlan.income.total)}</span>
-                </div>
-              </div>
-              <div className="plan-bar">
-                <div className="plan-fill in" style={{ width: `${Math.min(incomeProgress, 100)}%` }} />
-              </div>
-              <div className="plan-pct">
-                <span className={incomeProgress >= 100 ? "good" : ""}>{incomeProgress.toFixed(0)}% achieved</span>
-                {incomeProgress < 100 && (
-                  <span className="plan-gap">{CURRENCY} {fmtCompact(currentPlan.income.total - thisStats.income)} to go</span>
-                )}
-                {incomeProgress >= 100 && (
-                  <span className="plan-gap good">+{CURRENCY} {fmtCompact(thisStats.income - currentPlan.income.total)} over</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {currentPlan?.expense?.total > 0 && (
-            <div className="plan-row">
-              <div className="plan-info">
-                <div className="plan-label">
-                  <span className="pi-tag pi-out">Expenses</span> Budget
-                  {currentPlan.source === "fixed" && <Lock size={10} />}
-                </div>
-                <div className="plan-nums">
-                  <span className="plan-actual">{CURRENCY} {fmtCompact(thisStats.expenses)}</span>
-                  <span className="plan-vs">of {CURRENCY} {fmtCompact(currentPlan.expense.total)}</span>
-                </div>
-              </div>
-              <div className="plan-bar">
-                <div className={`plan-fill out ${budgetProgress > 100 ? "over" : budgetProgress > 80 ? "warn" : ""}`}
-                  style={{ width: `${Math.min(budgetProgress, 100)}%` }} />
-              </div>
-              <div className="plan-pct">
-                <span className={budgetProgress > 100 ? "bad" : budgetProgress > 80 ? "warn-t" : ""}>
-                  {budgetProgress.toFixed(0)}% used
-                </span>
-                <span className={budgetProgress > 100 ? "plan-gap bad" : "plan-gap"}>
-                  {budgetProgress > 100
-                    ? `${CURRENCY} ${fmtCompact(thisStats.expenses - currentPlan.expense.total)} over`
-                    : `${CURRENCY} ${fmtCompact(currentPlan.expense.total - thisStats.expenses)} left`}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {currentPlan?.income?.total > 0 && currentPlan?.expense?.total > 0 && (
-            <div className="plan-summary">
-              <div className="plan-sum-row">
-                <span>Planned savings</span>
-                <strong className={currentPlan.income.total - currentPlan.expense.total >= 0 ? "pos" : "neg"}>
-                  {CURRENCY} {fmtCompact(currentPlan.income.total - currentPlan.expense.total)}
-                </strong>
-              </div>
-              <div className="plan-sum-row">
-                <span>Actual net</span>
-                <strong className={thisStats.net >= 0 ? "pos" : "neg"}>
-                  {CURRENCY} {fmtCompact(thisStats.net)}
-                </strong>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
+    cashflow: (
       <div className="card">
         <div className="card-hd">
           <h3>Cashflow</h3>
@@ -353,65 +337,67 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
           ))}
         </div>
       </div>
+    ),
 
-      {incCatEarn.length > 0 && (
-        <div className="card">
-          <div className="card-hd">
-            <h3>Where it came from</h3>
-            <span className="card-sub">Income · This month</span>
-          </div>
-          <div className="cat-list-v2">
-            {incCatEarn.map((c) => {
-              const Icon = c.cat.icon;
-              const hasBudget = c.budgeted > 0;
-              const pct = hasBudget ? Math.min(c.budgetPct, 100) : 100;
-              const isAchieved = hasBudget && c.budgetPct >= 100;
-              const isUnearned = c.val === 0 && hasBudget;
-              return (
-                <div key={c.id} className={`catv2 ${isUnearned ? "unused" : ""}`}>
-                  <div className="catv2-head">
-                    <div className="catv2-left">
-                      <div className="cat-icon" style={{ background: `${c.cat.color}1a`, color: c.cat.color }}>
-                        <Icon size={15} strokeWidth={2} />
-                      </div>
-                      <div>
-                        <div className="catv2-name">{c.cat.label}</div>
-                        <div className="catv2-sub">
-                          {hasBudget ? (<>{CURRENCY} {fmt(c.val)} <span className="sep">/</span> {CURRENCY} {fmt(c.budgeted)}</>)
-                            : <>{c.pct.toFixed(1)}% of income · no target set</>}
-                        </div>
-                      </div>
+    income_cats: incCatEarn.length > 0 ? (
+      <div className="card">
+        <div className="card-hd">
+          <h3>Where it came from</h3>
+          <span className="card-sub">Income · This month</span>
+        </div>
+        <div className="cat-list-v2">
+          {incCatEarn.map((c) => {
+            const Icon = c.cat.icon;
+            const hasBudget = c.budgeted > 0;
+            const pct = hasBudget ? Math.min(c.budgetPct, 100) : 100;
+            const isAchieved = hasBudget && c.budgetPct >= 100;
+            const isUnearned = c.val === 0 && hasBudget;
+            return (
+              <div key={c.id} className={`catv2 ${isUnearned ? "unused" : ""}`}>
+                <div className="catv2-head">
+                  <div className="catv2-left">
+                    <div className="cat-icon" style={{ background: `${c.cat.color}1a`, color: c.cat.color }}>
+                      <Icon size={15} strokeWidth={2} />
                     </div>
-                    <div className="catv2-right">
-                      {hasBudget ? (
-                        <>
-                          <div className={`catv2-remaining ${isAchieved ? "good" : ""}`}>
-                            {isAchieved ? <>+{CURRENCY} {fmt(c.val - c.budgeted)}</> : <>{CURRENCY} {fmt(c.remaining)}</>}
-                          </div>
-                          <div className="catv2-remaining-lbl">{isAchieved ? "over" : "to go"}</div>
-                        </>
-                      ) : (
-                        <div className="catv2-val">{CURRENCY} {fmt(c.val)}</div>
-                      )}
+                    <div>
+                      <div className="catv2-name">{c.cat.label}</div>
+                      <div className="catv2-sub">
+                        {hasBudget ? (<>{CURRENCY} {fmt(c.val)} <span className="sep">/</span> {CURRENCY} {fmt(c.budgeted)}</>)
+                          : <>{c.pct.toFixed(1)}% of income · no target set</>}
+                      </div>
                     </div>
                   </div>
-                  {hasBudget && (
-                    <>
-                      <div className="catv2-bar">
-                        <div className="catv2-fill" style={{ width: `${pct}%`, background: c.cat.color }} />
-                      </div>
-                      <div className="catv2-foot">
-                        <span className={isAchieved ? "good" : ""}>{c.budgetPct.toFixed(0)}% achieved</span>
-                      </div>
-                    </>
-                  )}
+                  <div className="catv2-right">
+                    {hasBudget ? (
+                      <>
+                        <div className={`catv2-remaining ${isAchieved ? "good" : ""}`}>
+                          {isAchieved ? <>+{CURRENCY} {fmt(c.val - c.budgeted)}</> : <>{CURRENCY} {fmt(c.remaining)}</>}
+                        </div>
+                        <div className="catv2-remaining-lbl">{isAchieved ? "over" : "to go"}</div>
+                      </>
+                    ) : (
+                      <div className="catv2-val">{CURRENCY} {fmt(c.val)}</div>
+                    )}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+                {hasBudget && (
+                  <>
+                    <div className="catv2-bar">
+                      <div className="catv2-fill" style={{ width: `${pct}%`, background: c.cat.color }} />
+                    </div>
+                    <div className="catv2-foot">
+                      <span className={isAchieved ? "good" : ""}>{c.budgetPct.toFixed(0)}% achieved</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
+    ) : null,
 
+    expense_cats: (
       <div className="card">
         <div className="card-hd">
           <h3>Where it went</h3>
@@ -473,6 +459,111 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
           </div>
         )}
       </div>
+    ),
+  };
+
+  return (
+    <div className="view">
+      <div className="hero">
+        <div className="hero-top">
+          <div>
+            <div className="hero-meta">{isCurrentMonth ? `Good ${greeting}` : "Viewing"}</div>
+            <h1 className="hero-title">Your Money</h1>
+          </div>
+          <div className="hero-right">
+            <div className="month-pill">
+              <button onClick={() => changeMonth(-1)} aria-label="Previous month">
+                <ChevronLeft size={16} />
+              </button>
+              <span>{mLbl.slice(0, 3)} {yLbl}</span>
+              <button onClick={() => changeMonth(1)} aria-label="Next month">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <button className="avatar-btn" onClick={() => setShowCustomize(true)} aria-label="Customize sections">
+              <SlidersHorizontal size={14} />
+            </button>
+            <button className="avatar-btn" onClick={onOpenSettings} aria-label="Account">
+              {initial}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="balance" style={{ marginBottom: "20px" }}>
+        <div className="balance-label">Net this month</div>
+        <div className={`balance-amt ${thisStats.net < 0 ? "neg" : ""}`}>
+          <span className="balance-sign">{thisStats.net < 0 ? "−" : ""}</span>
+          <span className="balance-cur">{CURRENCY}</span>
+          <span className="balance-num">{fmt(Math.abs(thisStats.net))}</span>
+        </div>
+        <div className="inout">
+          <div className="io-cell">
+            <div className="io-dot io-in"><ArrowUp size={12} strokeWidth={3} /></div>
+            <div className="io-text">
+              <div className="io-label">In</div>
+              <div className="io-val">{CURRENCY} {fmt(thisStats.income)}</div>
+            </div>
+          </div>
+          <div className="io-cell">
+            <div className="io-dot io-out"><ArrowDown size={12} strokeWidth={3} /></div>
+            <div className="io-text">
+              <div className="io-label">Out</div>
+              <div className="io-val">{CURRENCY} {fmt(thisStats.expenses)}</div>
+            </div>
+          </div>
+        </div>
+        <div className="running-bal">
+          <span className="running-bal-label">Cash in Hand</span>
+          <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
+            {runningBalance < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(runningBalance))}
+          </span>
+        </div>
+      </div>
+
+      {sections.filter((s) => s.visible).map((s) => {
+        const content = sectionContent[s.id];
+        return content ? <Fragment key={s.id}>{content}</Fragment> : null;
+      })}
+
+      {showCustomize && (
+        <div className="backdrop" onClick={() => setShowCustomize(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-hd">
+              <h2>Customize</h2>
+              <button className="close-btn" onClick={() => setShowCustomize(false)}><X size={18} /></button>
+            </div>
+            <p className="customize-hint">Choose which sections appear and arrange them in your preferred order.</p>
+            <div className="section-list">
+              {sections.map((s, i) => (
+                <div key={s.id} className={`section-row ${!s.visible ? "section-hidden" : ""}`}>
+                  <div className="section-move">
+                    <button onClick={() => moveSection(s.id, -1)} disabled={i === 0} aria-label="Move up">
+                      <ChevronUp size={14} />
+                    </button>
+                    <button onClick={() => moveSection(s.id, 1)} disabled={i === sections.length - 1} aria-label="Move down">
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                  <div className="section-info">
+                    <div className="section-label">{s.label}</div>
+                    <div className="section-desc">{s.desc}</div>
+                  </div>
+                  <button
+                    className={`section-toggle ${s.visible ? "on" : "off"}`}
+                    onClick={() => toggleSection(s.id)}
+                    aria-label={s.visible ? "Hide section" : "Show section"}
+                  >
+                    {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="text-btn" onClick={resetSections}>Reset to default</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

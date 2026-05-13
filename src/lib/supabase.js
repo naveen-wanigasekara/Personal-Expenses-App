@@ -70,6 +70,18 @@ export async function insertTransaction(tx) {
   return decryptFields(data, TX_ENC);
 }
 
+export async function updateTransaction(id, updates) {
+  const enc = await encryptFields(updates, TX_ENC);
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(enc)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, TX_ENC);
+}
+
 export async function deleteTransaction(id) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw error;

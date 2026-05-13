@@ -25,7 +25,8 @@ export const HELP_SECTIONS = [
       { q: "What transaction types are there?", a: "Expense — cash or bank debit purchase.\nIncome — salary, bonus, passive income, etc.\nCard Purchase — something bought on credit.\nCard Payment — paying off your credit card bill.\nCard Interest — interest or fees charged by the bank." },
       { q: "How do I record a card purchase?", a: "Tap +, choose Card Purchase, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category." },
       { q: "How do I record paying my credit card bill?", a: "Tap +, choose Card Payment, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals." },
-      { q: "What is the Note field for?", a: "An optional short description for the transaction, e.g. \"Lunch with client\" or \"Monthly salary\". It appears in the transaction list." },
+      { q: "What is the Note field for?", a: "An optional short description for the transaction, e.g. \"Lunch with client\" or \"Monthly salary\". It appears in the transaction list as the primary label." },
+      { q: "Can I edit a transaction after saving it?", a: "Yes. In the Ledger or Card Detail, tap the transaction to expand it and tap Edit. The form opens pre-filled — update any field (type, amount, category, note, date, or card) and tap Save changes." },
     ],
   },
   {
@@ -35,7 +36,8 @@ export const HELP_SECTIONS = [
     items: [
       { q: "How are transactions displayed?", a: "Transactions are grouped by date with a daily subtotal. Each entry shows the category icon, description, and amount. Green + = income, red − = expense. Card transactions show a card name badge." },
       { q: "How do I filter transactions?", a: "Use the three dropdowns at the top to filter by month (last 6 months), transaction type (All, Income, Cash Purchase, Card Purchase), or category. The bar shows how many transactions match." },
-      { q: "How do I delete a transaction?", a: "Tap the transaction row to expand it, then tap the delete icon that appears." },
+      { q: "How do I edit a transaction?", a: "Tap the transaction row to expand it, then tap Edit. The Add Transaction form opens pre-filled with the existing details — change any field and tap Save changes." },
+      { q: "How do I delete a transaction?", a: "Tap the transaction row to expand it, then tap Delete." },
     ],
   },
   {
@@ -45,7 +47,8 @@ export const HELP_SECTIONS = [
     items: [
       { q: "How do I add a credit card?", a: "Tap + Add Card and fill in the card name (e.g. \"AMEX Gold\"), credit limit, opening balance (any existing debt when you start), and choose a colour theme." },
       { q: "What does the utilization bar show?", a: "It shows your current balance as a percentage of your credit limit. Below 70% is normal, 70–90% shows a yellow warning, and above 90% shows a red danger indicator." },
-      { q: "What can I see in Card Detail?", a: "Tap any card to see this month's total purchases, payments, and interest; a full activity list; and edit/delete options for the card." },
+      { q: "What can I see in Card Detail?", a: "Tap any card to see this month's total purchases, payments, and interest; a full activity list; and edit/delete options for the card itself." },
+      { q: "Can I edit or delete transactions from Card Detail?", a: "Yes. Tap any transaction in the activity list to expand it, then tap Edit to modify it or Delete to remove it. Changes reflect immediately in your card balance and Insights." },
       { q: "What happens if I delete a card?", a: "Deleting a card removes the card record but does NOT delete its linked transactions. Those transactions remain in the Ledger." },
     ],
   },
@@ -67,10 +70,12 @@ export const HELP_SECTIONS = [
     title: "Insights Tab",
     icon: "📊",
     items: [
-      { q: "What does the top summary show?", a: "Net This Month — income minus expenses for the selected month. Income vs. Expenses — totals at a glance. Cash in Hand — your actual available cash balance. Card Debt Summary — total debt and utilization across all cards." },
+      { q: "What does the top summary show?", a: "Net This Month — income minus expenses for the selected month. In / Out — full income and expense totals. Cash in Hand — your cumulative available cash balance. Below the summary, customisable sections show card debt, budget progress, charts, and category breakdowns." },
       { q: "What is Cash in Hand?", a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank." },
+      { q: "How do I customise which sections appear?", a: "Tap the sliders icon (⊟) in the top-right of the Insights tab to open the Customise sheet. Toggle sections on or off with the eye icon, and reorder them using the up/down arrows. Your layout is saved automatically and persists across sessions. Tap Reset to default to restore the original order and visibility." },
       { q: "What is Plan vs. Actual?", a: "A comparison of your budgeted plan against what actually happened: income target vs. actual income, expense budget vs. actual spending, and planned vs. actual savings." },
       { q: "What is the Cashflow Chart?", a: "A 3-month bar chart showing income and expenses side by side, with budget target lines overlaid. Use the ← → arrows to navigate between months." },
+      { q: "What are the Income and Expense Breakdown sections?", a: "These show how much was earned or spent per category this month. If a category has a budget or target set, a progress bar shows how close you are, plus the amount remaining or over. Categories are sorted by amount spent, with over-budget ones highlighted at the top." },
     ],
   },
   {
@@ -90,7 +95,7 @@ export const HELP_SECTIONS = [
       { q: "Avoid double-counting card spending", a: "Always use Card Purchase (not Expense) when buying something on credit, and Card Payment (not Expense) when paying your bill. This keeps your card balance and expense totals accurate." },
       { q: "Getting the most from budgets", a: "Set a Fixed Plan first to establish your baseline. Then use Month Overrides for unusual months. Review Insights at month-end to compare plan vs. actual and spot overspending categories." },
       { q: "Changing your currency", a: "Tap your avatar (top-right on Insights) to open Account settings. Tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app." },
-      { q: "Number formatting", a: "Large numbers display in compact form, e.g. 1.2M or 450K. Numbers are formatted automatically — just type digits and the app handles the rest." },
+      { q: "Number formatting", a: "Key amounts — Net this month, Cash in Hand, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically." },
     ],
   },
 ];

@@ -5,7 +5,7 @@ import { CARD_COLORS } from "../constants/currencies.js";
 import { fmt, fmtCompact, monthKey } from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
-export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx }) {
+export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
@@ -95,7 +95,7 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
         <div className="empty-sm">No activity on this card yet</div>
       ) : (
         <div className="tx-stack">
-          {sorted.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} cardName={card.name} />)}
+          {sorted.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name} />)}
         </div>
       )}
     </div>

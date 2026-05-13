@@ -1,10 +1,10 @@
 import { useState, useContext } from "react";
-import { Trash2, CreditCard } from "lucide-react";
+import { Edit2, Trash2, CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
 import { fmt } from "../utils/format.js";
 
-export default function TxRow({ tx, onDelete, cardName, allExpCats, allIncCats }) {
+export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allIncCats }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [open, setOpen] = useState(false);
 
@@ -47,6 +47,11 @@ export default function TxRow({ tx, onDelete, cardName, allExpCats, allIncCats }
       </button>
       {open && (
         <div className="tx-expand">
+          {onEdit && (
+            <button className="tx-edit" onClick={() => onEdit(tx)}>
+              <Edit2 size={13} /> Edit
+            </button>
+          )}
           <button className="tx-del" onClick={() => onDelete(tx.id)}>
             <Trash2 size={13} /> Delete
           </button>

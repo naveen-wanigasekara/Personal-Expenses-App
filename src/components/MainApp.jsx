@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, BarChart3, Wallet, CreditCard, Target } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
-  fetchTransactions, insertTransaction, deleteTransaction,
+  fetchTransactions, insertTransaction, updateTransaction, deleteTransaction,
   fetchCards, upsertCard, deleteCard,
   fetchBudgets, upsertBudget,
 } from "../lib/supabase.js";
@@ -28,6 +28,8 @@ export default function MainApp({ user }) {
   const [monthPlans, setMonthPlans] = useState({});
   const [fixedPlan, setFixedPlan] = useState(emptyPlan());
   const [showAdd, setShowAdd] = useState(false);
+  const [editingTx, setEditingTx] = useState(null);
+  const [childModalOpen, setChildModalOpen] = useState(false);
   const [showCardForm, setShowCardForm] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
@@ -140,6 +142,21 @@ export default function MainApp({ user }) {
     } catch (e) {
       setTransactions(prev);
       showError("Couldn't delete transaction.");
+    }
+  }, [transactions]);
+
+  const editTx = useCallback(async (id, updates) => {
+    const prev = transactions;
+    setTransactions((p) => p.map((t) => t.id === id ? { ...t, ...updates } : t));
+    try {
+      await updateTransaction(id, {
+        type: updates.type, amount: updates.amount,
+        category: updates.category || null, card_id: updates.cardId || null,
+        note: updates.note || "", date: updates.date,
+      });
+    } catch (e) {
+      setTransactions(prev);
+      showError("Couldn't update transaction.");
     }
   }, [transactions]);
 
@@ -275,7 +292,7 @@ export default function MainApp({ user }) {
             <HomeView
               stats={monthStats}
               viewMonth={viewMonth} setViewMonth={setViewMonth}
-              transactions={monthStats.list} onDelete={deleteTx}
+              transactions={monthStats.list} onDelete={deleteTx} onEdit={setEditingTx}
               cards={cardsWithBalance}
               allExpCats={allExpCats} allIncCats={allIncCats}
             />
@@ -289,6 +306,7 @@ export default function MainApp({ user }) {
               user={user}
               onOpenSettings={() => setShowSettings(true)}
               allExpCats={allExpCats} allIncCats={allIncCats}
+              onModalChange={setChildModalOpen}
             />
           )}
           {tab === "cards" && (
@@ -298,6 +316,7 @@ export default function MainApp({ user }) {
               onNew={() => setShowCardForm("new")}
               onDelete={removeCard}
               onDeleteTx={deleteTx}
+              onEditTx={setEditingTx}
             />
           )}
           {tab === "budget" && (
@@ -311,9 +330,11 @@ export default function MainApp({ user }) {
           )}
         </main>
 
-        <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add transaction">
-          <Plus size={22} strokeWidth={2.5} />
-        </button>
+        {!showAdd && !editingTx && !showCardForm && !showSettings && !showHelp && !showCatsModal && !childModalOpen && (
+          <button className="fab" onClick={() => setShowAdd(true)} aria-label="Add transaction">
+            <Plus size={22} strokeWidth={2.5} />
+          </button>
+        )}
 
         <nav className="nav">
           <NavBtn icon={BarChart3} label="Insights" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
@@ -326,6 +347,16 @@ export default function MainApp({ user }) {
           <AddModal
             cards={cardsWithBalance} onClose={() => setShowAdd(false)}
             onSave={(tx) => { addTx(tx); setShowAdd(false); }}
+            allExpCats={allExpCats} allIncCats={allIncCats}
+            onAddCat={addCat}
+          />
+        )}
+
+        {editingTx && (
+          <AddModal
+            editing={editingTx}
+            cards={cardsWithBalance} onClose={() => setEditingTx(null)}
+            onSave={(tx) => { editTx(editingTx.id, tx); setEditingTx(null); }}
             allExpCats={allExpCats} allIncCats={allIncCats}
             onAddCat={addCat}
           />
