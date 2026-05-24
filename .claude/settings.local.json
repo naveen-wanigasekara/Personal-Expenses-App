@@ -3,7 +3,8 @@
     "allow": [
       "Bash(grep -n \"function HomeView\" c:\\\\\\\\Users\\\\\\\\wanigasekara\\\\\\\\Projects\\\\\\\\personal-expenses-app\\\\\\\\App.jsx)",
       "Bash(xargs ls *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git checkout *)"
     ]
   }
 }

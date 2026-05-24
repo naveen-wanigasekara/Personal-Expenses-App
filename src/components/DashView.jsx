@@ -33,7 +33,6 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
   const [sections, setSections] = useState(() => mergeLayout(loadInsightsLayout(user.id)));
-
   useEffect(() => {
     onModalChange?.(showCustomize);
     document.body.style.overflow = showCustomize ? "hidden" : "";
@@ -81,18 +80,25 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
       (t) => monthKey(t.date) === viewMonth &&
         (t.type === "expense" || t.type === "card-purchase" || t.type === "card-interest")
     );
+    // Group by effective category ID (resolves orphaned/deleted IDs via getCat fallback)
     const by = {};
-    inMonth.forEach((t) => { by[t.category] = (by[t.category] || 0) + +t.amount; });
+    inMonth.forEach((t) => {
+      const effectiveId = getCat(t.category, "expense", allExpCats, allIncCats).id;
+      by[effectiveId] = (by[effectiveId] || 0) + +t.amount;
+    });
     const total = Object.values(by).reduce((s, v) => s + v, 0);
-    const budgetedCats = currentPlan?.expense?.categories || {};
-    const allCatIds = new Set([
-      ...Object.keys(by),
-      ...Object.keys(budgetedCats).filter((id) => +budgetedCats[id] > 0),
-    ]);
+    // Only include budget entries for category IDs that still exist — orphaned IDs are dropped
+    const rawBudget = currentPlan?.expense?.categories || {};
+    const validExpIds = new Set(allExpCats.map((c) => c.id));
+    const effectiveBudget = {};
+    Object.entries(rawBudget).forEach(([id, val]) => {
+      if (+val > 0 && validExpIds.has(id)) effectiveBudget[id] = +val;
+    });
+    const allCatIds = new Set([...Object.keys(by), ...Object.keys(effectiveBudget)]);
     return Array.from(allCatIds)
       .map((id) => {
         const val = by[id] || 0;
-        const budgeted = +budgetedCats[id] || 0;
+        const budgeted = effectiveBudget[id] || 0;
         return {
           id, val, budgeted,
           pct: total ? (val / total) * 100 : 0,
@@ -108,22 +114,27 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         if (a.val !== b.val) return b.val - a.val;
         return (b.budgeted || 0) - (a.budgeted || 0);
       });
-  }, [transactions, viewMonth, currentPlan]);
+  }, [transactions, viewMonth, currentPlan, allExpCats, allIncCats]);
 
   const incCatEarn = useMemo(() => {
     const inMonth = transactions.filter((t) => monthKey(t.date) === viewMonth && t.type === "income");
     const by = {};
-    inMonth.forEach((t) => { by[t.category] = (by[t.category] || 0) + +t.amount; });
+    inMonth.forEach((t) => {
+      const effectiveId = getCat(t.category, "income", allExpCats, allIncCats).id;
+      by[effectiveId] = (by[effectiveId] || 0) + +t.amount;
+    });
     const total = Object.values(by).reduce((s, v) => s + v, 0);
-    const budgetedCats = currentPlan?.income?.categories || {};
-    const allCatIds = new Set([
-      ...Object.keys(by),
-      ...Object.keys(budgetedCats).filter((id) => +budgetedCats[id] > 0),
-    ]);
+    const rawBudget = currentPlan?.income?.categories || {};
+    const validIncIds = new Set(allIncCats.map((c) => c.id));
+    const effectiveBudget = {};
+    Object.entries(rawBudget).forEach(([id, val]) => {
+      if (+val > 0 && validIncIds.has(id)) effectiveBudget[id] = +val;
+    });
+    const allCatIds = new Set([...Object.keys(by), ...Object.keys(effectiveBudget)]);
     return Array.from(allCatIds)
       .map((id) => {
         const val = by[id] || 0;
-        const budgeted = +budgetedCats[id] || 0;
+        const budgeted = effectiveBudget[id] || 0;
         return {
           id, val, budgeted,
           pct: total ? (val / total) * 100 : 0,
@@ -133,7 +144,7 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         };
       })
       .sort((a, b) => b.val - a.val);
-  }, [transactions, viewMonth, currentPlan]);
+  }, [transactions, viewMonth, currentPlan, allExpCats, allIncCats]);
 
   const runningBalance = useMemo(() => {
     return transactions
@@ -462,6 +473,7 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
               const isOver = hasBudget && c.budgetPct > 100;
               const isWarn = hasBudget && c.budgetPct > 80 && c.budgetPct <= 100;
               const isUnused = c.val === 0 && hasBudget;
+              const isUnbudgeted = !hasBudget && c.val > 0;
               return (
                 <div key={c.id} className={`catv2 ${isUnused ? "unused" : ""}`}>
                   <div className="catv2-head">
@@ -472,32 +484,37 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
                       <div>
                         <div className="catv2-name">{c.cat.label}</div>
                         <div className="catv2-sub">
-                          {hasBudget ? (<>{CURRENCY} {fmt(c.val)} <span className="sep">/</span> {CURRENCY} {fmt(c.budgeted)}</>)
+                          {hasBudget
+                            ? (<>{CURRENCY} {fmt(c.val)} <span className="sep">/</span> {CURRENCY} {fmt(c.budgeted)}</>)
                             : <>{c.pct.toFixed(1)}% of spending · no budget set</>}
                         </div>
                       </div>
                     </div>
                     <div className="catv2-right">
-                      {hasBudget ? (
+                      {hasBudget || isUnbudgeted ? (
                         <>
-                          <div className={`catv2-remaining ${isOver ? "over" : isWarn ? "warn" : ""}`}>
-                            {isOver ? <>−{CURRENCY} {fmt(Math.abs(c.remaining))}</> : <>{CURRENCY} {fmt(c.remaining)}</>}
+                          <div className={`catv2-remaining ${isOver || isUnbudgeted ? "over" : isWarn ? "warn" : ""}`}>
+                            {isOver ? <>−{CURRENCY} {fmt(Math.abs(c.remaining))}</>
+                              : isUnbudgeted ? <>−{CURRENCY} {fmt(c.val)}</>
+                              : <>{CURRENCY} {fmt(c.remaining)}</>}
                           </div>
-                          <div className="catv2-remaining-lbl">{isOver ? "over" : "left"}</div>
+                          <div className="catv2-remaining-lbl">{isOver || isUnbudgeted ? "over" : "left"}</div>
                         </>
                       ) : (
                         <div className="catv2-val">{CURRENCY} {fmt(c.val)}</div>
                       )}
                     </div>
                   </div>
-                  {hasBudget && (
+                  {(hasBudget || isUnbudgeted) && (
                     <>
                       <div className="catv2-bar">
-                        <div className={`catv2-fill ${isOver ? "over" : isWarn ? "warn" : ""}`}
-                          style={{ width: `${pct}%`, background: isOver ? undefined : c.cat.color }} />
+                        <div className={`catv2-fill ${isOver || isUnbudgeted ? "over" : isWarn ? "warn" : ""}`}
+                          style={{ width: `${pct}%`, background: (isOver || isUnbudgeted) ? undefined : c.cat.color }} />
                       </div>
                       <div className="catv2-foot">
-                        <span className={isOver ? "over" : isWarn ? "warn-t" : ""}>{c.budgetPct.toFixed(0)}% used</span>
+                        {isUnbudgeted
+                          ? <span className="over">No budget set</span>
+                          : <span className={isOver ? "over" : isWarn ? "warn-t" : ""}>{c.budgetPct.toFixed(0)}% used</span>}
                       </div>
                     </>
                   )}

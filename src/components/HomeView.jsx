@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useContext } from "react";
 import { Sparkles } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "../constants/categories.js";
 import { fmt, monthKey } from "../utils/format.js";
+import { getCat } from "../constants/categories.js";
 import TxRow from "./TxRow.jsx";
 
 export default function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, onEdit, cards, allExpCats, allIncCats }) {
@@ -27,26 +27,41 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
     return out;
   }, []);
 
+  // Resolve a transaction's effective category via getCat (same logic as TxRow)
+  const effectiveCatId = (t) => {
+    if (t.type === "card-payment") return "card-payment";
+    if (t.type === "income") return getCat(t.category, "income", allExpCats, allIncCats).id;
+    return getCat(t.category, "expense", allExpCats, allIncCats).id;
+  };
+
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
       const typeMatch = filterType === "all"
         || (filterType === "card" && ["card-purchase", "card-payment", "card-interest"].includes(t.type))
         || (filterType === "income" && t.type === "income")
         || (filterType === "expense" && t.type === "expense");
-      const catMatch = filterCat === "all" || t.category === filterCat;
+      const catMatch = filterCat === "all" || effectiveCatId(t) === filterCat;
       return typeMatch && catMatch;
     });
-  }, [transactions, filterCat, filterType]);
+  }, [transactions, filterCat, filterType, allExpCats, allIncCats]);
 
   const activeCats = useMemo(() => {
-    const ids = new Set(transactions.map((t) => t.category));
+    // Build a map of effective category IDs → category objects (mirrors how TxRow resolves cats)
+    const catMap = new Map();
+    transactions.forEach((t) => {
+      if (t.type === "card-payment") return;
+      const cat = t.type === "income"
+        ? getCat(t.category, "income", allExpCats, allIncCats)
+        : getCat(t.category, "expense", allExpCats, allIncCats);
+      if (!catMap.has(cat.id)) catMap.set(cat.id, cat);
+    });
     const pool = filterType === "income"
-      ? INCOME_CATEGORIES
+      ? allIncCats
       : filterType === "expense" || filterType === "card"
-        ? EXPENSE_CATEGORIES
-        : [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
-    return pool.filter((c) => ids.has(c.id));
-  }, [transactions, filterType]);
+        ? allExpCats
+        : [...allIncCats, ...allExpCats];
+    return pool.filter((c) => catMap.has(c.id));
+  }, [transactions, filterType, allIncCats, allExpCats]);
 
   const grouped = useMemo(() => {
     const g = {};

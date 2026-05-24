@@ -44,10 +44,10 @@ export default function BudgetView({ monthPlans, setMonthPlan, viewMonth, setVie
   const updateTotal = (v) => setPlan({ ...plan, [side]: { ...sidePlan, total: +v || 0 } });
   const updateCat = (id, v) => setPlan({ ...plan, [side]: { ...sidePlan, categories: { ...cats, [id]: v } } });
 
-  const allocated = Object.values(cats).reduce((s, v) => s + (+v || 0), 0);
-  const remaining = +total - allocated;
   const catList = side === "income" ? allIncCats : allExpCats;
   const actuals = side === "income" ? stats.byIncCat : stats.byExpCat;
+  const allocated = catList.reduce((s, c) => s + (+cats[c.id] || 0), 0);
+  const remaining = +total - allocated;
 
   const incomeTotal = plan.income?.total || 0;
   const expenseTotal = plan.expense?.total || 0;

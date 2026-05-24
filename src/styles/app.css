@@ -182,6 +182,9 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .tx-filters { display: flex; gap: 8px; margin-bottom: 16px; }
 .fselect { flex: 1; min-width: 0; appearance: none; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--border); border-radius: var(--radius); color: var(--ink); font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.04em; padding: 8px 28px 8px 10px; cursor: pointer; text-overflow: ellipsis; }
 
+/* ── INSIGHTS FILTERS ── */
+.insights-filters { display: flex; gap: 8px; padding: 0 16px; margin-bottom: 14px; }
+
 /* ── TX LIST ── */
 .tx-list { display: flex; flex-direction: column; gap: 18px; }
 .tx-date { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); padding: 0 4px 8px; }
