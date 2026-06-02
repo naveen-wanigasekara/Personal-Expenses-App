@@ -17,7 +17,11 @@ export default function AddModal({ cards, onClose, onSave, allExpCats, allIncCat
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
   const [category, setCategory] = useState(editing?.category || "loan");
   const [note, setNote] = useState(editing?.note || "");
-  const [date, setDate] = useState(editing?.date || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+    if (editing?.date) return editing.date;
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  });
   const [cardId, setCardId] = useState(editing?.cardId || cards[0]?.id || "");
 
   const [displayAmount, setDisplayAmount] = useState(() => {

@@ -12,6 +12,9 @@ export const fmtCompact = (n) => {
 };
 
 export const monthKey = (d) => {
+  // For stored date strings (YYYY-MM-DD), extract year-month directly — no Date
+  // object needed and avoids UTC-vs-local timezone shifting on month boundaries.
+  if (typeof d === "string" && /^\d{4}-\d{2}/.test(d)) return d.slice(0, 7);
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
 };

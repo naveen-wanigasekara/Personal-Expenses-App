@@ -1,26 +1,43 @@
 import { useContext } from "react";
-import { ChevronLeft, CreditCard, AlertTriangle, Edit2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CreditCard, AlertTriangle, Edit2, Trash2 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
-import { fmt, fmtCompact, monthKey } from "../utils/format.js";
+import { fmt, fmtCompact, monthKey, monthLabel } from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
-export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx }) {
+export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx, viewMonth, setViewMonth }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
+
+  const changeMonth = (dir) => {
+    const [y, m] = viewMonth.split("-").map(Number);
+    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
+  };
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const available = (+card.limit || 0) - card.currentBalance;
-  const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const selectedMonthTx = transactions.filter((t) => monthKey(t.date) === viewMonth);
+  const thisMonthPurchases = selectedMonthTx.filter((t) => t.type === "card-purchase").reduce((s, t) => s + +t.amount, 0);
+  const thisMonthPayments = selectedMonthTx.filter((t) => t.type === "card-payment").reduce((s, t) => s + +t.amount, 0);
+  const thisMonthInterest = selectedMonthTx.filter((t) => t.type === "card-interest").reduce((s, t) => s + +t.amount, 0);
+  const thisMonthNet = thisMonthPurchases + thisMonthInterest - thisMonthPayments;
 
-  const thisMonthTx = transactions.filter((t) => monthKey(t.date) === monthKey(new Date()));
-  const thisMonthPurchases = thisMonthTx.filter((t) => t.type === "card-purchase").reduce((s, t) => s + +t.amount, 0);
-  const thisMonthPayments = thisMonthTx.filter((t) => t.type === "card-payment").reduce((s, t) => s + +t.amount, 0);
-  const thisMonthInterest = thisMonthTx.filter((t) => t.type === "card-interest").reduce((s, t) => s + +t.amount, 0);
+  const grouped = Object.entries(
+    selectedMonthTx.reduce((g, t) => {
+      if (!g[t.date]) g[t.date] = [];
+      g[t.date].push(t);
+      return g;
+    }, {})
+  ).sort(([a], [b]) => b.localeCompare(a));
 
   return (
     <div className="view view-card-detail">
       <div className="detail-head">
         <button className="back-btn" onClick={onBack}><ChevronLeft size={18} /></button>
+        <div className="month-pill">
+          <button onClick={() => changeMonth(-1)} aria-label="Previous month"><ChevronLeft size={16} /></button>
+          <span>{monthLabel(viewMonth)}</span>
+          <button onClick={() => changeMonth(1)} aria-label="Next month"><ChevronRight size={16} /></button>
+        </div>
         <div className="detail-actions">
           <button className="icon-btn" onClick={onEdit}><Edit2 size={14} /></button>
           <button className="icon-btn danger"
@@ -72,30 +89,62 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
         <div className="ds-stat">
           <div className="ds-label">Purchases</div>
           <div className="ds-val out-color">+{CURRENCY} {fmtCompact(thisMonthPurchases)}</div>
-          <div className="ds-sub">This month</div>
+          <div className="ds-sub">{monthLabel(viewMonth)}</div>
         </div>
         <div className="ds-stat">
           <div className="ds-label">Payments</div>
           <div className="ds-val in-color">−{CURRENCY} {fmtCompact(thisMonthPayments)}</div>
-          <div className="ds-sub">This month</div>
+          <div className="ds-sub">{monthLabel(viewMonth)}</div>
         </div>
         <div className="ds-stat">
           <div className="ds-label">Interest</div>
           <div className="ds-val warn-color">+{CURRENCY} {fmtCompact(thisMonthInterest)}</div>
-          <div className="ds-sub">This month</div>
+          <div className="ds-sub">{monthLabel(viewMonth)}</div>
         </div>
       </div>
 
       <div className="section-hd">
         <h2>Activity</h2>
-        <span className="count">{sorted.length}</span>
+        <span className="count">{selectedMonthTx.length}</span>
       </div>
 
-      {sorted.length === 0 ? (
-        <div className="empty-sm">No activity on this card yet</div>
+      {thisMonthNet !== 0 && (
+        <div className="monthly-total-banner">
+          <span className="monthly-total-banner-lbl">{monthLabel(viewMonth)} · Outstanding</span>
+          <span className={`monthly-total-banner-amt ${thisMonthNet < 0 ? "in-color" : ""}`}>
+            {thisMonthNet < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(thisMonthNet))}
+          </span>
+        </div>
+      )}
+
+      {grouped.length === 0 ? (
+        <div className="empty-sm">
+          {transactions.length === 0 ? "No activity on this card yet" : `No activity for ${monthLabel(viewMonth)}`}
+        </div>
       ) : (
-        <div className="tx-stack">
-          {sorted.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name} />)}
+        <div className="tx-list">
+          {grouped.map(([date, items]) => {
+            const [y, mo, d] = date.split("-").map(Number);
+            const label = new Date(y, mo - 1, d).toLocaleDateString("en-US", {
+              weekday: "short", month: "short", day: "numeric",
+            });
+            const dayNet = items.reduce((s, t) => {
+              if (t.type === "card-purchase" || t.type === "card-interest") return s + +t.amount;
+              if (t.type === "card-payment") return s - +t.amount;
+              return s;
+            }, 0);
+            return (
+              <div key={date} className="tx-group">
+                <div className="tx-date">
+                  <span>{label}</span>
+                  <span className="tx-date-total">{dayNet < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(dayNet))}</span>
+                </div>
+                <div className="tx-stack">
+                  {items.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name} />)}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

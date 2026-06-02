@@ -286,6 +286,11 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .ds-val.in-color { color: var(--in); } .ds-val.out-color { color: var(--out); } .ds-val.warn-color { color: var(--warn); }
 .ds-sub { font-size: 9px; color: var(--ink-faint); margin-top: 2px; }
 
+/* ── MONTHLY TOTAL BANNER ── */
+.monthly-total-banner { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 10px; }
+.monthly-total-banner-lbl { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); }
+.monthly-total-banner-amt { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--out); font-variant-numeric: tabular-nums; }
+
 /* ── PLAN vs ACTUAL ── */
 .plan-card { padding: 20px; }
 .plan-row { padding: 14px 0; border-bottom: 1px solid var(--border); }

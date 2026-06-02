@@ -317,6 +317,8 @@ export default function MainApp({ user }) {
               onDelete={removeCard}
               onDeleteTx={deleteTx}
               onEditTx={setEditingTx}
+              viewMonth={viewMonth}
+              setViewMonth={setViewMonth}
             />
           )}
           {tab === "budget" && (
