@@ -4,7 +4,7 @@ import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
 import { fmt, fmtCompact } from "../utils/format.js";
 
-export default function CardTile({ card, onClick }) {
+export default function CardTile({ card, onClick, installmentTotal }) {
   const CURRENCY = useContext(CurrencyCtx);
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const [from, to] = card.colors || CARD_COLORS[0];
@@ -41,6 +41,11 @@ export default function CardTile({ card, onClick }) {
           <div className={`ct-util-fill ${util > 90 ? "over" : util > 70 ? "warn" : ""}`}
             style={{ width: `${Math.min(util, 100)}%` }} />
         </div>
+        {installmentTotal > 0 && (
+          <div className="ct-installment-note">
+            {CURRENCY} {fmtCompact(installmentTotal)} in active plans
+          </div>
+        )}
       </div>
     </button>
   );

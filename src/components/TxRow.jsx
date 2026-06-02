@@ -1,12 +1,17 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useRef } from "react";
 import { Edit2, Trash2, CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
 import { fmt } from "../utils/format.js";
 
-export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allIncCats }) {
+const SWIPE_THRESHOLD = 60;
+
+export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allIncCats, installmentPlan }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [open, setOpen] = useState(false);
+  const [swiped, setSwiped] = useState(false);
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
 
   let cat, sign, color;
   if (tx.type === "income") {
@@ -23,9 +28,51 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
   }
   const Icon = cat.icon;
 
+  let installmentSeq = null;
+  if (installmentPlan && tx.installmentId) {
+    const [sy, sm] = installmentPlan.startMonth.split("-").map(Number);
+    const [ty, tm] = tx.date.slice(0, 7).split("-").map(Number);
+    installmentSeq = (ty - sy) * 12 + (tm - sm) + 1;
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    const dy = Math.abs(touchStartY.current - e.changedTouches[0].clientY);
+    // Treat as swipe only if horizontal movement dominates
+    if (dy < 20) {
+      if (dx > SWIPE_THRESHOLD) { setSwiped(true); setOpen(false); }
+      else if (dx < -20) setSwiped(false);
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const handleDelete = () => {
+    setSwiped(false);
+    onDelete(tx.id);
+  };
+
+  const handleRowClick = () => {
+    if (swiped) { setSwiped(false); return; }
+    setOpen(!open);
+  };
+
   return (
-    <div className={`tx ${open ? "tx-open" : ""}`}>
-      <button className="tx-main" onClick={() => setOpen(!open)}>
+    <div
+      className={`tx ${open ? "tx-open" : ""} ${swiped ? "tx-swiped" : ""}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <button className="tx-swipe-del-btn" onClick={handleDelete} tabIndex={-1} aria-label="Delete">
+        <Trash2 size={16} />
+      </button>
+      <button className="tx-main" onClick={handleRowClick}>
         <div className="tx-icon" style={{ background: `${cat.color}1a`, color: cat.color }}>
           <Icon size={17} strokeWidth={2} />
         </div>
@@ -34,6 +81,9 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
             {tx.note || cat.label}
             {cardName && tx.type !== "card-payment" && (
               <span className="tx-card-chip"><CreditCard size={9} /> {cardName}</span>
+            )}
+            {installmentPlan && installmentSeq && (
+              <span className="tx-installment-chip">{installmentSeq}/{installmentPlan.totalMonths}</span>
             )}
           </div>
           <div className="tx-sub">

@@ -1,6 +1,6 @@
 # Personal Expense Finance App
 
-A mobile-first personal finance tracker for Sri Lanka (LKR), with income/expense tracking, credit card management, budgeting, and insights.
+A mobile-first personal finance tracker with income/expense tracking, credit card management, installment plans, budgeting, and insights.
 
 ---
 
@@ -22,9 +22,9 @@ Four tabs at the bottom of the screen:
 
 | Tab | Purpose |
 |-----|---------|
-| **Insights** | Dashboard — summaries, charts, and breakdowns |
+| **Insights** | Dashboard — summaries, charts, and notifications |
 | **Ledger** | Full transaction history |
-| **Cards** | Credit card management |
+| **Cards** | Credit card management and installment plans |
 | **Budget** | Income targets and spending limits |
 
 The **+ button** (floating action button) opens the Add Transaction form from any screen.
@@ -44,7 +44,7 @@ The **+ button** (floating action button) opens the Add Transaction form from an
 | **Card Interest** | Interest or fees charged by the bank |
 
 ### 2. Enter the amount
-Type the amount in Rs. The field formats automatically with commas.
+Type the amount. The field formats automatically with commas.
 
 ### 3. Select a card *(card transactions only)*
 Pick which credit card from the visual card selector.
@@ -62,6 +62,35 @@ Tap **Record** to save.
 
 ---
 
+## Installment Plans
+
+When adding a **Card Purchase**, you can split it into equal monthly installments instead of recording it as a single charge.
+
+### Setting up a plan
+
+1. Tap **New** and choose **Card Purchase**.
+2. Enter the monthly installment amount and select the card.
+3. Tap **Split into installments** to enable the toggle.
+4. Fill in:
+   - **Plan label** — a name for this plan (e.g. "iPhone 16")
+   - **Number of months** — how many monthly payments
+   - **Start month** — the first month the charge appears
+5. Tap **Create Plan**.
+
+The app pre-creates all monthly transactions at once. Your card balance reflects the full outstanding amount immediately, but each month's Ledger and budget only shows that month's installment amount.
+
+Each installment transaction displays a badge (e.g. **2/12**) so you can see where you are in the plan.
+
+### Paying an installment
+
+When it's time to pay your bank each month, record it as a regular **Card Payment** for the installment amount. The plan tracks the charges; Card Payments track the cash you send to settle them.
+
+### Cancelling a plan
+
+Open the **Card Detail** screen, find the plan under **Active Plans**, and tap **Cancel**. Past installments are kept as-is; future installments (from next month onward) are deleted and the card balance updates accordingly.
+
+---
+
 ## Ledger Tab
 
 ### Viewing Transactions
@@ -69,9 +98,13 @@ Transactions are grouped by date with a daily subtotal per group. Each entry sho
 - `+` green = income
 - `−` red = expense
 - Card transactions show a card name badge
+- Installment transactions show a progress badge (e.g. **3/12**)
 
 ### Filtering
 Use the dropdowns at the top to filter by **month**, **transaction type**, or **category**. The filter bar shows how many transactions match (e.g., "12 of 45").
+
+### Editing a Transaction
+Tap a transaction to expand it, then tap **Edit**. The form opens pre-filled — update any field and tap **Save changes**.
 
 ### Deleting a Transaction
 Tap a transaction to expand it, then tap the **delete icon**.
@@ -97,7 +130,10 @@ The top summary shows total debt, total available credit, and overall utilizatio
 | Above 90% | Danger (red) |
 
 ### Card Detail
-Tap a card to view this month's purchases, payments, and interest charges; the full activity list; and edit/delete options.
+Tap a card to see:
+- This month's purchases, payments, and interest charges
+- **Active Plans** — all running installment plans on this card, with monthly amount, progress bar (paid/total months), and a **Cancel** option
+- Full activity list for the selected month
 
 > Deleting a card does **not** delete its linked transactions.
 
@@ -132,15 +168,24 @@ Tap **Save** to apply changes.
 
 > **Tip:** Tap **Copy Fixed Plan** to pre-fill the current month with your default values, then adjust as needed.
 
+> **Note:** Installment plan transactions count toward the relevant expense category budget in each month they appear — including future months. This lets you see upcoming financial commitments before they arrive.
+
 ---
 
 ## Insights Tab
 
 Use **← →** to navigate between months.
 
+### Notification Bell
+The **bell icon** in the top-right of the Insights tab shows a red badge with the count of active notifications. Tap it to open the Notifications panel:
+
+- **Installment Payments** — installment plans with a charge due this month, showing the card, current installment number (e.g. 3/12), and monthly amount
+- **Recurring Bills** — any recurring payment reminders active for this month
+
 ### Top Summary
 - **Net Balance** — income minus expenses for the selected month
-- **Income vs. Expenses** — totals at a glance
+- **In / Out** — total income and total expenses at a glance
+- **Cash in Hand** — cumulative available cash (all income minus cash expenses and card payments)
 - **Card Debt Summary** — total debt and overall utilization across all cards
 
 ### Plan vs. Actual
@@ -155,12 +200,15 @@ Each income category shows total received, percentage of total income, and (if b
 ### Expense Breakdown — "Where it went"
 Each expense category shows total spent, percentage of total spending, and (if budgeted) a progress bar vs. the limit — turns red when over budget.
 
+### Customising the Layout
+Tap the **sliders icon** (top-right) to open the Customise sheet. Toggle any of the ten sections on or off, reorder them with the up/down arrows, or tap **Reset to default** to restore the original layout. Your preferences are saved automatically.
+
 ---
 
 ## Custom Categories
 
 ### Adding a Custom Category
-1. Go to **Settings → Manage Categories**, or tap **+ Add** inside the Add Transaction form.
+1. Go to **Account → Manage Categories**, or tap **+ Add** inside the Add Transaction form.
 2. Enter a name (max 28 characters), pick an icon, and choose a colour.
 3. Select **Income** or **Expense**.
 4. Tap **Save**.
@@ -176,7 +224,9 @@ Tap your **avatar (your initial)** in the top-right of the Insights tab.
 | Option | Description |
 |--------|-------------|
 | Account info | Your email and member-since date |
+| Help & user guide | Opens this guide inside the app |
 | Manage Categories | Add, edit, or delete custom categories |
+| Currency | Switch between 12 supported currencies |
 | Contact Support | Opens a WhatsApp support link |
 | Sign Out | Logs you out of the app |
 
@@ -186,12 +236,29 @@ Tap your **avatar (your initial)** in the top-right of the Insights tab.
 
 - Record monthly card bills as **Card Payment** — not as an expense — so the app doesn't double-count it.
 - Record items bought on credit as **Card Purchase**, not as a plain expense.
+- When setting up an installment plan, create it at the time of purchase. The app pre-fills all future months immediately so your balance and budget reflect the full commitment right away.
+- Check the **bell icon** on Insights at the start of each month to review installment payments due and any recurring reminders.
 - Set a **Fixed Plan** first, then use **Month Overrides** for unusual months (holidays, big purchases, etc.).
 - Review **Insights** at month-end to compare plan vs. actual and spot overspending categories.
-- The **running balance** in Insights is cumulative across all time — useful for tracking your overall financial trajectory.
+- The **Cash in Hand** figure in Insights is cumulative across all time — useful for tracking your overall financial trajectory.
 
 ---
 
 ## Currency
 
-All amounts are in **Sri Lankan Rupees (Rs. / LKR)**. Large numbers display in compact form (e.g., Rs. 1.2M).
+Choose from 12 supported currencies in Account settings. Your selection is saved per account and applies instantly everywhere in the app:
+
+| Symbol | Code | Currency |
+|--------|------|----------|
+| Rs. | LKR | Sri Lankan Rupee |
+| $ | USD | US Dollar |
+| A$ | AUD | Australian Dollar |
+| € | EUR | Euro |
+| £ | GBP | British Pound |
+| S$ | SGD | Singapore Dollar |
+| ₹ | INR | Indian Rupee |
+| ¥ | JPY | Japanese Yen |
+| C$ | CAD | Canadian Dollar |
+| Fr | CHF | Swiss Franc |
+| NZ$ | NZD | New Zealand Dollar |
+| AED | AED | UAE Dirham |

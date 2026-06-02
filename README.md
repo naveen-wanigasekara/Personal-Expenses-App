@@ -34,12 +34,22 @@ A mobile-first personal finance app that helps you record every transaction in a
 - **Cashflow chart** — 3-month bar chart with budget target lines overlaid
 - **Cash in Hand** — true available cash balance (adds income, subtracts cash expenses and card payments; ignores card purchases that haven't been paid off yet)
 - **Credit health** — total debt, available credit, and utilization warnings (≥70% warn, ≥90% danger)
+- **Notification bell** — badge-counted bell icon in the Insights header; opens a panel showing installment payments due this month and any active recurring bill reminders
 
 ### 💳 Honest credit card tracking
 Three transaction types designed to avoid double-counting:
 - **Card Purchase** — adds to card balance and counts as an expense in its category
 - **Card Payment** — reduces card balance, *not* a new expense (the spending was already recorded when you bought something)
 - **Card Interest & Fees** — adds to balance and counts as a real cost
+
+### 📆 Installment plans
+Split a large card purchase into equal monthly payments:
+- Toggle **Split into Installments** when adding a Card Purchase — enter the plan label, number of months, and start month
+- The full outstanding amount is reflected in the card balance immediately; each month's Ledger shows only that month's installment
+- An installment badge (e.g. **3/12**) appears on every transaction row linked to a plan
+- Active plans are visible in **Card Detail** with a progress bar and elapsed/remaining months
+- Cancel a plan at any time — past installments are preserved, future ones are removed and the balance updates accordingly
+- Installment charges flow through the budget system like any card purchase, so future months show the committed spending automatically
 
 ### 🌍 Multi-currency support
 Choose from 12 currencies in the Account settings — the selection is saved per account and applies instantly everywhere:
@@ -167,15 +177,17 @@ personal-expenses-tracker/
 │       ├── BudgetView.jsx        Budget tab (fixed plan + monthly overrides)
 │       ├── CardsView.jsx         Cards tab (list + summary)
 │       ├── CardDetailView.jsx    Individual card detail + activity
-│       ├── AddModal.jsx          Add transaction bottom sheet
+│       ├── AddModal.jsx          Add transaction bottom sheet (+ installment toggle)
 │       ├── CardFormModal.jsx     Add/edit card bottom sheet
 │       ├── CardTile.jsx          Card visual tile component
 │       ├── CategoriesModal.jsx   Manage categories sheet
 │       ├── CategoryFormModal.jsx Add/edit category form
 │       ├── SettingsModal.jsx     Account settings (currency, categories, sign out)
 │       ├── HelpModal.jsx         Help & Guide accordion modal
+│       ├── NotificationsPanel.jsx Notifications bottom sheet (installments + reminders)
+│       ├── RecurringRemindersModal.jsx Recurring bill reminders management
 │       ├── AuthScreen.jsx        Sign in / sign up / forgot password
-│       ├── TxRow.jsx             Single transaction row (expandable)
+│       ├── TxRow.jsx             Single transaction row (expandable, installment badge)
 │       ├── AmountInput.jsx       Formatted numeric input
 │       ├── NavBtn.jsx            Bottom nav button
 │       └── PWABanners.jsx        Install + update banners
@@ -197,9 +209,11 @@ personal-expenses-tracker/
 
 Three tables, all secured with Row-Level Security:
 
-- **`transactions`** — income, expenses, card purchases, card payments, and card interest. Encrypted columns: `amount`, `category`, `note`, `date`.
+- **`transactions`** — income, expenses, card purchases, card payments, and card interest. Encrypted columns: `amount`, `category`, `note`, `date`. Nullable `installment_id` foreign key links transactions to a plan.
 - **`cards`** — credit card accounts with limits and opening balances. Encrypted columns: `name`, `credit_limit`, `opening_balance`, `colors`.
 - **`budgets`** — monthly plans (`month_key = 'fixed'` for the default; `'2026-04'` for overrides). Encrypted columns: `income_total`, `income_categories`, `expense_total`, `expense_categories`.
+- **`installment_plans`** — credit card installment plans; one row per plan, `active` boolean, never deleted on cancellation. Encrypted columns: `label`, `total_amount`, `monthly_amount`, `total_months`, `start_month`, `category`.
+- **`recurring_reminders`** — user-defined recurring bill reminders; `active` boolean, optional `category` for auto-dismiss logic. Encrypted columns: `label`, `amount`, `day_of_month`, `category`.
 
 All encrypted columns are stored as `text`; the encryption layer handles serialization. Full schema with RLS policies in [`db/schema.sql`](./db/schema.sql).
 
@@ -241,7 +255,8 @@ For personal use you'll never get close to any limit.
 
 ## Roadmap ideas
 
-- [ ] Recurring transactions (auto-create rent, salary, etc.)
+- [x] Installment plan tracking for credit card purchases
+- [ ] Recurring payment reminders (infrastructure in place; UI entry point temporarily disabled)
 - [ ] Savings goals with progress tracking
 - [ ] Export to CSV / Excel
 - [ ] Receipt photo attachments (Supabase Storage)

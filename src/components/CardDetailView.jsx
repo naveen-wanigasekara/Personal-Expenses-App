@@ -1,13 +1,23 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { ChevronLeft, ChevronRight, CreditCard, AlertTriangle, Edit2, Trash2 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
 import { fmt, fmtCompact, monthKey, monthLabel } from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
-export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx, viewMonth, setViewMonth }) {
+export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
+  const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
+
+  const now = new Date();
+  const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const activePlans = (installmentPlans || []).filter((p) => p.cardId === card.id && p.active);
+  const planElapsed = (plan) => {
+    const [sy, sm] = plan.startMonth.split("-").map(Number);
+    const [cy, cm] = currentMk.split("-").map(Number);
+    return Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
+  };
 
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -103,6 +113,39 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
         </div>
       </div>
 
+      {activePlans.length > 0 && (
+        <>
+          <div className="section-hd">
+            <h2>Active Plans</h2>
+            <span className="count">{activePlans.length}</span>
+          </div>
+          <div className="installment-plans-list">
+            {activePlans.map((plan) => {
+              const paid = planElapsed(plan);
+              const remaining = plan.totalMonths - paid;
+              return (
+                <div key={plan.id} className="installment-plan-row">
+                  <div className="ipr-info">
+                    <div className="ipr-label">{plan.label}</div>
+                    <div className="ipr-meta">
+                      {CURRENCY} {fmtCompact(plan.monthlyAmount)}/mo · {paid}/{plan.totalMonths} months
+                    </div>
+                    <div className="ipr-bar">
+                      <div className="ipr-fill" style={{ width: `${(paid / plan.totalMonths) * 100}%` }} />
+                    </div>
+                  </div>
+                  <button className="ipr-cancel" onClick={() => {
+                    if (confirm(`Cancel "${plan.label}"? Past installments are kept. ${remaining} future installment(s) will be removed.`)) {
+                      onCancelPlan(plan.id);
+                    }
+                  }}>Cancel</button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <div className="section-hd">
         <h2>Activity</h2>
         <span className="count">{selectedMonthTx.length}</span>
@@ -140,7 +183,8 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
                   <span className="tx-date-total">{dayNet < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(dayNet))}</span>
                 </div>
                 <div className="tx-stack">
-                  {items.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name} />)}
+                  {items.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name}
+                    installmentPlan={t.installmentId ? (installmentPlans || []).find((p) => p.id === t.installmentId) : null} />)}
                 </div>
               </div>
             );

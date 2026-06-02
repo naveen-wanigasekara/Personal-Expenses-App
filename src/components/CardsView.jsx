@@ -1,11 +1,11 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import { CreditCard, Plus } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact } from "../utils/format.js";
 import CardTile from "./CardTile.jsx";
 import CardDetailView from "./CardDetailView.jsx";
 
-export default function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx, onEditTx, viewMonth, setViewMonth }) {
+export default function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [selectedCard, setSelectedCard] = useState(null);
   const totalDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
@@ -18,6 +18,14 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  const installmentTotalByCard = useMemo(() => {
+    const totals = {};
+    (installmentPlans || []).filter((p) => p.active).forEach((p) => {
+      totals[p.cardId] = (totals[p.cardId] || 0) + p.monthlyAmount * p.totalMonths;
+    });
+    return totals;
+  }, [installmentPlans]);
+
   const currentSelected = selectedCard ? cards.find((c) => c.id === selectedCard.id) : null;
 
   if (currentSelected) {
@@ -29,8 +37,8 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
         onDelete={() => { onDelete(currentSelected.id); setSelectedCard(null); }}
         onDeleteTx={onDeleteTx}
         onEditTx={onEditTx}
-        viewMonth={viewMonth}
-        setViewMonth={setViewMonth} />
+        installmentPlans={installmentPlans}
+        onCancelPlan={onCancelPlan} />
     );
   }
 
@@ -79,7 +87,8 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
         ) : (
           <div className="cards-stack">
             {cards.map((card) => (
-              <CardTile key={card.id} card={card} onClick={() => setSelectedCard(card)} />
+              <CardTile key={card.id} card={card} onClick={() => setSelectedCard(card)}
+                installmentTotal={installmentTotalByCard[card.id] || 0} />
             ))}
           </div>
         )}

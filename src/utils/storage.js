@@ -49,6 +49,13 @@ export function saveUserCurrency(userId, sym) {
   localStorage.setItem(`user_currency_${userId}`, sym);
 }
 
+export function loadLastCategory(userId, type) {
+  return localStorage.getItem(`last_cat_${userId}_${type}`) || null;
+}
+export function saveLastCategory(userId, type, catId) {
+  if (catId) localStorage.setItem(`last_cat_${userId}_${type}`, catId);
+}
+
 export function loadInsightsLayout(userId) {
   try {
     const raw = localStorage.getItem(`insights_layout_${userId}`);

@@ -5,6 +5,8 @@ import {
   fetchTransactions, insertTransaction, updateTransaction, deleteTransaction,
   fetchCards, upsertCard, deleteCard,
   fetchBudgets, upsertBudget,
+  fetchInstallmentPlans, insertInstallmentPlan, updateInstallmentPlan,
+  fetchRecurringReminders, insertRecurringReminder, updateRecurringReminder, deleteRecurringReminder,
 } from "../lib/supabase.js";
 import { loadUserCats, saveUserCats, loadUserCurrency, saveUserCurrency } from "../utils/storage.js";
 import { monthKey, emptyPlan } from "../utils/format.js";
@@ -19,6 +21,7 @@ import CardFormModal from "./CardFormModal.jsx";
 import SettingsModal from "./SettingsModal.jsx";
 import HelpModal from "./HelpModal.jsx";
 import CategoriesModal from "./CategoriesModal.jsx";
+import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 
 export default function MainApp({ user }) {
   const [tab, setTab] = useState("dashboard");
@@ -37,7 +40,11 @@ export default function MainApp({ user }) {
   const [userCats, setUserCats] = useState(() => loadUserCats(user.id));
   const [showCatsModal, setShowCatsModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
   const [currency, setCurrency] = useState(() => loadUserCurrency(user.id));
+  const [installmentPlans, setInstallmentPlans] = useState([]);
+  const [recurringReminders, setRecurringReminders] = useState([]);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const updateCurrency = useCallback((sym) => {
     setCurrency(sym);
@@ -76,15 +83,18 @@ export default function MainApp({ user }) {
   useEffect(() => {
     (async () => {
       try {
-        const [txRows, cardRows, budgetRows] = await Promise.all([
+        const [txRows, cardRows, budgetRows, planRows, reminderRows] = await Promise.all([
           fetchTransactions(user.id),
           fetchCards(user.id),
           fetchBudgets(user.id),
+          fetchInstallmentPlans(user.id),
+          fetchRecurringReminders(user.id),
         ]);
 
         setTransactions(txRows.map((r) => ({
           id: r.id, type: r.type, amount: +r.amount, category: r.category,
           cardId: r.card_id, note: r.note || "", date: r.date,
+          installmentId: r.installment_id || null,
         })));
 
         setCards(cardRows.map((r) => ({
@@ -104,6 +114,20 @@ export default function MainApp({ user }) {
         });
         setMonthPlans(plans);
         setFixedPlan(fixed);
+
+        setInstallmentPlans(planRows.map((r) => ({
+          id: r.id, cardId: r.card_id, label: r.label,
+          totalAmount: +r.total_amount, monthlyAmount: +r.monthly_amount,
+          totalMonths: +r.total_months, startMonth: r.start_month,
+          category: r.category, active: r.active,
+        })));
+
+        setRecurringReminders(reminderRows.map((r) => ({
+          id: r.id, label: r.label,
+          amount: r.amount != null ? +r.amount : null,
+          dayOfMonth: +r.day_of_month, category: r.category || null,
+          active: r.active,
+        })));
       } catch (e) {
         console.error(e);
         setErrorBanner("Couldn't load your data. Please refresh.");
@@ -134,16 +158,34 @@ export default function MainApp({ user }) {
     }
   }, [user.id]);
 
-  const deleteTx = useCallback(async (id) => {
-    const prev = transactions;
+  const deleteTx = useCallback((id) => {
+    const tx = transactions.find((t) => t.id === id);
+    if (!tx) return;
+    // Flush any previous pending delete immediately
+    setPendingDelete((prev) => {
+      if (prev) {
+        clearTimeout(prev.timer);
+        deleteTransaction(prev.tx.id).catch(() => {});
+      }
+      return null;
+    });
     setTransactions((p) => p.filter((t) => t.id !== id));
-    try {
-      await deleteTransaction(id);
-    } catch (e) {
-      setTransactions(prev);
-      showError("Couldn't delete transaction.");
-    }
+    const timer = setTimeout(async () => {
+      setPendingDelete(null);
+      try { await deleteTransaction(id); }
+      catch { showError("Couldn't delete transaction."); }
+    }, 5000);
+    setPendingDelete({ tx, timer });
   }, [transactions]);
+
+  const undoDelete = useCallback(() => {
+    setPendingDelete((prev) => {
+      if (!prev) return null;
+      clearTimeout(prev.timer);
+      setTransactions((p) => [prev.tx, ...p]);
+      return null;
+    });
+  }, []);
 
   const editTx = useCallback(async (id, updates) => {
     const prev = transactions;
@@ -223,6 +265,104 @@ export default function MainApp({ user }) {
     }
   }, [user.id]);
 
+  const saveInstallmentPlan = useCallback(async (planData) => {
+    const planId = `plan_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const newPlan = {
+      id: planId, cardId: planData.cardId, label: planData.label,
+      totalAmount: planData.monthlyAmount * planData.totalMonths,
+      monthlyAmount: planData.monthlyAmount, totalMonths: planData.totalMonths,
+      startMonth: planData.startMonth, category: planData.category, active: true,
+    };
+    const txs = [];
+    for (let i = 0; i < planData.totalMonths; i++) {
+      const [y, m] = planData.startMonth.split("-").map(Number);
+      const d = new Date(y, m - 1 + i, 1);
+      const txDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      txs.push({
+        id: `ptx_${planId}_${i}`,
+        type: "card-purchase", amount: planData.monthlyAmount,
+        category: planData.category, cardId: planData.cardId,
+        note: planData.label, date: txDate, installmentId: planId,
+      });
+    }
+    setInstallmentPlans((prev) => [...prev, newPlan]);
+    setTransactions((prev) => [...txs, ...prev]);
+    try {
+      await insertInstallmentPlan({
+        id: planId, user_id: user.id, card_id: planData.cardId,
+        label: planData.label, total_amount: newPlan.totalAmount,
+        monthly_amount: planData.monthlyAmount, total_months: planData.totalMonths,
+        start_month: planData.startMonth, category: planData.category,
+      });
+      await Promise.all(txs.map((t) => insertTransaction({
+        id: t.id, user_id: user.id, type: t.type, amount: t.amount,
+        category: t.category, card_id: t.cardId, note: t.note,
+        date: t.date, installment_id: planId,
+      })));
+    } catch (e) {
+      setInstallmentPlans((prev) => prev.filter((p) => p.id !== planId));
+      setTransactions((prev) => prev.filter((t) => t.installmentId !== planId));
+      showError("Couldn't save installment plan. Try again.");
+    }
+  }, [user.id]);
+
+  const cancelInstallmentPlan = useCallback(async (planId) => {
+    const now = new Date();
+    const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const futureTxIds = transactions
+      .filter((t) => t.installmentId === planId && monthKey(t.date) > currentMk)
+      .map((t) => t.id);
+    setTransactions((prev) => prev.filter((t) => !futureTxIds.includes(t.id)));
+    setInstallmentPlans((prev) => prev.map((p) => p.id === planId ? { ...p, active: false } : p));
+    try {
+      await Promise.all(futureTxIds.map((id) => deleteTransaction(id)));
+      await updateInstallmentPlan(planId, { active: false });
+    } catch (e) {
+      showError("Couldn't cancel plan.");
+    }
+  }, [transactions]);
+
+  const saveRecurringReminder = useCallback(async (reminder) => {
+    if (reminder.id) {
+      const prev = recurringReminders;
+      setRecurringReminders((p) => p.map((r) => r.id === reminder.id ? reminder : r));
+      try {
+        await updateRecurringReminder(reminder.id, {
+          label: reminder.label, amount: reminder.amount,
+          day_of_month: reminder.dayOfMonth, category: reminder.category, active: reminder.active,
+        });
+      } catch (e) {
+        setRecurringReminders(prev);
+        showError("Couldn't update reminder.");
+      }
+    } else {
+      const id = `rem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const newR = { ...reminder, id, active: true };
+      setRecurringReminders((p) => [...p, newR]);
+      try {
+        await insertRecurringReminder({
+          id, user_id: user.id, label: reminder.label,
+          amount: reminder.amount, day_of_month: reminder.dayOfMonth,
+          category: reminder.category, active: true,
+        });
+      } catch (e) {
+        setRecurringReminders((p) => p.filter((r) => r.id !== id));
+        showError("Couldn't save reminder.");
+      }
+    }
+  }, [recurringReminders, user.id]);
+
+  const removeRecurringReminder = useCallback(async (id) => {
+    const prev = recurringReminders;
+    setRecurringReminders((p) => p.filter((r) => r.id !== id));
+    try {
+      await deleteRecurringReminder(id);
+    } catch (e) {
+      setRecurringReminders(prev);
+      showError("Couldn't delete reminder.");
+    }
+  }, [recurringReminders]);
+
   const cardsWithBalance = useMemo(() => {
     return cards.map((card) => {
       let balance = card.openingBalance || 0;
@@ -295,6 +435,7 @@ export default function MainApp({ user }) {
               transactions={monthStats.list} onDelete={deleteTx} onEdit={setEditingTx}
               cards={cardsWithBalance}
               allExpCats={allExpCats} allIncCats={allIncCats}
+              installmentPlans={installmentPlans}
             />
           )}
           {tab === "dashboard" && (
@@ -307,6 +448,9 @@ export default function MainApp({ user }) {
               onOpenSettings={() => setShowSettings(true)}
               allExpCats={allExpCats} allIncCats={allIncCats}
               onModalChange={setChildModalOpen}
+              installmentPlans={installmentPlans}
+              recurringReminders={recurringReminders}
+              allTransactions={transactions}
             />
           )}
           {tab === "cards" && (
@@ -319,6 +463,8 @@ export default function MainApp({ user }) {
               onEditTx={setEditingTx}
               viewMonth={viewMonth}
               setViewMonth={setViewMonth}
+              installmentPlans={installmentPlans}
+              onCancelPlan={cancelInstallmentPlan}
             />
           )}
           {tab === "budget" && (
@@ -332,7 +478,7 @@ export default function MainApp({ user }) {
           )}
         </main>
 
-        {!showAdd && !editingTx && !showCardForm && !showSettings && !showHelp && !showCatsModal && !childModalOpen && (
+        {!showAdd && !editingTx && !showCardForm && !showSettings && !showHelp && !showCatsModal && !showReminders && !childModalOpen && (
           <nav className="nav">
             <NavBtn icon={BarChart3} label="Insights" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
             <NavBtn icon={Wallet} label="Ledger" active={tab === "home"} onClick={() => setTab("home")} />
@@ -345,12 +491,22 @@ export default function MainApp({ user }) {
           </nav>
         )}
 
+        {pendingDelete && (
+          <div className="undo-snackbar">
+            <span>Transaction deleted</span>
+            <button className="undo-btn" onClick={undoDelete}>Undo</button>
+          </div>
+        )}
+
         {showAdd && (
           <AddModal
             cards={cardsWithBalance} onClose={() => setShowAdd(false)}
             onSave={(tx) => { addTx(tx); setShowAdd(false); }}
+            onSaveInstallment={(plan) => { saveInstallmentPlan(plan); setShowAdd(false); }}
             allExpCats={allExpCats} allIncCats={allIncCats}
             onAddCat={addCat}
+            userId={user.id}
+            installmentPlans={installmentPlans}
           />
         )}
 
@@ -361,6 +517,8 @@ export default function MainApp({ user }) {
             onSave={(tx) => { editTx(editingTx.id, tx); setEditingTx(null); }}
             allExpCats={allExpCats} allIncCats={allIncCats}
             onAddCat={addCat}
+            userId={user.id}
+            installmentPlans={installmentPlans}
           />
         )}
 
@@ -376,12 +534,23 @@ export default function MainApp({ user }) {
           <SettingsModal user={user} onClose={() => setShowSettings(false)}
             onOpenCategories={() => { setShowSettings(false); setShowCatsModal(true); }}
             onOpenHelp={() => { setShowSettings(false); setShowHelp(true); }}
+            onOpenReminders={() => { setShowSettings(false); setShowReminders(true); }}
             currency={currency} onChangeCurrency={updateCurrency}
           />
         )}
 
         {showHelp && (
           <HelpModal onClose={() => setShowHelp(false)} />
+        )}
+
+        {showReminders && (
+          <RecurringRemindersModal
+            reminders={recurringReminders}
+            onClose={() => setShowReminders(false)}
+            onSave={saveRecurringReminder}
+            onDelete={removeRecurringReminder}
+            allExpCats={allExpCats}
+          />
         )}
 
         {showCatsModal && (

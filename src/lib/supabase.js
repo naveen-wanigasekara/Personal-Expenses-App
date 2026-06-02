@@ -134,3 +134,77 @@ export async function upsertBudget(budget) {
   if (error) throw error;
   return decryptFields(data, BUDGET_ENC);
 }
+
+const INSTALLMENT_ENC = ["label", "total_amount", "monthly_amount", "total_months", "start_month", "category"];
+const REMINDER_ENC = ["label", "amount", "day_of_month", "category"];
+
+/* Installment Plans */
+export async function fetchInstallmentPlans(userId) {
+  const { data, error } = await supabase
+    .from("installment_plans")
+    .select("*")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return Promise.all((data || []).map((r) => decryptFields(r, INSTALLMENT_ENC)));
+}
+
+export async function insertInstallmentPlan(plan) {
+  const enc = await encryptFields(plan, INSTALLMENT_ENC);
+  const { data, error } = await supabase
+    .from("installment_plans")
+    .insert([enc])
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, INSTALLMENT_ENC);
+}
+
+export async function updateInstallmentPlan(id, updates) {
+  const enc = await encryptFields(updates, INSTALLMENT_ENC);
+  const { data, error } = await supabase
+    .from("installment_plans")
+    .update(enc)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, INSTALLMENT_ENC);
+}
+
+/* Recurring Reminders */
+export async function fetchRecurringReminders(userId) {
+  const { data, error } = await supabase
+    .from("recurring_reminders")
+    .select("*")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return Promise.all((data || []).map((r) => decryptFields(r, REMINDER_ENC)));
+}
+
+export async function insertRecurringReminder(reminder) {
+  const enc = await encryptFields(reminder, REMINDER_ENC);
+  const { data, error } = await supabase
+    .from("recurring_reminders")
+    .insert([enc])
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, REMINDER_ENC);
+}
+
+export async function updateRecurringReminder(id, updates) {
+  const enc = await encryptFields(updates, REMINDER_ENC);
+  const { data, error } = await supabase
+    .from("recurring_reminders")
+    .update(enc)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, REMINDER_ENC);
+}
+
+export async function deleteRecurringReminder(id) {
+  const { error } = await supabase.from("recurring_reminders").delete().eq("id", id);
+  if (error) throw error;
+}

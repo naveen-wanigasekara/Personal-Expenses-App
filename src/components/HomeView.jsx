@@ -1,26 +1,27 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Search, X } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, monthKey } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
 import TxRow from "./TxRow.jsx";
 
-export default function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, onEdit, cards, allExpCats, allIncCats }) {
+export default function HomeView({ stats, viewMonth, setViewMonth, transactions, onDelete, onEdit, cards, allExpCats, allIncCats, installmentPlans }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [filterCat, setFilterCat] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  useEffect(() => { setFilterCat("all"); setFilterType("all"); }, [viewMonth]);
+  useEffect(() => { setFilterCat("all"); setFilterType("all"); setSearch(""); }, [viewMonth]);
 
-  const last6months = useMemo(() => {
+  const last12months = useMemo(() => {
     const out = [];
     const now = new Date();
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       out.push(monthKey(d));
     }
@@ -35,15 +36,21 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
   };
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return transactions.filter((t) => {
       const typeMatch = filterType === "all"
         || (filterType === "card" && ["card-purchase", "card-payment", "card-interest"].includes(t.type))
         || (filterType === "income" && t.type === "income")
         || (filterType === "expense" && t.type === "expense");
       const catMatch = filterCat === "all" || effectiveCatId(t) === filterCat;
-      return typeMatch && catMatch;
+      if (!typeMatch || !catMatch) return false;
+      if (!q) return true;
+      const note = (t.note || "").toLowerCase();
+      const amt = String(t.amount);
+      const catLabel = getCat(t.category, t.type === "income" ? "income" : "expense", allExpCats, allIncCats).label.toLowerCase();
+      return note.includes(q) || amt.includes(q) || catLabel.includes(q);
     });
-  }, [transactions, filterCat, filterType, allExpCats, allIncCats]);
+  }, [transactions, filterCat, filterType, search, allExpCats, allIncCats]);
 
   const activeCats = useMemo(() => {
     // Build a map of effective category IDs → category objects (mirrors how TxRow resolves cats)
@@ -85,9 +92,25 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
           </span>
         </div>
 
+        <div className="tx-search-bar">
+          <Search size={14} className="tx-search-icon" />
+          <input
+            className="tx-search-input"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by note, amount, or category…"
+          />
+          {search && (
+            <button className="tx-search-clear" onClick={() => setSearch("")} aria-label="Clear search">
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
         <div className="tx-filters">
           <select className="fselect" value={viewMonth} onChange={(e) => setViewMonth(e.target.value)}>
-            {last6months.map((mk) => {
+            {last12months.map((mk) => {
               const [y, mo] = mk.split("-");
               const lbl = new Date(+y, +mo - 1, 1).toLocaleDateString("en-US", { month: "short", year: "numeric" });
               return <option key={mk} value={mk}>{lbl}</option>;
@@ -114,7 +137,7 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
           <div className="empty">
             <div className="empty-icon"><Sparkles size={28} strokeWidth={1.5} /></div>
             <div className="empty-title">{transactions.length === 0 ? "Nothing here yet" : "No matches"}</div>
-            <div className="empty-sub">{transactions.length === 0 ? "Tap + to record your first entry" : "Try a different filter"}</div>
+            <div className="empty-sub">{transactions.length === 0 ? "Tap + to record your first entry" : search ? "Try different search terms or clear the search" : "Try a different filter"}</div>
           </div>
         ) : (
           <div className="tx-list">
@@ -136,7 +159,8 @@ export default function HomeView({ stats, viewMonth, setViewMonth, transactions,
                     {items.map((t) => (
                       <TxRow key={t.id} tx={t} onDelete={onDelete} onEdit={onEdit}
                         cardName={t.cardId ? getCardName(t.cardId) : null}
-                        allExpCats={allExpCats} allIncCats={allIncCats} />
+                        allExpCats={allExpCats} allIncCats={allIncCats}
+                        installmentPlan={t.installmentId ? (installmentPlans || []).find((p) => p.id === t.installmentId) : null} />
                     ))}
                   </div>
                 </div>

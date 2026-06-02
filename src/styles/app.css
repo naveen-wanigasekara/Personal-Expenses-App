@@ -22,6 +22,7 @@
   --danger-soft: rgba(255, 107, 107, 0.14);
   --neutral: #a594f9;
   --neutral-soft: rgba(165, 148, 249, 0.14);
+  --warn-soft: rgba(245, 194, 101, 0.12);
   --radius: 18px;
   --radius-sm: 12px;
   --radius-lg: 24px;
@@ -193,7 +194,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .tx { border-bottom: 1px solid var(--border); transition: background 0.15s; }
 .tx:last-child { border-bottom: none; }
 .tx-open { background: var(--surface-2); }
-.tx-main { width: 100%; background: none; border: none; padding: 13px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; text-align: left; font-family: inherit; color: var(--ink); }
+.tx-main { width: 100%; background: none; border: none; padding: 13px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; text-align: left; font-family: inherit; color: var(--ink); transition: transform 0.2s ease; }
 .tx-main:hover { background: var(--surface-2); }
 .tx-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .tx-body { flex: 1; min-width: 0; }
@@ -563,6 +564,105 @@ body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webk
 .help-item-a { padding: 0 12px 12px; border-top: 1px solid var(--border); }
 .help-item-a p { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 8px 0 0; }
 .help-item-a p:first-child { margin-top: 10px; }
+
+/* ── INSTALLMENT TOGGLE ── */
+.installment-toggle { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 10px; padding: 9px 14px; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; width: 100%; margin-bottom: 2px; }
+.installment-toggle:hover { border-color: var(--accent); color: var(--ink); }
+.installment-toggle.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.installment-total { font-size: 12px; color: var(--ink-faint); margin-top: 2px; margin-bottom: 2px; text-align: right; }
+
+/* ── INSTALLMENT CHIP ON TXROW ── */
+.tx-installment-chip { font-size: 10px; font-weight: 600; background: var(--neutral-soft); color: var(--neutral); border-radius: 6px; padding: 2px 6px; letter-spacing: 0.3px; flex-shrink: 0; }
+
+/* ── ACTIVE PLANS PANEL (CardDetailView) ── */
+.installment-plans-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.installment-plan-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.ipr-info { flex: 1; min-width: 0; }
+.ipr-label { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+.ipr-meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+.ipr-bar { height: 4px; background: var(--surface-2); border-radius: 100px; overflow: hidden; }
+.ipr-fill { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.3s; }
+.ipr-cancel { flex-shrink: 0; background: var(--danger-soft); border: 1px solid transparent; border-radius: 8px; padding: 6px 12px; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
+.ipr-cancel:hover { background: rgba(255, 107, 107, 0.25); }
+
+/* ── SECTION HEADER RIGHT ── */
+.section-hd-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+/* ── BELL BUTTON & BADGE ── */
+.bell-btn { position: relative; background: none; border: none; padding: 4px; cursor: pointer; color: var(--ink-soft); display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: color 0.15s; }
+.bell-btn:hover { color: var(--ink); }
+.notif-badge { position: absolute; top: -2px; right: -4px; background: var(--danger); color: #fff; font-size: 9px; font-weight: 700; border-radius: 100px; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 0 3px; line-height: 1; }
+
+/* ── NOTIFICATIONS PANEL ── */
+.notif-section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--ink-faint); margin: 16px 0 8px; }
+.notif-list { display: flex; flex-direction: column; gap: 8px; }
+.notif-item { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.notif-icon { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.notif-icon-card { background: var(--neutral-soft); color: var(--neutral); }
+.notif-icon-bell { background: var(--warn-soft); color: var(--warn); }
+.notif-body { flex: 1; min-width: 0; }
+.notif-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.notif-meta { font-size: 12px; color: var(--ink-soft); }
+.notif-amt { font-size: 13px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+
+/* ── RECURRING REMINDERS MODAL ── */
+.reminder-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.reminder-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.reminder-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.reminder-info { flex: 1; min-width: 0; }
+.reminder-label { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.reminder-meta { font-size: 12px; color: var(--ink-soft); }
+.reminder-form { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 4px; }
+
+/* ── TRANSACTION SEARCH BAR ── */
+.tx-search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 10px; }
+.tx-search-bar:focus-within { border-color: var(--accent); }
+.tx-search-icon { color: var(--ink-faint); flex-shrink: 0; }
+.tx-search-input { flex: 1; background: none; border: none; outline: none; font-family: inherit; font-size: 14px; color: var(--ink); }
+.tx-search-input::placeholder { color: var(--ink-faint); }
+.tx-search-clear { background: none; border: none; padding: 2px; cursor: pointer; color: var(--ink-faint); display: flex; align-items: center; }
+.tx-search-clear:hover { color: var(--ink); }
+
+/* ── SWIPE TO DELETE ── */
+.tx { position: relative; overflow: hidden; }
+.tx-swipe-del-btn { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; background: var(--danger); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; transform: translateX(100%); transition: transform 0.2s ease; }
+.tx-swipe-del-btn:hover { background: #e85555; }
+.tx.tx-swiped .tx-swipe-del-btn { transform: translateX(0); }
+.tx.tx-swiped .tx-main { transform: translateX(-72px); }
+
+/* ── UNDO SNACKBAR ── */
+.undo-snackbar { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 100px; padding: 10px 16px; display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-soft); z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.4); white-space: nowrap; animation: snackbar-in 0.2s ease; }
+@keyframes snackbar-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+.undo-btn { background: none; border: none; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 0; }
+.undo-btn:hover { opacity: 0.8; }
+
+/* ── WARN HINT ── */
+.warn-hint { display: flex; align-items: center; gap: 6px; background: rgba(245, 194, 101, 0.1); border: 1px solid rgba(245, 194, 101, 0.25); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--warn); margin-bottom: 4px; }
+
+/* ── DAILY SPENDING RATE (INSIGHTS OUT CELL) ── */
+.io-daily { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+/* ── MONTH-OVER-MONTH DELTA (EXPENSE CATS) ── */
+.mom-delta { font-size: 11px; margin-top: 2px; }
+.mom-up { color: var(--out); }
+.mom-down { color: var(--in); }
+.mom-flat { color: var(--ink-faint); }
+
+/* ── NET WORTH TREND CHART ── */
+.nw-chart { width: 100%; height: 60px; display: block; overflow: visible; }
+.nw-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+.nw-labels span { font-size: 10px; color: var(--ink-faint); }
+.nw-minmax { display: flex; justify-content: space-between; margin-top: 4px; }
+.nw-minmax span { font-size: 11px; color: var(--ink-faint); }
+
+/* ── INSTALLMENT COMMITMENT ON CARD TILE ── */
+.ct-installment-note { font-size: 11px; color: var(--neutral); margin-top: 6px; }
+
+/* ── BUDGET PACE INDICATOR ── */
+.cb-pace { font-size: 11px; margin-top: 3px; }
+.pace-ok { color: var(--ink-faint); }
+.pace-warn { color: var(--warn); }
+.pace-over { color: var(--danger); }
 
 @media (max-width: 380px) {
   .view { padding: 16px 14px 24px; }

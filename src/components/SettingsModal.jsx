@@ -6,7 +6,7 @@ import {
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
 
-export default function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, currency, onChangeCurrency }) {
+export default function SettingsModal({ user, onClose, onOpenCategories, onOpenHelp, onOpenReminders, currency, onChangeCurrency }) {
   const [signingOut, setSigningOut] = useState(false);
   const activeCurrency = CURRENCIES.find((c) => c.symbol === currency) || CURRENCIES[0];
 

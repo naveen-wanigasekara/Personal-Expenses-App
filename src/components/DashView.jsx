@@ -1,9 +1,10 @@
 import { useState, useMemo, useContext, useEffect, Fragment } from "react";
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUp, ArrowDown, CreditCard, Lock, SlidersHorizontal, Eye, EyeOff, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ArrowUp, ArrowDown, CreditCard, Lock, SlidersHorizontal, Eye, EyeOff, X, Bell } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact, monthKey, monthLabel, getTimeOfDay } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
 import { loadInsightsLayout, saveInsightsLayout } from "../utils/storage.js";
+import NotificationsPanel from "./NotificationsPanel.jsx";
 
 const SECTION_DEFS = [
   { id: "net_this_month", label: "Net This Month",    desc: "Income minus expenses for the selected month" },
@@ -11,9 +12,10 @@ const SECTION_DEFS = [
   { id: "expense_out",    label: "Out",               desc: "Total expenses spent this month" },
   { id: "cash_in_hand",   label: "Cash in Hand",      desc: "Cumulative cash balance across all time" },
   { id: "card_debt",      label: "Card Debt",         desc: "Total credit card balance and utilization" },
+  { id: "net_worth",      label: "Net Worth Trend",   desc: "Cumulative cash balance over the past 12 months" },
   { id: "budget_pulse",   label: "Budget Progress",   desc: "Income target and expense budget bars" },
   { id: "plan_vs_actual", label: "Plan vs. Actual",   desc: "Detailed budget comparison" },
-  { id: "cashflow",       label: "Cashflow",          desc: "3-month income vs. expenses chart" },
+  { id: "cashflow",       label: "Cashflow",          desc: "6-month income vs. expenses chart" },
   { id: "income_cats",    label: "Income Breakdown",  desc: "Where your income came from" },
   { id: "expense_cats",   label: "Expense Breakdown", desc: "Where your money went" },
 ];
@@ -29,15 +31,17 @@ function mergeLayout(saved) {
   return [...valid, ...missing];
 }
 
-export default function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats, onModalChange }) {
+export default function DashView({ transactions, getEffectivePlan, cards, viewMonth, setViewMonth, user, onOpenSettings, allExpCats, allIncCats, onModalChange, installmentPlans, recurringReminders, allTransactions }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [sections, setSections] = useState(() => mergeLayout(loadInsightsLayout(user.id)));
   useEffect(() => {
-    onModalChange?.(showCustomize);
-    document.body.style.overflow = showCustomize ? "hidden" : "";
+    const anyOpen = showCustomize || showNotifs;
+    onModalChange?.(anyOpen);
+    document.body.style.overflow = anyOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [showCustomize]);
+  }, [showCustomize, showNotifs]);
 
   const changeMonth = (dir) => {
     const [y, m] = viewMonth.split("-").map(Number);
@@ -49,10 +53,42 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const initial = (user.email || "?")[0].toUpperCase();
   const greeting = getTimeOfDay();
 
+  const currentMk = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
+
+  const installmentNotifs = useMemo(() => {
+    return (installmentPlans || []).filter((plan) => {
+      if (!plan.active) return false;
+      const [sy, sm] = plan.startMonth.split("-").map(Number);
+      const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
+      const endMk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return currentMk >= plan.startMonth && currentMk <= endMk;
+    });
+  }, [installmentPlans, currentMk]);
+
+  const recurringNotifs = useMemo(() => {
+    const currentMonthTxs = (allTransactions || []).filter((t) => monthKey(t.date) === currentMk);
+    return (recurringReminders || []).filter((reminder) => {
+      if (!reminder.active) return false;
+      if (!reminder.category) return true;
+      const dismissed = currentMonthTxs.some((t) => {
+        const catId = t.type === "income"
+          ? getCat(t.category, "income", allExpCats, allIncCats).id
+          : getCat(t.category, "expense", allExpCats, allIncCats).id;
+        return catId === reminder.category;
+      });
+      return !dismissed;
+    });
+  }, [recurringReminders, allTransactions, currentMk, allExpCats, allIncCats]);
+
+  const notifCount = installmentNotifs.length + recurringNotifs.length;
+
   const last6 = useMemo(() => {
     const out = [];
     const [vy, vm] = viewMonth.split("-").map(Number);
-    for (let i = 2; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const d = new Date(vy, vm - 1 - i, 1);
       const k = monthKey(d);
       const inMonth = transactions.filter((t) => monthKey(t.date) === k);
@@ -74,6 +110,52 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
   const maxBar = Math.max(...last6.flatMap((m) => [m.income, m.expenses, m.incomeTarget, m.expenseBudget]), 1);
   const thisStats = last6[last6.length - 1];
   const currentPlan = getEffectivePlan(viewMonth);
+
+  // Daily spending rate (current month only) — must come after thisStats
+  const dailyRate = useMemo(() => {
+    if (!isCurrentMonth || !thisStats) return null;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - dayOfMonth;
+    return { avg: thisStats.expenses / dayOfMonth, daysLeft };
+  }, [isCurrentMonth, thisStats]);
+
+  // Previous month key for MoM comparison
+  const prevMk = useMemo(() => {
+    const [y, m] = viewMonth.split("-").map(Number);
+    const d = new Date(y, m - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, [viewMonth]);
+
+  // Previous month expense spend per effective category
+  const prevExpCatSpend = useMemo(() => {
+    const by = {};
+    transactions
+      .filter((t) => monthKey(t.date) === prevMk &&
+        (t.type === "expense" || t.type === "card-purchase" || t.type === "card-interest"))
+      .forEach((t) => {
+        const id = getCat(t.category, "expense", allExpCats, allIncCats).id;
+        by[id] = (by[id] || 0) + +t.amount;
+      });
+    return by;
+  }, [transactions, prevMk, allExpCats, allIncCats]);
+
+  // Net worth trend — cumulative cash balance for each of the past 12 months
+  const netWorthTrend = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const balance = transactions
+        .filter((t) => monthKey(t.date) <= mk)
+        .reduce((sum, t) => {
+          if (t.type === "income") return sum + +t.amount;
+          if (t.type === "expense" || t.type === "card-payment") return sum - +t.amount;
+          return sum;
+        }, 0);
+      return { mk, balance, label: d.toLocaleDateString("en-US", { month: "short" }) };
+    });
+  }, [transactions]);
 
   const expCatSpend = useMemo(() => {
     const inMonth = transactions.filter(
@@ -207,6 +289,9 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         <div className="io-text">
           <div className="io-label">Out</div>
           <div className="io-val">{CURRENCY} {fmt(thisStats.expenses)}</div>
+          {dailyRate && (
+            <div className="io-daily">{CURRENCY} {fmtCompact(dailyRate.avg)}/day · {dailyRate.daysLeft}d left</div>
+          )}
         </div>
       </div>
     ),
@@ -237,6 +322,55 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
         </div>
       </div>
     ) : null,
+
+    net_worth: (() => {
+      if (netWorthTrend.every((d) => d.balance === 0)) return null;
+      const vals = netWorthTrend.map((d) => d.balance);
+      const minV = Math.min(...vals);
+      const maxV = Math.max(...vals);
+      const range = maxV - minV || 1;
+      const W = 220; const H = 52; const PAD = 4;
+      const pts = netWorthTrend.map((d, i) => {
+        const x = PAD + (i / (netWorthTrend.length - 1)) * (W - PAD * 2);
+        const y = PAD + (1 - (d.balance - minV) / range) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+      const last = netWorthTrend[netWorthTrend.length - 1];
+      const first = netWorthTrend[0];
+      const trending = last.balance >= first.balance;
+      return (
+        <div className="card">
+          <div className="card-hd">
+            <h3>Net Worth Trend</h3>
+            <span className={`card-sub ${trending ? "in-color" : "out-color"}`}>
+              {trending ? "↑" : "↓"} {CURRENCY} {fmtCompact(Math.abs(last.balance - first.balance))} vs 12 mo ago
+            </span>
+          </div>
+          <svg className="nw-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+            {minV < 0 && maxV > 0 && (
+              <line
+                x1={PAD} y1={PAD + (1 - (0 - minV) / range) * (H - PAD * 2)}
+                x2={W - PAD} y2={PAD + (1 - (0 - minV) / range) * (H - PAD * 2)}
+                stroke="var(--border-2)" strokeWidth="0.8" strokeDasharray="3,3"
+              />
+            )}
+            <polyline points={pts} fill="none"
+              stroke={trending ? "var(--in)" : "var(--out)"} strokeWidth="1.8"
+              strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          <div className="nw-labels">
+            {netWorthTrend.filter((_, i) => i % 2 === 0).map((d) => (
+              <span key={d.mk}>{d.label}</span>
+            ))}
+          </div>
+          <div className="nw-minmax">
+            <span className={minV < 0 ? "out-color" : ""}>{CURRENCY} {fmtCompact(minV)}</span>
+            <span className={last.balance >= 0 ? "in-color" : "out-color"}>{CURRENCY} {fmtCompact(last.balance)} now</span>
+            <span className="in-color">{CURRENCY} {fmtCompact(maxV)}</span>
+          </div>
+        </div>
+      );
+    })(),
 
     budget_pulse: (currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0) ? (
       <div className="pulse-pair">
@@ -474,6 +608,8 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
               const isWarn = hasBudget && c.budgetPct > 80 && c.budgetPct <= 100;
               const isUnused = c.val === 0 && hasBudget;
               const isUnbudgeted = !hasBudget && c.val > 0;
+              const prevAmt = prevExpCatSpend[c.id] || 0;
+              const delta = c.val - prevAmt;
               return (
                 <div key={c.id} className={`catv2 ${isUnused ? "unused" : ""}`}>
                   <div className="catv2-head">
@@ -488,6 +624,12 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
                             ? (<>{CURRENCY} {fmt(c.val)} <span className="sep">/</span> {CURRENCY} {fmt(c.budgeted)}</>)
                             : <>{c.pct.toFixed(1)}% of spending · no budget set</>}
                         </div>
+                        {(c.val > 0 || prevAmt > 0) && (
+                          <div className={`mom-delta ${delta > 0 ? "mom-up" : delta < 0 ? "mom-down" : "mom-flat"}`}>
+                            {delta === 0 ? "same as last month"
+                              : `${delta > 0 ? "+" : "−"}${CURRENCY} ${fmtCompact(Math.abs(delta))} vs last month`}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="catv2-right">
@@ -516,6 +658,15 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
                           ? <span className="over">No budget set</span>
                           : <span className={isOver ? "over" : isWarn ? "warn-t" : ""}>{c.budgetPct.toFixed(0)}% used</span>}
                       </div>
+                      {isCurrentMonth && hasBudget && c.val > 0 && (
+                        <div className={`cb-pace ${isOver ? "pace-over" : isWarn ? "pace-warn" : "pace-ok"}`}>
+                          {isOver
+                            ? `Over by ${CURRENCY} ${fmt(Math.abs(c.remaining))}`
+                            : dailyRate?.daysLeft > 0
+                              ? `${CURRENCY} ${fmtCompact(c.remaining / dailyRate.daysLeft)}/day left (${dailyRate.daysLeft}d)`
+                              : `${CURRENCY} ${fmt(c.remaining)} remaining`}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -545,6 +696,10 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
                 <ChevronRight size={16} />
               </button>
             </div>
+            <button className="bell-btn" onClick={() => setShowNotifs(true)} aria-label="Notifications">
+              <Bell size={16} />
+              {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+            </button>
             <button className="avatar-btn" onClick={() => setShowCustomize(true)} aria-label="Customize sections">
               <SlidersHorizontal size={14} />
             </button>
@@ -624,6 +779,16 @@ export default function DashView({ transactions, getEffectivePlan, cards, viewMo
             <button className="text-btn" onClick={resetSections}>Reset to default</button>
           </div>
         </div>
+      )}
+
+      {showNotifs && (
+        <NotificationsPanel
+          installmentNotifs={installmentNotifs}
+          recurringNotifs={recurringNotifs}
+          cards={cards}
+          currentMk={currentMk}
+          onClose={() => setShowNotifs(false)}
+        />
       )}
     </div>
   );
