@@ -5,7 +5,7 @@ import { CARD_COLORS } from "../constants/currencies.js";
 import { fmt, fmtCompact, monthKey, monthLabel } from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
-export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan }) {
+export default function CardDetailView({ card, transactions, onBack, onEdit, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan, allExpCats, allIncCats }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
   const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
@@ -184,6 +184,7 @@ export default function CardDetailView({ card, transactions, onBack, onEdit, onD
                 </div>
                 <div className="tx-stack">
                   {items.map((t) => <TxRow key={t.id} tx={t} onDelete={onDeleteTx} onEdit={onEditTx} cardName={card.name}
+                    allExpCats={allExpCats} allIncCats={allIncCats}
                     installmentPlan={t.installmentId ? (installmentPlans || []).find((p) => p.id === t.installmentId) : null} />)}
                 </div>
               </div>

@@ -461,10 +461,9 @@ export default function MainApp({ user }) {
               onDelete={removeCard}
               onDeleteTx={deleteTx}
               onEditTx={setEditingTx}
-              viewMonth={viewMonth}
-              setViewMonth={setViewMonth}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
+              allExpCats={allExpCats} allIncCats={allIncCats}
             />
           )}
           {tab === "budget" && (

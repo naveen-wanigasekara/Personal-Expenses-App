@@ -5,7 +5,7 @@ import { fmt, fmtCompact } from "../utils/format.js";
 import CardTile from "./CardTile.jsx";
 import CardDetailView from "./CardDetailView.jsx";
 
-export default function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan }) {
+export default function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan, allExpCats, allIncCats }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [selectedCard, setSelectedCard] = useState(null);
   const totalDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
@@ -38,7 +38,8 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
         onDeleteTx={onDeleteTx}
         onEditTx={onEditTx}
         installmentPlans={installmentPlans}
-        onCancelPlan={onCancelPlan} />
+        onCancelPlan={onCancelPlan}
+        allExpCats={allExpCats} allIncCats={allIncCats} />
     );
   }
 

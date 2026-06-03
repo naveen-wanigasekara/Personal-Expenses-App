@@ -88,7 +88,8 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
           </div>
           <div className="tx-sub">
             {tx.type === "card-payment" ? `Payment → ${cardName}` :
-              tx.type === "card-interest" ? `Interest/fees · ${cardName}` : cat.label}
+              tx.type === "card-interest" ? `Interest/fees · ${cardName}` :
+              (tx.type === "card-purchase" && cardName) ? `${cat.label} · ${cardName}` : cat.label}
           </div>
         </div>
         <div className={`tx-amt ${color}`}>
