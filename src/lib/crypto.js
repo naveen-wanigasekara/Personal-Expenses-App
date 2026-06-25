@@ -10,7 +10,7 @@ export async function initCrypto(userId) {
     new TextEncoder().encode(userId + APP_SECRET),
     { name: "PBKDF2" },
     false,
-    ["deriveKey"]
+    ["deriveKey"],
   );
   _key = await crypto.subtle.deriveKey(
     {
@@ -22,7 +22,7 @@ export async function initCrypto(userId) {
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -32,7 +32,8 @@ export function clearCrypto() {
 
 function toB64(bytes) {
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
@@ -47,7 +48,7 @@ export async function encryptValue(value) {
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     _key,
-    new TextEncoder().encode(JSON.stringify(value))
+    new TextEncoder().encode(JSON.stringify(value)),
   );
   return `enc:${toB64(iv)}.${toB64(new Uint8Array(ciphertext))}`;
 }
@@ -60,7 +61,11 @@ export async function decryptValue(value) {
   const str = String(value);
   if (str === "") return str;
   if (!str.startsWith("enc:")) {
-    try { return JSON.parse(str); } catch { return str; }
+    try {
+      return JSON.parse(str);
+    } catch {
+      return str;
+    }
   }
   if (!_key) throw new Error("Crypto not initialised — call initCrypto first");
   const rest = str.slice(4); // strip "enc:"
@@ -68,7 +73,7 @@ export async function decryptValue(value) {
   const plaintext = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: fromB64(rest.slice(0, dot)) },
     _key,
-    fromB64(rest.slice(dot + 1))
+    fromB64(rest.slice(dot + 1)),
   );
   return JSON.parse(new TextDecoder().decode(plaintext));
 }

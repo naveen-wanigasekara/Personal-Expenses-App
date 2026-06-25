@@ -20,12 +20,12 @@ A mobile-first personal finance tracker with income/expense tracking, credit car
 
 Four tabs at the bottom of the screen:
 
-| Tab | Purpose |
-|-----|---------|
+| Tab          | Purpose                                          |
+| ------------ | ------------------------------------------------ |
 | **Insights** | Dashboard — summaries, charts, and notifications |
-| **Ledger** | Full transaction history |
-| **Cards** | Credit card management and installment plans |
-| **Budget** | Income targets and spending limits |
+| **Ledger**   | Full transaction history                         |
+| **Cards**    | Credit card management and installment plans     |
+| **Budget**   | Income targets and spending limits               |
 
 The **+ button** (floating action button) opens the Add Transaction form from any screen.
 
@@ -35,24 +35,28 @@ The **+ button** (floating action button) opens the Add Transaction form from an
 
 ### 1. Select a type
 
-| Type | When to use |
-|------|-------------|
-| **Expense** | Cash or bank debit purchase |
-| **Income** | Salary, bonus, passive income, etc. |
-| **Card Purchase** | Something bought on credit |
-| **Card Payment** | Paying off your credit card bill |
+| Type              | When to use                          |
+| ----------------- | ------------------------------------ |
+| **Expense**       | Cash or bank debit purchase          |
+| **Income**        | Salary, bonus, passive income, etc.  |
+| **Card Purchase** | Something bought on credit           |
+| **Card Payment**  | Paying off your credit card bill     |
 | **Card Interest** | Interest or fees charged by the bank |
 
 ### 2. Enter the amount
+
 Type the amount. The field formats automatically with commas.
 
-### 3. Select a card *(card transactions only)*
+### 3. Select a card _(card transactions only)_
+
 Pick which credit card from the visual card selector.
 
 ### 4. Select a category
+
 Tap a category from the grid. Tap **+ Add** to create a custom category on the fly.
 
 ### 5. Optional details
+
 - **Note** — short description (e.g., "Lunch with client")
 - **Date** — defaults to today; tap to change
 
@@ -94,19 +98,24 @@ Open the **Card Detail** screen, find the plan under **Active Plans**, and tap *
 ## Ledger Tab
 
 ### Viewing Transactions
+
 Transactions are grouped by date with a daily subtotal per group. Each entry shows the category icon, description, and amount:
+
 - `+` green = income
 - `−` red = expense
 - Card transactions show a card name badge
 - Installment transactions show a progress badge (e.g. **3/12**)
 
 ### Filtering
+
 Use the dropdowns at the top to filter by **month**, **transaction type**, or **category**. The filter bar shows how many transactions match (e.g., "12 of 45").
 
 ### Editing a Transaction
+
 Tap a transaction to expand it, then tap **Edit**. The form opens pre-filled — update any field and tap **Save changes**.
 
 ### Deleting a Transaction
+
 Tap a transaction to expand it, then tap the **delete icon**.
 
 ---
@@ -114,23 +123,28 @@ Tap a transaction to expand it, then tap the **delete icon**.
 ## Cards Tab
 
 ### Adding a Card
+
 Tap **+ Add Card** and fill in:
+
 - **Card name** (e.g., "AMEX Gold")
 - **Credit limit** (e.g., Rs. 500,000)
 - **Opening balance** — any existing debt when you first set up the card
 - **Color** — choose a gradient theme for the card
 
 ### Card Overview
+
 The top summary shows total debt, total available credit, and overall utilization across all cards. Each card tile includes a utilization bar:
 
-| Utilization | Status |
-|-------------|--------|
-| Below 70% | Normal |
-| 70–90% | Warning (yellow) |
-| Above 90% | Danger (red) |
+| Utilization | Status           |
+| ----------- | ---------------- |
+| Below 70%   | Normal           |
+| 70–90%      | Warning (yellow) |
+| Above 90%   | Danger (red)     |
 
 ### Card Detail
+
 Tap a card to see:
+
 - This month's purchases, payments, and interest charges
 - **Active Plans** — all running installment plans on this card, with monthly amount, progress bar (paid/total months), and a **Cancel** option
 - Full activity list for the selected month
@@ -142,27 +156,31 @@ Tap a card to see:
 ## Budget Tab
 
 ### Fixed Plan vs. Month Override
+
 - **Fixed Plan** — your default budget, applied automatically to every month
 - **Month Override** — customise a specific month without changing the fixed plan
 
 Toggle between modes at the top. Use **← →** to navigate months.
 
 ### Setting Income Targets
+
 Enter a total expected income and per-category breakdowns (e.g., Rs. 150,000 from Fixed Income).
 
 ### Setting Expense Budgets
+
 Enter a total spending limit and per-category limits (e.g., Rs. 30,000 for Groceries).
 
 The **Planned Savings** summary shows: `Income Target − Expense Budget`.
 
 ### Budget Progress
+
 Each category shows a progress bar against the target:
 
-| Bar colour | Meaning |
-|------------|---------|
-| Green | Within budget |
-| Yellow | Above 80% of budget |
-| Red | Over budget |
+| Bar colour | Meaning             |
+| ---------- | ------------------- |
+| Green      | Within budget       |
+| Yellow     | Above 80% of budget |
+| Red        | Over budget         |
 
 Tap **Save** to apply changes.
 
@@ -177,30 +195,37 @@ Tap **Save** to apply changes.
 Use **← →** to navigate between months.
 
 ### Notification Bell
+
 The **bell icon** in the top-right of the Insights tab shows a red badge with the count of active notifications. Tap it to open the Notifications panel:
 
 - **Installment Payments** — installment plans with a charge due this month, showing the card, current installment number (e.g. 3/12), and monthly amount
 - **Recurring Bills** — any recurring payment reminders active for this month
 
 ### Top Summary
+
 - **Net Balance** — income minus expenses for the selected month
 - **In / Out** — total income and total expenses at a glance
 - **Cash in Hand** — cumulative available cash (all income minus cash expenses and card payments)
 - **Card Debt Summary** — total debt and overall utilization across all cards
 
 ### Plan vs. Actual
+
 Compares your budgeted plan to what actually happened: income target vs. actual, expense budget vs. actual, and planned vs. actual savings.
 
 ### Cashflow Chart
+
 A 3-month bar chart showing income and expenses side by side, with budget target lines overlaid.
 
 ### Income Breakdown — "Where it came from"
+
 Each income category shows total received, percentage of total income, and (if budgeted) progress toward the income target.
 
 ### Expense Breakdown — "Where it went"
+
 Each expense category shows total spent, percentage of total spending, and (if budgeted) a progress bar vs. the limit — turns red when over budget.
 
 ### Customising the Layout
+
 Tap the **sliders icon** (top-right) to open the Customise sheet. Toggle any of the ten sections on or off, reorder them with the up/down arrows, or tap **Reset to default** to restore the original layout. Your preferences are saved automatically.
 
 ---
@@ -208,6 +233,7 @@ Tap the **sliders icon** (top-right) to open the Customise sheet. Toggle any of 
 ## Custom Categories
 
 ### Adding a Custom Category
+
 1. Go to **Account → Manage Categories**, or tap **+ Add** inside the Add Transaction form.
 2. Enter a name (max 28 characters), pick an icon, and choose a colour.
 3. Select **Income** or **Expense**.
@@ -221,14 +247,14 @@ Custom categories appear alongside the built-in defaults in all transaction and 
 
 Tap your **avatar (your initial)** in the top-right of the Insights tab.
 
-| Option | Description |
-|--------|-------------|
-| Account info | Your email and member-since date |
-| Help & user guide | Opens this guide inside the app |
+| Option            | Description                            |
+| ----------------- | -------------------------------------- |
+| Account info      | Your email and member-since date       |
+| Help & user guide | Opens this guide inside the app        |
 | Manage Categories | Add, edit, or delete custom categories |
-| Currency | Switch between 12 supported currencies |
-| Contact Support | Opens a WhatsApp support link |
-| Sign Out | Logs you out of the app |
+| Currency          | Switch between 12 supported currencies |
+| Contact Support   | Opens a WhatsApp support link          |
+| Sign Out          | Logs you out of the app                |
 
 ---
 
@@ -248,17 +274,17 @@ Tap your **avatar (your initial)** in the top-right of the Insights tab.
 
 Choose from 12 supported currencies in Account settings. Your selection is saved per account and applies instantly everywhere in the app:
 
-| Symbol | Code | Currency |
-|--------|------|----------|
-| Rs. | LKR | Sri Lankan Rupee |
-| $ | USD | US Dollar |
-| A$ | AUD | Australian Dollar |
-| € | EUR | Euro |
-| £ | GBP | British Pound |
-| S$ | SGD | Singapore Dollar |
-| ₹ | INR | Indian Rupee |
-| ¥ | JPY | Japanese Yen |
-| C$ | CAD | Canadian Dollar |
-| Fr | CHF | Swiss Franc |
-| NZ$ | NZD | New Zealand Dollar |
-| AED | AED | UAE Dirham |
+| Symbol | Code | Currency           |
+| ------ | ---- | ------------------ |
+| Rs.    | LKR  | Sri Lankan Rupee   |
+| $      | USD  | US Dollar          |
+| A$     | AUD  | Australian Dollar  |
+| €      | EUR  | Euro               |
+| £      | GBP  | British Pound      |
+| S$     | SGD  | Singapore Dollar   |
+| ₹      | INR  | Indian Rupee       |
+| ¥      | JPY  | Japanese Yen       |
+| C$     | CAD  | Canadian Dollar    |
+| Fr     | CHF  | Swiss Franc        |
+| NZ$    | NZD  | New Zealand Dollar |
+| AED    | AED  | UAE Dirham         |

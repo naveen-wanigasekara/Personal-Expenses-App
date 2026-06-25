@@ -1,6 +1,9 @@
 import { MoreHorizontal } from "lucide-react";
 import {
-  INCOME_CATEGORIES, EXPENSE_CATEGORIES, ICON_MAP, getIconName,
+  INCOME_CATEGORIES,
+  EXPENSE_CATEGORIES,
+  ICON_MAP,
+  getIconName,
 } from "../constants/categories.js";
 
 export function loadUserCats(userId) {
@@ -9,8 +12,14 @@ export function loadUserCats(userId) {
     if (stored) {
       const raw = JSON.parse(stored);
       return {
-        income: (raw.income || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
-        expense: (raw.expense || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+        income: (raw.income || []).map((c) => ({
+          ...c,
+          icon: ICON_MAP[c.iconName] || MoreHorizontal,
+        })),
+        expense: (raw.expense || []).map((c) => ({
+          ...c,
+          icon: ICON_MAP[c.iconName] || MoreHorizontal,
+        })),
       };
     }
     // migrate from old custom_cats format
@@ -18,27 +27,48 @@ export function loadUserCats(userId) {
     const oldCustom = old ? JSON.parse(old) : { income: [], expense: [] };
     return {
       income: [
-        ...INCOME_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
-        ...(oldCustom.income || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+        ...INCOME_CATEGORIES.map((c) => ({
+          ...c,
+          iconName: getIconName(c.icon),
+        })),
+        ...(oldCustom.income || []).map((c) => ({
+          ...c,
+          icon: ICON_MAP[c.iconName] || MoreHorizontal,
+        })),
       ],
       expense: [
-        ...EXPENSE_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
-        ...(oldCustom.expense || []).map((c) => ({ ...c, icon: ICON_MAP[c.iconName] || MoreHorizontal })),
+        ...EXPENSE_CATEGORIES.map((c) => ({
+          ...c,
+          iconName: getIconName(c.icon),
+        })),
+        ...(oldCustom.expense || []).map((c) => ({
+          ...c,
+          icon: ICON_MAP[c.iconName] || MoreHorizontal,
+        })),
       ],
     };
   } catch {
     return {
-      income: INCOME_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
-      expense: EXPENSE_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+      income: INCOME_CATEGORIES.map((c) => ({
+        ...c,
+        iconName: getIconName(c.icon),
+      })),
+      expense: EXPENSE_CATEGORIES.map((c) => ({
+        ...c,
+        iconName: getIconName(c.icon),
+      })),
     };
   }
 }
 
 export function saveUserCats(userId, cats) {
-  localStorage.setItem(`user_cats_${userId}`, JSON.stringify({
-    income: cats.income.map(({ icon: _, ...r }) => r),
-    expense: cats.expense.map(({ icon: _, ...r }) => r),
-  }));
+  localStorage.setItem(
+    `user_cats_${userId}`,
+    JSON.stringify({
+      income: cats.income.map(({ icon: _, ...r }) => r),
+      expense: cats.expense.map(({ icon: _, ...r }) => r),
+    }),
+  );
 }
 
 export function loadUserCurrency(userId) {
@@ -60,7 +90,9 @@ export function loadInsightsLayout(userId) {
   try {
     const raw = localStorage.getItem(`insights_layout_${userId}`);
     return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function saveInsightsLayout(userId, layout) {

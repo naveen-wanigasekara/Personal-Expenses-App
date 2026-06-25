@@ -146,13 +146,13 @@ The `dist/` folder is a self-contained static site. Upload it to any web host (C
 
 ## Security notes
 
-| Topic | Detail |
-|---|---|
-| Anon key | Safe to expose in the frontend — that's what it's designed for. It only grants access to rows RLS permits. |
-| Service role key | **Never** put this in frontend code. It bypasses RLS. |
-| Encryption secret | Must be kept secret and never committed. Rotate only if you are prepared to re-encrypt all existing data. |
-| RLS | Row-Level Security in `db/schema.sql` ensures users can never access each other's rows, even if someone probes the API directly. |
-| Email confirmation | Turn it on in Supabase before going public to prevent abuse. |
+| Topic              | Detail                                                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Anon key           | Safe to expose in the frontend — that's what it's designed for. It only grants access to rows RLS permits.                       |
+| Service role key   | **Never** put this in frontend code. It bypasses RLS.                                                                            |
+| Encryption secret  | Must be kept secret and never committed. Rotate only if you are prepared to re-encrypt all existing data.                        |
+| RLS                | Row-Level Security in `db/schema.sql` ensures users can never access each other's rows, even if someone probes the API directly. |
+| Email confirmation | Turn it on in Supabase before going public to prevent abuse.                                                                     |
 
 ---
 
@@ -189,23 +189,28 @@ personal-expenses-tracker/
 ## Troubleshooting
 
 **"Couldn't load your data. Please refresh."**
+
 - Check `.env.local` has the correct Supabase URL and anon key
 - Confirm `db/schema.sql` ran successfully in the SQL Editor (look for the three tables in the Table Editor)
 - Open the browser console (F12 → Console) for specific error messages
 
 **Sign in succeeds but data looks wrong / garbled**
+
 - The `VITE_ENCRYPTION_SECRET` in your environment does not match the one used when the data was originally written
 - Make sure it's exactly the same string as when you first set up the database
 
 **Can't sign up**
+
 - Minimum password length is 6 characters
 - Check that signups aren't disabled in Supabase → Authentication → Settings
 
 **Data not syncing across devices**
+
 - Confirm you're signed in with the same email on both devices
 - Check the browser console for network errors
 
 **PWA install prompt not appearing**
+
 - The app must be served over HTTPS for PWA install to work — `localhost` is an exception for development
 - Some browsers require the page to have been visited at least twice before showing the prompt
 
@@ -213,11 +218,11 @@ personal-expenses-tracker/
 
 ## Supabase free tier limits
 
-| Resource | Free allowance |
-|---|---|
-| Database storage | 500 MB |
-| Monthly active users | 50,000 |
-| Bandwidth | 5 GB/month |
-| File storage | 1 GB |
+| Resource             | Free allowance |
+| -------------------- | -------------- |
+| Database storage     | 500 MB         |
+| Monthly active users | 50,000         |
+| Bandwidth            | 5 GB/month     |
+| File storage         | 1 GB           |
 
 For a personal expense tracker used by one or a few people, none of these limits will ever be reached.

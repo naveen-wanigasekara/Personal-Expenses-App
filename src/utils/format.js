@@ -1,6 +1,7 @@
 export const fmt = (n) =>
   new Intl.NumberFormat("en-LK", {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n || 0);
 
 export const fmtCompact = (n) => {
@@ -22,7 +23,8 @@ export const monthKey = (d) => {
 export const monthLabel = (key) => {
   const [y, m] = key.split("-");
   return new Date(+y, +m - 1, 1).toLocaleDateString("en-US", {
-    month: "long", year: "numeric",
+    month: "long",
+    year: "numeric",
   });
 };
 

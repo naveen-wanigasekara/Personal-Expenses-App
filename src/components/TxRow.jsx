@@ -6,7 +6,15 @@ import { fmt } from "../utils/format.js";
 
 const SWIPE_THRESHOLD = 60;
 
-export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allIncCats, installmentPlan }) {
+export default function TxRow({
+  tx,
+  onDelete,
+  onEdit,
+  cardName,
+  allExpCats,
+  allIncCats,
+  installmentPlan,
+}) {
   const CURRENCY = useContext(CurrencyCtx);
   const [open, setOpen] = useState(false);
   const [swiped, setSwiped] = useState(false);
@@ -15,16 +23,25 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
 
   let cat, sign, color;
   if (tx.type === "income") {
-    cat = getCat(tx.category, "income", allExpCats, allIncCats); sign = "+"; color = "income";
+    cat = getCat(tx.category, "income", allExpCats, allIncCats);
+    sign = "+";
+    color = "income";
   } else if (tx.type === "card-payment") {
     cat = { label: "Card Payment", icon: CreditCard, color: "#a594f9" };
-    sign = "↔"; color = "neutral";
+    sign = "↔";
+    color = "neutral";
   } else if (tx.type === "card-interest") {
-    cat = getCat("card-interest", "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
+    cat = getCat("card-interest", "expense", allExpCats, allIncCats);
+    sign = "−";
+    color = "expense";
   } else if (tx.type === "card-purchase") {
-    cat = getCat(tx.category, "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
+    cat = getCat(tx.category, "expense", allExpCats, allIncCats);
+    sign = "−";
+    color = "expense";
   } else {
-    cat = getCat(tx.category, "expense", allExpCats, allIncCats); sign = "−"; color = "expense";
+    cat = getCat(tx.category, "expense", allExpCats, allIncCats);
+    sign = "−";
+    color = "expense";
   }
   const Icon = cat.icon;
 
@@ -46,8 +63,10 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
     const dy = Math.abs(touchStartY.current - e.changedTouches[0].clientY);
     // Treat as swipe only if horizontal movement dominates
     if (dy < 20) {
-      if (dx > SWIPE_THRESHOLD) { setSwiped(true); setOpen(false); }
-      else if (dx < -20) setSwiped(false);
+      if (dx > SWIPE_THRESHOLD) {
+        setSwiped(true);
+        setOpen(false);
+      } else if (dx < -20) setSwiped(false);
     }
     touchStartX.current = null;
     touchStartY.current = null;
@@ -59,7 +78,10 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
   };
 
   const handleRowClick = () => {
-    if (swiped) { setSwiped(false); return; }
+    if (swiped) {
+      setSwiped(false);
+      return;
+    }
     setOpen(!open);
   };
 
@@ -69,31 +91,48 @@ export default function TxRow({ tx, onDelete, onEdit, cardName, allExpCats, allI
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <button className="tx-swipe-del-btn" onClick={handleDelete} tabIndex={-1} aria-label="Delete">
+      <button
+        className="tx-swipe-del-btn"
+        onClick={handleDelete}
+        tabIndex={-1}
+        aria-label="Delete"
+      >
         <Trash2 size={16} />
       </button>
       <button className="tx-main" onClick={handleRowClick}>
-        <div className="tx-icon" style={{ background: `${cat.color}1a`, color: cat.color }}>
+        <div
+          className="tx-icon"
+          style={{ background: `${cat.color}1a`, color: cat.color }}
+        >
           <Icon size={17} strokeWidth={2} />
         </div>
         <div className="tx-body">
           <div className="tx-title">
             {tx.note || cat.label}
             {cardName && tx.type !== "card-payment" && (
-              <span className="tx-card-chip"><CreditCard size={9} /> {cardName}</span>
+              <span className="tx-card-chip">
+                <CreditCard size={9} /> {cardName}
+              </span>
             )}
             {installmentPlan && installmentSeq && (
-              <span className="tx-installment-chip">{installmentSeq}/{installmentPlan.totalMonths}</span>
+              <span className="tx-installment-chip">
+                {installmentSeq}/{installmentPlan.totalMonths}
+              </span>
             )}
           </div>
           <div className="tx-sub">
-            {tx.type === "card-payment" ? `Payment → ${cardName}` :
-              tx.type === "card-interest" ? `Interest/fees · ${cardName}` :
-              (tx.type === "card-purchase" && cardName) ? `${cat.label} · ${cardName}` : cat.label}
+            {tx.type === "card-payment"
+              ? `Payment → ${cardName}`
+              : tx.type === "card-interest"
+                ? `Interest/fees · ${cardName}`
+                : tx.type === "card-purchase" && cardName
+                  ? `${cat.label} · ${cardName}`
+                  : cat.label}
           </div>
         </div>
         <div className={`tx-amt ${color}`}>
-          <span className="tx-amt-sign">{sign}</span>{CURRENCY} {fmt(tx.amount)}
+          <span className="tx-amt-sign">{sign}</span>
+          {CURRENCY} {fmt(tx.amount)}
         </div>
       </button>
       {open && (

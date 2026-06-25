@@ -15,12 +15,14 @@ A mobile-first personal finance app that helps you record every transaction in a
 ## Features
 
 ### 💰 Track everything
+
 - **Income** across 6 built-in categories (Fixed, Passive, Bonus, Refunds, Emergency, Other)
 - **Expenses** across 11 built-in categories (Loan Repayment, House Rent, Utilities, Groceries, Healthcare, Transport & Vehicle, Shopping & Household, Entertainment & Dining, Insurance & Premiums, Savings & Investments, Other)
 - **Credit cards** as full debt accounts with limits, balances, and utilization tracking
 - **Custom categories** — add your own expense or income categories with a name, icon, and colour; edit or delete them at any time
 
 ### 🎯 Plan with intent
+
 - **Fixed plan** — set your default monthly income targets and expense budgets once, applied automatically every month
 - **Per-month overrides** — adjust the plan for special months (bonuses, holidays) without touching your defaults
 - **Per-category targets** for both income and expenses, not just an overall total
@@ -28,6 +30,7 @@ A mobile-first personal finance app that helps you record every transaction in a
 - See planned savings calculated live as you allocate
 
 ### 📊 Insights that matter
+
 - **Plan vs. Actual** — track progress toward both income targets and spending limits
 - **Where it went** — every budgeted expense category shown with remaining balance, even unspent ones
 - **Where it came from** — income breakdown by source with target tracking
@@ -37,13 +40,17 @@ A mobile-first personal finance app that helps you record every transaction in a
 - **Notification bell** — badge-counted bell icon in the Insights header; opens a panel showing installment payments due this month and any active recurring bill reminders
 
 ### 💳 Honest credit card tracking
+
 Three transaction types designed to avoid double-counting:
+
 - **Card Purchase** — adds to card balance and counts as an expense in its category
-- **Card Payment** — reduces card balance, *not* a new expense (the spending was already recorded when you bought something)
+- **Card Payment** — reduces card balance, _not_ a new expense (the spending was already recorded when you bought something)
 - **Card Interest & Fees** — adds to balance and counts as a real cost
 
 ### 📆 Installment plans
+
 Split a large card purchase into equal monthly payments:
+
 - Toggle **Split into Installments** when adding a Card Purchase — enter the plan label, number of months, and start month
 - The full outstanding amount is reflected in the card balance immediately; each month's Ledger shows only that month's installment
 - An installment badge (e.g. **3/12**) appears on every transaction row linked to a plan
@@ -52,33 +59,37 @@ Split a large card purchase into equal monthly payments:
 - Installment charges flow through the budget system like any card purchase, so future months show the committed spending automatically
 
 ### 🌍 Multi-currency support
+
 Choose from 12 currencies in the Account settings — the selection is saved per account and applies instantly everywhere:
 
-| Symbol | Code | Currency |
-|---|---|---|
-| Rs. | LKR | Sri Lankan Rupee |
-| $ | USD | US Dollar |
-| A$ | AUD | Australian Dollar |
-| € | EUR | Euro |
-| £ | GBP | British Pound |
-| S$ | SGD | Singapore Dollar |
-| ₹ | INR | Indian Rupee |
-| ¥ | JPY | Japanese Yen |
-| C$ | CAD | Canadian Dollar |
-| Fr | CHF | Swiss Franc |
-| NZ$ | NZD | New Zealand Dollar |
-| AED | AED | UAE Dirham |
+| Symbol | Code | Currency           |
+| ------ | ---- | ------------------ |
+| Rs.    | LKR  | Sri Lankan Rupee   |
+| $      | USD  | US Dollar          |
+| A$     | AUD  | Australian Dollar  |
+| €      | EUR  | Euro               |
+| £      | GBP  | British Pound      |
+| S$     | SGD  | Singapore Dollar   |
+| ₹      | INR  | Indian Rupee       |
+| ¥      | JPY  | Japanese Yen       |
+| C$     | CAD  | Canadian Dollar    |
+| Fr     | CHF  | Swiss Franc        |
+| NZ$    | NZD  | New Zealand Dollar |
+| AED    | AED  | UAE Dirham         |
 
 ### 🔒 End-to-end encryption
+
 All user-entered financial data — transaction amounts, categories, notes, dates; card names, limits, balances; budget totals and category breakdowns — is encrypted with **AES-GCM-256** in the browser before being sent to Supabase. The encryption key is derived from your user ID and a server-side secret via PBKDF2 (100,000 iterations, SHA-256). Raw financial values are never stored in plaintext. Even a full database dump reveals only ciphertext.
 
 ### 📱 Installable anywhere
+
 - Full Progressive Web App (PWA) — install directly from your browser to any phone's home screen
 - Works on iOS, Android, Windows, macOS, and Linux
 - Offline-capable with smart caching of fonts, assets, and recent data
 - No app store, no platform fees, one codebase
 
 ### 🔐 Account security
+
 - Email + password authentication via Supabase Auth
 - Forgot password flow sends a reset link by email
 - Row-Level Security ensures each user's rows are inaccessible to all other users at the database level
@@ -89,16 +100,16 @@ All user-entered financial data — transaction amounts, categories, notes, date
 
 ## Tech stack
 
-| Layer | Tech |
-|---|---|
-| Frontend | React 18, Vite 5 |
-| Database | PostgreSQL (via Supabase) |
-| Auth | Supabase Auth (email + password) |
-| Encryption | Web Crypto API — AES-GCM-256, PBKDF2 |
-| PWA | vite-plugin-pwa (Workbox) |
-| Icons | Lucide React |
+| Layer      | Tech                                      |
+| ---------- | ----------------------------------------- |
+| Frontend   | React 18, Vite 5                          |
+| Database   | PostgreSQL (via Supabase)                 |
+| Auth       | Supabase Auth (email + password)          |
+| Encryption | Web Crypto API — AES-GCM-256, PBKDF2      |
+| PWA        | vite-plugin-pwa (Workbox)                 |
+| Icons      | Lucide React                              |
 | Typography | PT Serif + Source Sans 3 + JetBrains Mono |
-| Styling | Vanilla CSS with CSS custom properties |
+| Styling    | Vanilla CSS with CSS custom properties    |
 
 No framework lock-in, no UI component library — clean React split across purpose-built modules under `src/`.
 
@@ -229,10 +240,10 @@ The app is a static SPA that works on any static host.
 
 Environment variables to set on your hosting platform:
 
-| Variable | Description |
-|---|---|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key |
+| Variable                 | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| `VITE_SUPABASE_URL`      | Your Supabase project URL                              |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key                          |
 | `VITE_ENCRYPTION_SECRET` | Your encryption secret (same value as in `.env.local`) |
 
 > The encryption secret must be **identical** across all environments that share the same Supabase database. Changing it makes all existing encrypted rows unreadable.

@@ -17,7 +17,9 @@ export default function App() {
       }
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session?.user?.id) {
         await initCrypto(session.user.id);
@@ -31,7 +33,11 @@ export default function App() {
   }, []);
 
   if (loading || (session && !cryptoReady)) {
-    return <div className="loading"><div className="loading-ring" /></div>;
+    return (
+      <div className="loading">
+        <div className="loading-ring" />
+      </div>
+    );
   }
 
   if (!session) {

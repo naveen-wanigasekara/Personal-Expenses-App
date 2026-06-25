@@ -5,7 +5,19 @@ import { fmt, fmtCompact } from "../utils/format.js";
 import CardTile from "./CardTile.jsx";
 import CardDetailView from "./CardDetailView.jsx";
 
-export default function CardsView({ cards, transactions, onEdit, onNew, onDelete, onDeleteTx, onEditTx, installmentPlans, onCancelPlan, allExpCats, allIncCats }) {
+export default function CardsView({
+  cards,
+  transactions,
+  onEdit,
+  onNew,
+  onDelete,
+  onDeleteTx,
+  onEditTx,
+  installmentPlans,
+  onCancelPlan,
+  allExpCats,
+  allIncCats,
+}) {
   const CURRENCY = useContext(CurrencyCtx);
   const [selectedCard, setSelectedCard] = useState(null);
   const totalDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
@@ -15,31 +27,46 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const installmentTotalByCard = useMemo(() => {
     const totals = {};
-    (installmentPlans || []).filter((p) => p.active).forEach((p) => {
-      totals[p.cardId] = (totals[p.cardId] || 0) + p.monthlyAmount * p.totalMonths;
-    });
+    (installmentPlans || [])
+      .filter((p) => p.active)
+      .forEach((p) => {
+        totals[p.cardId] =
+          (totals[p.cardId] || 0) + p.monthlyAmount * p.totalMonths;
+      });
     return totals;
   }, [installmentPlans]);
 
-  const currentSelected = selectedCard ? cards.find((c) => c.id === selectedCard.id) : null;
+  const currentSelected = selectedCard
+    ? cards.find((c) => c.id === selectedCard.id)
+    : null;
 
   if (currentSelected) {
     return (
-      <CardDetailView card={currentSelected}
-        transactions={transactions.filter((t) => t.cardId === currentSelected.id)}
+      <CardDetailView
+        card={currentSelected}
+        transactions={transactions.filter(
+          (t) => t.cardId === currentSelected.id,
+        )}
         onBack={() => setSelectedCard(null)}
         onEdit={() => onEdit(currentSelected)}
-        onDelete={() => { onDelete(currentSelected.id); setSelectedCard(null); }}
+        onDelete={() => {
+          onDelete(currentSelected.id);
+          setSelectedCard(null);
+        }}
         onDeleteTx={onDeleteTx}
         onEditTx={onEditTx}
         installmentPlans={installmentPlans}
         onCancelPlan={onCancelPlan}
-        allExpCats={allExpCats} allIncCats={allIncCats} />
+        allExpCats={allExpCats}
+        allIncCats={allIncCats}
+      />
     );
   }
 
@@ -56,12 +83,16 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
             <div className="summary-row">
               <div className="summary-col">
                 <div className="summary-label">Total debt</div>
-                <div className="summary-val out-color">{CURRENCY} {fmtCompact(totalDebt)}</div>
+                <div className="summary-val out-color">
+                  {CURRENCY} {fmtCompact(totalDebt)}
+                </div>
               </div>
               <div className="summary-divider" />
               <div className="summary-col">
                 <div className="summary-label">Available</div>
-                <div className="summary-val in-color">{CURRENCY} {fmtCompact(totalAvailable)}</div>
+                <div className="summary-val in-color">
+                  {CURRENCY} {fmtCompact(totalAvailable)}
+                </div>
               </div>
             </div>
             <div className="summary-savings">
@@ -81,15 +112,21 @@ export default function CardsView({ cards, transactions, onEdit, onNew, onDelete
       <div className="cards-scroll">
         {cards.length === 0 ? (
           <div className="empty">
-            <div className="empty-icon"><CreditCard size={26} strokeWidth={1.5} /></div>
+            <div className="empty-icon">
+              <CreditCard size={26} strokeWidth={1.5} />
+            </div>
             <div className="empty-title">No cards yet</div>
             <div className="empty-sub">Add a card to start tracking</div>
           </div>
         ) : (
           <div className="cards-stack">
             {cards.map((card) => (
-              <CardTile key={card.id} card={card} onClick={() => setSelectedCard(card)}
-                installmentTotal={installmentTotalByCard[card.id] || 0} />
+              <CardTile
+                key={card.id}
+                card={card}
+                onClick={() => setSelectedCard(card)}
+                installmentTotal={installmentTotalByCard[card.id] || 0}
+              />
             ))}
           </div>
         )}

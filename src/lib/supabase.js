@@ -1,13 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import {
-  initCrypto, clearCrypto,
-  encryptFields, decryptFields,
+  initCrypto,
+  clearCrypto,
+  encryptFields,
+  decryptFields,
 } from "./crypto.js";
 
 export { initCrypto, clearCrypto };
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY_HERE";
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || "YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY || "YOUR_SUPABASE_ANON_KEY_HERE";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -17,9 +21,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-const TX_ENC     = ["amount", "category", "note", "date"];
-const CARD_ENC   = ["name", "credit_limit", "opening_balance", "colors"];
-const BUDGET_ENC = ["income_total", "income_categories", "expense_total", "expense_categories"];
+const TX_ENC = ["amount", "category", "note", "date"];
+const CARD_ENC = ["name", "credit_limit", "opening_balance", "colors"];
+const BUDGET_ENC = [
+  "income_total",
+  "income_categories",
+  "expense_total",
+  "expense_categories",
+];
 
 /* ─── AUTH HELPERS ────────────────────────────────────────── */
 export async function signUp(email, password) {
@@ -53,7 +62,9 @@ export async function fetchTransactions(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
-  const rows = await Promise.all((data || []).map((r) => decryptFields(r, TX_ENC)));
+  const rows = await Promise.all(
+    (data || []).map((r) => decryptFields(r, TX_ENC)),
+  );
   // Sort client-side because the date column is stored encrypted
   rows.sort((a, b) => new Date(b.date) - new Date(a.date));
   return rows;
@@ -135,7 +146,14 @@ export async function upsertBudget(budget) {
   return decryptFields(data, BUDGET_ENC);
 }
 
-const INSTALLMENT_ENC = ["label", "total_amount", "monthly_amount", "total_months", "start_month", "category"];
+const INSTALLMENT_ENC = [
+  "label",
+  "total_amount",
+  "monthly_amount",
+  "total_months",
+  "start_month",
+  "category",
+];
 const REMINDER_ENC = ["label", "amount", "day_of_month", "category"];
 
 /* Installment Plans */
@@ -145,7 +163,9 @@ export async function fetchInstallmentPlans(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
-  return Promise.all((data || []).map((r) => decryptFields(r, INSTALLMENT_ENC)));
+  return Promise.all(
+    (data || []).map((r) => decryptFields(r, INSTALLMENT_ENC)),
+  );
 }
 
 export async function insertInstallmentPlan(plan) {
@@ -205,6 +225,9 @@ export async function updateRecurringReminder(id, updates) {
 }
 
 export async function deleteRecurringReminder(id) {
-  const { error } = await supabase.from("recurring_reminders").delete().eq("id", id);
+  const { error } = await supabase
+    .from("recurring_reminders")
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }

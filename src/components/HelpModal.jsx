@@ -8,7 +8,9 @@ export default function HelpModal({ onClose }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
   const toggleSection = (id) => {
@@ -16,7 +18,8 @@ export default function HelpModal({ onClose }) {
     setOpenItem(null);
   };
 
-  const toggleItem = (key) => setOpenItem((prev) => (prev === key ? null : key));
+  const toggleItem = (key) =>
+    setOpenItem((prev) => (prev === key ? null : key));
 
   return (
     <div className="backdrop" onClick={onClose}>
@@ -24,20 +27,33 @@ export default function HelpModal({ onClose }) {
         <div className="sheet-handle" />
         <div className="sheet-hd">
           <h2>Help &amp; Guide</h2>
-          <button className="close-btn" onClick={onClose}><X size={18} /></button>
+          <button className="close-btn" onClick={onClose}>
+            <X size={18} />
+          </button>
         </div>
 
-        <p className="help-intro">Tap a section to explore, then tap a question for the answer.</p>
+        <p className="help-intro">
+          Tap a section to explore, then tap a question for the answer.
+        </p>
 
         <div className="help-sections">
           {HELP_SECTIONS.map((section) => {
             const isOpen = openSection === section.id;
             return (
-              <div key={section.id} className={`help-section ${isOpen ? "open" : ""}`}>
-                <button className="help-section-hd" onClick={() => toggleSection(section.id)}>
+              <div
+                key={section.id}
+                className={`help-section ${isOpen ? "open" : ""}`}
+              >
+                <button
+                  className="help-section-hd"
+                  onClick={() => toggleSection(section.id)}
+                >
                   <span className="help-section-icon">{section.icon}</span>
                   <span className="help-section-title">{section.title}</span>
-                  <ChevronDown size={15} className={`help-chevron ${isOpen ? "rotated" : ""}`} />
+                  <ChevronDown
+                    size={15}
+                    className={`help-chevron ${isOpen ? "rotated" : ""}`}
+                  />
                 </button>
                 {isOpen && (
                   <div className="help-items">
@@ -45,14 +61,25 @@ export default function HelpModal({ onClose }) {
                       const key = `${section.id}-${i}`;
                       const isItemOpen = openItem === key;
                       return (
-                        <div key={key} className={`help-item ${isItemOpen ? "open" : ""}`}>
-                          <button className="help-item-q" onClick={() => toggleItem(key)}>
+                        <div
+                          key={key}
+                          className={`help-item ${isItemOpen ? "open" : ""}`}
+                        >
+                          <button
+                            className="help-item-q"
+                            onClick={() => toggleItem(key)}
+                          >
                             <span>{item.q}</span>
-                            <ChevronDown size={13} className={`help-chevron ${isItemOpen ? "rotated" : ""}`} />
+                            <ChevronDown
+                              size={13}
+                              className={`help-chevron ${isItemOpen ? "rotated" : ""}`}
+                            />
                           </button>
                           {isItemOpen && (
                             <div className="help-item-a">
-                              {item.a.split("\n").map((line, li) => <p key={li}>{line}</p>)}
+                              {item.a.split("\n").map((line, li) => (
+                                <p key={li}>{line}</p>
+                              ))}
                             </div>
                           )}
                         </div>

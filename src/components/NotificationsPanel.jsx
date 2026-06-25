@@ -10,15 +10,24 @@ const ordinal = (n) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-export default function NotificationsPanel({ installmentNotifs, recurringNotifs, cards, currentMk, onClose }) {
+export default function NotificationsPanel({
+  installmentNotifs,
+  recurringNotifs,
+  cards,
+  currentMk,
+  onClose,
+}) {
   const CURRENCY = useContext(CurrencyCtx);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
-  const getCardName = (cardId) => cards.find((c) => c.id === cardId)?.name || "Card";
+  const getCardName = (cardId) =>
+    cards.find((c) => c.id === cardId)?.name || "Card";
 
   const getSeq = (plan) => {
     const [sy, sm] = plan.startMonth.split("-").map(Number);
@@ -34,7 +43,9 @@ export default function NotificationsPanel({ installmentNotifs, recurringNotifs,
         <div className="sheet-handle" />
         <div className="sheet-hd">
           <h2>Notifications</h2>
-          <button className="close-btn" onClick={onClose}><X size={18} /></button>
+          <button className="close-btn" onClick={onClose}>
+            <X size={18} />
+          </button>
         </div>
 
         {!hasNotifs && (
@@ -49,14 +60,19 @@ export default function NotificationsPanel({ installmentNotifs, recurringNotifs,
                 const seq = getSeq(plan);
                 return (
                   <div key={plan.id} className="notif-item">
-                    <div className="notif-icon notif-icon-card"><CreditCard size={14} /></div>
+                    <div className="notif-icon notif-icon-card">
+                      <CreditCard size={14} />
+                    </div>
                     <div className="notif-body">
                       <div className="notif-title">{plan.label}</div>
                       <div className="notif-meta">
-                        {getCardName(plan.cardId)} · Installment {seq}/{plan.totalMonths}
+                        {getCardName(plan.cardId)} · Installment {seq}/
+                        {plan.totalMonths}
                       </div>
                     </div>
-                    <div className="notif-amt">{CURRENCY} {fmt(plan.monthlyAmount)}</div>
+                    <div className="notif-amt">
+                      {CURRENCY} {fmt(plan.monthlyAmount)}
+                    </div>
                   </div>
                 );
               })}
@@ -70,13 +86,19 @@ export default function NotificationsPanel({ installmentNotifs, recurringNotifs,
             <div className="notif-list">
               {recurringNotifs.map((reminder) => (
                 <div key={reminder.id} className="notif-item">
-                  <div className="notif-icon notif-icon-bell"><Bell size={14} /></div>
+                  <div className="notif-icon notif-icon-bell">
+                    <Bell size={14} />
+                  </div>
                   <div className="notif-body">
                     <div className="notif-title">{reminder.label}</div>
-                    <div className="notif-meta">Due {ordinal(reminder.dayOfMonth)} of this month</div>
+                    <div className="notif-meta">
+                      Due {ordinal(reminder.dayOfMonth)} of this month
+                    </div>
                   </div>
                   {reminder.amount && (
-                    <div className="notif-amt">{CURRENCY} {fmt(reminder.amount)}</div>
+                    <div className="notif-amt">
+                      {CURRENCY} {fmt(reminder.amount)}
+                    </div>
                   )}
                 </div>
               ))}

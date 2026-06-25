@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 
-export default function AmountInput({ value, onChange, placeholder, className }) {
+export default function AmountInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}) {
   const fmtFull = (v) => {
     const n = Number(v);
-    if (!v && v !== 0 || isNaN(n) || n === 0) return "";
+    if ((!v && v !== 0) || isNaN(n) || n === 0) return "";
     const [i, d] = n.toFixed(2).split(".");
     return parseInt(i, 10).toLocaleString("en-US") + "." + d;
   };
@@ -33,7 +38,10 @@ export default function AmountInput({ value, onChange, placeholder, className })
         setDisplay(fmtLive(raw));
         onChange(raw);
       }}
-      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onFocus={(e) => {
+        setFocused(true);
+        e.target.select();
+      }}
       onBlur={(e) => {
         setFocused(false);
         const n = parseFloat(e.target.value.replace(/,/g, ""));

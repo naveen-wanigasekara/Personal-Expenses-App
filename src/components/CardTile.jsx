@@ -12,34 +12,47 @@ export default function CardTile({ card, onClick, installmentTotal }) {
 
   return (
     <button className="card-tile" onClick={onClick}>
-      <div className="ct-visual" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
+      <div
+        className="ct-visual"
+        style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
+      >
         <div className="ct-vis-top">
           <span className="ct-bank">{card.name}</span>
           <CreditCard size={18} strokeWidth={1.5} />
         </div>
         <div className="ct-vis-mid">
           <div className="ct-vis-label">Balance</div>
-          <div className="ct-vis-val">{CURRENCY} {fmt(card.currentBalance)}</div>
+          <div className="ct-vis-val">
+            {CURRENCY} {fmt(card.currentBalance)}
+          </div>
         </div>
         <div className="ct-vis-bot">
           <div>
             <div className="ct-vis-label-sm">Available</div>
-            <div className="ct-vis-val-sm">{CURRENCY} {fmtCompact(available)}</div>
+            <div className="ct-vis-val-sm">
+              {CURRENCY} {fmtCompact(available)}
+            </div>
           </div>
           <div className="ct-vis-right">
             <div className="ct-vis-label-sm">Limit</div>
-            <div className="ct-vis-val-sm">{CURRENCY} {fmtCompact(+card.limit || 0)}</div>
+            <div className="ct-vis-val-sm">
+              {CURRENCY} {fmtCompact(+card.limit || 0)}
+            </div>
           </div>
         </div>
       </div>
       <div className="ct-util">
         <div className="ct-util-top">
           <span>Utilization</span>
-          <span className={util > 90 ? "over" : util > 70 ? "warn" : ""}>{util.toFixed(0)}%</span>
+          <span className={util > 90 ? "over" : util > 70 ? "warn" : ""}>
+            {util.toFixed(0)}%
+          </span>
         </div>
         <div className="ct-util-bar">
-          <div className={`ct-util-fill ${util > 90 ? "over" : util > 70 ? "warn" : ""}`}
-            style={{ width: `${Math.min(util, 100)}%` }} />
+          <div
+            className={`ct-util-fill ${util > 90 ? "over" : util > 70 ? "warn" : ""}`}
+            style={{ width: `${Math.min(util, 100)}%` }}
+          />
         </div>
         {installmentTotal > 0 && (
           <div className="ct-installment-note">
