@@ -106,7 +106,9 @@ export const HELP_SECTIONS = [
       },
       {
         q: "What can I see in Card Detail?",
-        a: "Tap any card to see this month's total purchases, payments, and interest; active installment plans with progress bars; a full activity list; and edit/delete options for the card itself.",
+        a: "Tap any card to view its details, including the current outstanding balance, this month's purchases, payments, and interest, active installment plans with progress bars, and a full activity list.",
+        a: "The Current Outstanding Balance shown on each credit card in the Cards tab represents your total outstanding balance, including all active installment plans and any existing outstanding balance.",
+        a: "After opening a card, the Current Outstanding Balance shown in Card Detail includes only the outstanding amounts up to the current month. Future scheduled installment charges are not included until their month arrives."
       },
       {
         q: "What are Active Plans in Card Detail?",
