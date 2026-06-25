@@ -44,8 +44,28 @@ export default function CardDetailView({
     const [y, m] = viewMonth.split("-").map(Number);
     setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
   };
-  const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
-  const available = (+card.limit || 0) - card.currentBalance;
+
+  const todayMonth = monthKey(new Date());
+
+  const currentOutstanding = transactions
+    .filter((t) => monthKey(t.date) <= todayMonth)
+    .reduce((sum, t) => {
+      switch (t.type) {
+        case "card-purchase":
+        case "card-interest":
+          return sum + Number(t.amount);
+
+        case "card-payment":
+          return sum - Number(t.amount);
+
+        default:
+          return sum;
+      }
+    }, 0);
+
+  const util = card.limit ? (currentOutstanding / card.limit) * 100 : 0;
+  const available = (+card.limit || 0) - currentOutstanding;
+
   const selectedMonthTx = transactions.filter(
     (t) => monthKey(t.date) === viewMonth,
   );
@@ -115,7 +135,7 @@ export default function CardDetailView({
         <div className="ct-vis-mid">
           <div className="ct-vis-label">Balance</div>
           <div className="ct-vis-val big">
-            {CURRENCY} {fmt(card.currentBalance)}
+            {CURRENCY} {fmt(currentOutstanding)}
           </div>
         </div>
         <div className="ct-vis-bot">
@@ -230,11 +250,11 @@ export default function CardDetailView({
         <span className="count">{selectedMonthTx.length}</span>
       </div>
 
-      {card.currentBalance !== 0 && (
+      {currentOutstanding !== 0 && (
         <div className="monthly-total-banner">
           <span className="monthly-total-banner-lbl">Current Outstanding</span>
           <span className="monthly-total-banner-amt">
-            {CURRENCY} {fmt(card.currentBalance)}
+            {CURRENCY} {fmt(currentOutstanding)}
           </span>
         </div>
       )}
