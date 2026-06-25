@@ -47,7 +47,9 @@ export default function CardDetailView({
 
   const todayMonth = monthKey(new Date());
 
-  const currentOutstanding = transactions
+  const currentOutstanding =
+  (+card.openingBalance || 0) +
+  transactions
     .filter((t) => monthKey(t.date) <= todayMonth)
     .reduce((sum, t) => {
       switch (t.type) {
@@ -66,20 +68,21 @@ export default function CardDetailView({
   const util = card.limit ? (currentOutstanding / card.limit) * 100 : 0;
 
   const committedBalance = transactions.reduce((sum, t) => {
-    switch (t.type) {
-      case "card-purchase":
-      case "card-interest":
-        return sum + Number(t.amount);
+  switch (t.type) {
+    case "card-purchase":
+    case "card-interest":
+      return sum + Number(t.amount);
 
-      case "card-payment":
-        return sum - Number(t.amount);
+    case "card-payment":
+      return sum - Number(t.amount);
 
-      default:
-        return sum;
-    }
-  }, 0);
+    default:
+      return sum;
+  }
+}, 0);
 
-  const available = (+card.limit || 0) - committedBalance;
+  const available =
+  (+card.limit || 0) - ((+card.openingBalance || 0) + committedBalance);
 
   const selectedMonthTx = transactions.filter(
     (t) => monthKey(t.date) === viewMonth,
