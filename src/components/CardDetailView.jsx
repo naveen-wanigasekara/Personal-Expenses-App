@@ -151,14 +151,14 @@ export default function CardDetailView({
           <CreditCard size={20} strokeWidth={1.5} />
         </div>
         <div className="ct-vis-mid">
-          <div className="ct-vis-label">Balance</div>
+          <div className="ct-vis-label">Outstanding Balance</div>
           <div className="ct-vis-val big">
             {CURRENCY} {fmt(currentOutstanding)}
           </div>
         </div>
         <div className="ct-vis-bot">
           <div>
-            <div className="ct-vis-label-sm">Available</div>
+            <div className="ct-vis-label-sm">Available to Spend</div>
             <div className="ct-vis-val-sm">
               {CURRENCY} {fmt(available)}
             </div>

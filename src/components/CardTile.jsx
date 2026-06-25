@@ -21,14 +21,14 @@ export default function CardTile({ card, onClick, installmentTotal }) {
           <CreditCard size={18} strokeWidth={1.5} />
         </div>
         <div className="ct-vis-mid">
-          <div className="ct-vis-label">Balance</div>
+          <div className="ct-vis-label">Outstanding Balance</div>
           <div className="ct-vis-val">
             {CURRENCY} {fmt(card.currentBalance)}
           </div>
         </div>
         <div className="ct-vis-bot">
           <div>
-            <div className="ct-vis-label-sm">Available</div>
+            <div className="ct-vis-label-sm">Available to Spend</div>
             <div className="ct-vis-val-sm">
               {CURRENCY} {fmtCompact(available)}
             </div>
