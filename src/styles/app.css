@@ -606,7 +606,15 @@ body {
   align-items: center;
   gap: 12px;
   background: var(--bg);
-  padding: 14px 18px;
+  /* Top padding must clear env(safe-area-inset-top) — this bar sits at the
+     very top of the viewport (position: sticky; top: 0) and iOS renders
+     standalone-PWA content full-bleed under the status bar
+     (viewport-fit=cover + apple-mobile-web-app-status-bar-style:
+     black-translucent in index.html), so without this the hamburger/month
+     pill/bell sit underneath the status bar and are unreachable. Resolves
+     to plain 14px on Android/desktop/non-notched devices, where the env()
+     is 0. */
+  padding: calc(env(safe-area-inset-top) + 14px) 18px 14px;
   margin: 0 -18px;
   border-bottom: 1px solid var(--border);
 }
