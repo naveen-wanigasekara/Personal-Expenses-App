@@ -1,6 +1,22 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, BarChart3, Wallet, CreditCard, Target } from "lucide-react";
+import {
+  Plus,
+  BarChart3,
+  Wallet,
+  CreditCard,
+  Target,
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  LineChart,
+  User,
+} from "lucide-react";
 import { CurrencyCtx } from "../context.js";
+import {
+  getCat,
+  isSpendableExpense,
+  getProtectedCategory,
+} from "../constants/categories.js";
 import {
   fetchTransactions,
   insertTransaction,
@@ -18,22 +34,39 @@ import {
   insertRecurringReminder,
   updateRecurringReminder,
   deleteRecurringReminder,
+  fetchInvestments,
+  insertInvestment,
+  updateInvestment,
+  deleteInvestment,
+  fetchInvestmentValuations,
+  insertInvestmentValuation,
+  updateInvestmentValuation,
+  deleteInvestmentValuation,
+  deleteInvestmentValuationsFor,
 } from "../lib/supabase.js";
 import {
   loadUserCats,
   saveUserCats,
   loadUserCurrency,
   saveUserCurrency,
+  loadCompletedNotifs,
+  saveCompletedNotifs,
 } from "../utils/storage.js";
-import { monthKey, emptyPlan } from "../utils/format.js";
+import { monthKey, monthLabel, shiftMonth, emptyPlan } from "../utils/format.js";
 import NavBtn from "./NavBtn.jsx";
 import PWABanners from "./PWABanners.jsx";
 import DashView from "./DashView.jsx";
 import HomeView from "./HomeView.jsx";
 import CardsView from "./CardsView.jsx";
 import BudgetView from "./BudgetView.jsx";
+import InvestmentsView from "./InvestmentsView.jsx";
+import UserView from "./UserView.jsx";
+import NavDrawer from "./NavDrawer.jsx";
+import NotificationsPanel from "./NotificationsPanel.jsx";
 import AddModal from "./AddModal.jsx";
 import CardFormModal from "./CardFormModal.jsx";
+import InvestmentFormModal from "./InvestmentFormModal.jsx";
+import InvestmentValueModal from "./InvestmentValueModal.jsx";
 import SettingsModal from "./SettingsModal.jsx";
 import HelpModal from "./HelpModal.jsx";
 import CategoriesModal from "./CategoriesModal.jsx";
@@ -53,7 +86,13 @@ export default function MainApp({ user }) {
   const [showSettings, setShowSettings] = useState(false);
   const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
   const [errorBanner, setErrorBanner] = useState(null);
-  const [userCats, setUserCats] = useState(() => loadUserCats(user.id));
+  // Mobile/tablet-only: a full-height slide-in drawer (Budget + Investments)
+  // opened from the hamburger control in each page's header; desktop keeps
+  // its own unchanged sidebar with both as standalone links.
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [userCats, setUserCats] = useState(() =>
+    loadUserCats(user.id, user.created_at),
+  );
   const [showCatsModal, setShowCatsModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
@@ -61,6 +100,12 @@ export default function MainApp({ user }) {
   const [installmentPlans, setInstallmentPlans] = useState([]);
   const [recurringReminders, setRecurringReminders] = useState([]);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [investments, setInvestments] = useState([]);
+  const [investmentValuations, setInvestmentValuations] = useState([]);
+  const [showInvestmentForm, setShowInvestmentForm] = useState(null);
+  const [recordingValueFor, setRecordingValueFor] = useState(null);
+  const [editingValuation, setEditingValuation] = useState(null);
 
   const updateCurrency = useCallback(
     (sym) => {
@@ -86,11 +131,21 @@ export default function MainApp({ user }) {
 
   const editCat = useCallback(
     (type, id, updates) => {
+      let safeUpdates = updates;
+      const protectedCat = getProtectedCategory(type, id);
+      if (
+        protectedCat &&
+        updates.label &&
+        !protectedCat.labelOptions.includes(updates.label)
+      ) {
+        const { label: _droppedLabel, ...rest } = updates;
+        safeUpdates = rest;
+      }
       setUserCats((prev) => {
         const next = {
           ...prev,
           [type]: prev[type].map((c) =>
-            c.id === id ? { ...c, ...updates } : c,
+            c.id === id ? { ...c, ...safeUpdates } : c,
           ),
         };
         saveUserCats(user.id, next);
@@ -102,6 +157,7 @@ export default function MainApp({ user }) {
 
   const deleteCat = useCallback(
     (type, id) => {
+      if (getProtectedCategory(type, id)) return;
       setUserCats((prev) => {
         const next = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
         saveUserCats(user.id, next);
@@ -118,14 +174,23 @@ export default function MainApp({ user }) {
   useEffect(() => {
     (async () => {
       try {
-        const [txRows, cardRows, budgetRows, planRows, reminderRows] =
-          await Promise.all([
-            fetchTransactions(user.id),
-            fetchCards(user.id),
-            fetchBudgets(user.id),
-            fetchInstallmentPlans(user.id),
-            fetchRecurringReminders(user.id),
-          ]);
+        const [
+          txRows,
+          cardRows,
+          budgetRows,
+          planRows,
+          reminderRows,
+          investmentRows,
+          valuationRows,
+        ] = await Promise.all([
+          fetchTransactions(user.id),
+          fetchCards(user.id),
+          fetchBudgets(user.id),
+          fetchInstallmentPlans(user.id),
+          fetchRecurringReminders(user.id),
+          fetchInvestments(user.id),
+          fetchInvestmentValuations(user.id),
+        ]);
 
         setTransactions(
           txRows.map((r) => ({
@@ -191,6 +256,30 @@ export default function MainApp({ user }) {
             dayOfMonth: +r.day_of_month,
             category: r.category || null,
             active: r.active,
+          })),
+        );
+
+        setInvestments(
+          investmentRows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            type: r.type || "",
+            initialAmount: +r.initial_amount,
+            currentValue: +r.current_value,
+            startDate: r.start_date,
+            notes: r.notes || "",
+            interestRate: r.interest_rate != null ? +r.interest_rate : null,
+            payoutFrequency: r.payout_frequency || null,
+            tenureMonths: r.tenure_months != null ? +r.tenure_months : null,
+          })),
+        );
+
+        setInvestmentValuations(
+          valuationRows.map((r) => ({
+            id: r.id,
+            investmentId: r.investment_id,
+            value: +r.value,
+            recordedDate: r.recorded_date,
           })),
         );
       } catch (e) {
@@ -336,6 +425,225 @@ export default function MainApp({ user }) {
     [cards],
   );
 
+  const saveInvestment = useCallback(
+    async (investment) => {
+      const id = investment.id || `inv_${Date.now()}`;
+      const isNew = !investment.id;
+      const dbRow = {
+        id,
+        user_id: user.id,
+        name: investment.name,
+        type: investment.type || "",
+        initial_amount: investment.initialAmount,
+        current_value: isNew ? investment.initialAmount : investment.currentValue,
+        start_date: investment.startDate,
+        notes: investment.notes || "",
+        interest_rate: investment.interestRate,
+        payout_frequency: investment.payoutFrequency,
+        tenure_months: investment.tenureMonths,
+      };
+      try {
+        if (isNew) await insertInvestment(dbRow);
+        else await updateInvestment(id, dbRow);
+
+        setInvestments((prev) => {
+          const next = {
+            id,
+            name: investment.name,
+            type: investment.type || "",
+            initialAmount: +investment.initialAmount,
+            currentValue: isNew ? +investment.initialAmount : +investment.currentValue,
+            startDate: investment.startDate,
+            notes: investment.notes || "",
+            interestRate: investment.interestRate,
+            payoutFrequency: investment.payoutFrequency,
+            tenureMonths: investment.tenureMonths,
+          };
+          const exists = prev.find((i) => i.id === id);
+          return exists
+            ? prev.map((i) => (i.id === id ? next : i))
+            : [...prev, next];
+        });
+
+        // Auto-create the starting valuation snapshot so the value-over-time
+        // chart always has a clean first point.
+        if (isNew) {
+          const valuationId = `val_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const valuationRow = {
+            id: valuationId,
+            user_id: user.id,
+            investment_id: id,
+            value: investment.initialAmount,
+            recorded_date: investment.startDate,
+          };
+          await insertInvestmentValuation(valuationRow);
+          setInvestmentValuations((prev) => [
+            ...prev,
+            {
+              id: valuationId,
+              investmentId: id,
+              value: +investment.initialAmount,
+              recordedDate: investment.startDate,
+            },
+          ]);
+        }
+      } catch (e) {
+        showError("Couldn't save investment.");
+      }
+    },
+    [user.id],
+  );
+
+  const removeInvestment = useCallback(
+    async (id) => {
+      const prevInvestments = investments;
+      const prevValuations = investmentValuations;
+      setInvestments((p) => p.filter((i) => i.id !== id));
+      setInvestmentValuations((p) => p.filter((v) => v.investmentId !== id));
+      try {
+        await Promise.all([
+          deleteInvestment(id),
+          deleteInvestmentValuationsFor(id),
+        ]);
+      } catch (e) {
+        setInvestments(prevInvestments);
+        setInvestmentValuations(prevValuations);
+        showError("Couldn't delete investment.");
+      }
+    },
+    [investments, investmentValuations],
+  );
+
+  // Single source of truth for what an investment's current_value should be:
+  // the value of whichever remaining valuation has the latest recorded date.
+  // Used after every add/edit/delete of a valuation so current_value never
+  // drifts out of sync with the actual history.
+  const latestValuationValue = (valuationsForInvestment) => {
+    if (!valuationsForInvestment.length) return null;
+    return valuationsForInvestment.reduce((latest, v) =>
+      v.recordedDate >= latest.recordedDate ? v : latest,
+    ).value;
+  };
+
+  const recordInvestmentValue = useCallback(
+    async (investmentId, value, date, note) => {
+      const valuationId = `val_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const prevInvestments = investments;
+      const prevValuations = investmentValuations;
+
+      const nextForInvestment = [
+        ...investmentValuations.filter((v) => v.investmentId === investmentId),
+        { id: valuationId, investmentId, value: +value, recordedDate: date },
+      ];
+      const newCurrentValue = latestValuationValue(nextForInvestment);
+
+      setInvestmentValuations((p) => [
+        ...p,
+        { id: valuationId, investmentId, value: +value, recordedDate: date },
+      ]);
+      setInvestments((p) =>
+        p.map((i) =>
+          i.id === investmentId ? { ...i, currentValue: newCurrentValue } : i,
+        ),
+      );
+
+      try {
+        await insertInvestmentValuation({
+          id: valuationId,
+          user_id: user.id,
+          investment_id: investmentId,
+          value,
+          recorded_date: date,
+        });
+        await updateInvestment(investmentId, { current_value: newCurrentValue });
+      } catch (e) {
+        setInvestments(prevInvestments);
+        setInvestmentValuations(prevValuations);
+        showError("Couldn't record value. Try again.");
+      }
+    },
+    [investments, investmentValuations, user.id],
+  );
+
+  const updateInvestmentValueEntry = useCallback(
+    async (investmentId, valuationId, value, date, note) => {
+      const prevInvestments = investments;
+      const prevValuations = investmentValuations;
+
+      const nextForInvestment = investmentValuations
+        .filter((v) => v.investmentId === investmentId)
+        .map((v) =>
+          v.id === valuationId
+            ? { ...v, value: +value, recordedDate: date }
+            : v,
+        );
+      const newCurrentValue = latestValuationValue(nextForInvestment);
+
+      setInvestmentValuations((p) =>
+        p.map((v) =>
+          v.id === valuationId
+            ? { ...v, value: +value, recordedDate: date }
+            : v,
+        ),
+      );
+      setInvestments((p) =>
+        p.map((i) =>
+          i.id === investmentId ? { ...i, currentValue: newCurrentValue } : i,
+        ),
+      );
+
+      try {
+        await updateInvestmentValuation(valuationId, {
+          value,
+          recorded_date: date,
+        });
+        await updateInvestment(investmentId, { current_value: newCurrentValue });
+      } catch (e) {
+        setInvestments(prevInvestments);
+        setInvestmentValuations(prevValuations);
+        showError("Couldn't update value. Try again.");
+      }
+    },
+    [investments, investmentValuations],
+  );
+
+  const deleteInvestmentValueEntry = useCallback(
+    async (investmentId, valuationId) => {
+      const existingForInvestment = investmentValuations.filter(
+        (v) => v.investmentId === investmentId,
+      );
+      if (existingForInvestment.length <= 1) {
+        showError("Can't delete the only value on record — add a newer one first.");
+        return;
+      }
+
+      const prevInvestments = investments;
+      const prevValuations = investmentValuations;
+
+      const nextForInvestment = existingForInvestment.filter(
+        (v) => v.id !== valuationId,
+      );
+      const newCurrentValue = latestValuationValue(nextForInvestment);
+
+      setInvestmentValuations((p) => p.filter((v) => v.id !== valuationId));
+      setInvestments((p) =>
+        p.map((i) =>
+          i.id === investmentId ? { ...i, currentValue: newCurrentValue } : i,
+        ),
+      );
+
+      try {
+        await deleteInvestmentValuation(valuationId);
+        await updateInvestment(investmentId, { current_value: newCurrentValue });
+      } catch (e) {
+        setInvestments(prevInvestments);
+        setInvestmentValuations(prevValuations);
+        showError("Couldn't delete value. Try again.");
+      }
+    },
+    [investments, investmentValuations],
+  );
+
   const setMonthPlan = useCallback(
     async (month, plan) => {
       setMonthPlans((p) => ({ ...p, [month]: plan }));
@@ -406,6 +714,14 @@ export default function MainApp({ user }) {
       }
       setInstallmentPlans((prev) => [...prev, newPlan]);
       setTransactions((prev) => [...txs, ...prev]);
+
+      const rollbackLocal = () => {
+        setInstallmentPlans((prev) => prev.filter((p) => p.id !== planId));
+        setTransactions((prev) =>
+          prev.filter((t) => t.installmentId !== planId),
+        );
+      };
+
       try {
         await insertInstallmentPlan({
           id: planId,
@@ -418,25 +734,45 @@ export default function MainApp({ user }) {
           start_month: planData.startMonth,
           category: planData.category,
         });
-        await Promise.all(
-          txs.map((t) =>
-            insertTransaction({
-              id: t.id,
-              user_id: user.id,
-              type: t.type,
-              amount: t.amount,
-              category: t.category,
-              card_id: t.cardId,
-              note: t.note,
-              date: t.date,
-              installment_id: planId,
-            }),
-          ),
-        );
       } catch (e) {
-        setInstallmentPlans((prev) => prev.filter((p) => p.id !== planId));
-        setTransactions((prev) =>
-          prev.filter((t) => t.installmentId !== planId),
+        rollbackLocal();
+        showError("Couldn't save installment plan. Try again.");
+        return;
+      }
+
+      // Use allSettled (not all) so a partial failure tells us exactly which
+      // transaction rows actually made it to the DB — otherwise a failure
+      // partway through would roll back local state while leaving the
+      // already-inserted rows (and the plan itself) orphaned server-side,
+      // only to silently reappear on the next reload.
+      const results = await Promise.allSettled(
+        txs.map((t) =>
+          insertTransaction({
+            id: t.id,
+            user_id: user.id,
+            type: t.type,
+            amount: t.amount,
+            category: t.category,
+            card_id: t.cardId,
+            note: t.note,
+            date: t.date,
+            installment_id: planId,
+          }),
+        ),
+      );
+
+      if (results.some((r) => r.status === "rejected")) {
+        rollbackLocal();
+        const succeededIds = txs
+          .filter((_, i) => results[i].status === "fulfilled")
+          .map((t) => t.id);
+        await Promise.allSettled(
+          succeededIds.map((id) => deleteTransaction(id)),
+        );
+        // Plans are never hard-deleted elsewhere in the app (see
+        // cancelInstallmentPlan) — mark inactive as best-effort cleanup.
+        await updateInstallmentPlan(planId, { active: false }).catch(
+          () => {},
         );
         showError("Couldn't save installment plan. Try again.");
       }
@@ -448,11 +784,11 @@ export default function MainApp({ user }) {
     async (planId) => {
       const now = new Date();
       const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const futureTxIds = transactions
-        .filter(
-          (t) => t.installmentId === planId && monthKey(t.date) > currentMk,
-        )
-        .map((t) => t.id);
+      const removedTxs = transactions.filter(
+        (t) => t.installmentId === planId && monthKey(t.date) > currentMk,
+      );
+      const futureTxIds = removedTxs.map((t) => t.id);
+      const prevPlans = installmentPlans;
       setTransactions((prev) =>
         prev.filter((t) => !futureTxIds.includes(t.id)),
       );
@@ -463,10 +799,12 @@ export default function MainApp({ user }) {
         await Promise.all(futureTxIds.map((id) => deleteTransaction(id)));
         await updateInstallmentPlan(planId, { active: false });
       } catch (e) {
-        showError("Couldn't cancel plan.");
+        setTransactions((prev) => [...removedTxs, ...prev]);
+        setInstallmentPlans(prevPlans);
+        showError("Couldn't cancel plan. Try again.");
       }
     },
-    [transactions],
+    [transactions, installmentPlans],
   );
 
   const saveRecurringReminder = useCallback(
@@ -538,6 +876,75 @@ export default function MainApp({ user }) {
     });
   }, [cards, transactions]);
 
+  // Notifications live here (not in DashView) so the bell in the shared
+  // desktop topbar can open the same panel from any tab. Not memoized with
+  // an empty dep array on purpose — must reflect "now" on every render, or
+  // a long-lived PWA session that crosses a month boundary would keep
+  // evaluating due dates against a stale month.
+  const currentMk = monthKey(new Date());
+
+  // Notifications are computed live, not stored rows, so "Completed" just
+  // dismisses a specific occurrence for the current month — keyed by month
+  // so it reappears next month if the underlying plan/reminder is still
+  // active, matching how recurring reminders already auto-dismiss.
+  const [completedNotifIds, setCompletedNotifIds] = useState(() =>
+    loadCompletedNotifs(user.id, currentMk),
+  );
+  useEffect(() => {
+    setCompletedNotifIds(loadCompletedNotifs(user.id, currentMk));
+  }, [user.id, currentMk]);
+
+  const markNotifCompleted = useCallback(
+    (id) => {
+      setCompletedNotifIds((prev) => {
+        if (prev.includes(id)) return prev;
+        const next = [...prev, id];
+        saveCompletedNotifs(user.id, currentMk, next);
+        return next;
+      });
+    },
+    [user.id, currentMk],
+  );
+
+  const installmentNotifs = useMemo(() => {
+    return (installmentPlans || []).filter((plan) => {
+      if (!plan.active) return false;
+      if (completedNotifIds.includes(`inst:${plan.id}`)) return false;
+      const [sy, sm] = plan.startMonth.split("-").map(Number);
+      const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
+      const endMk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return currentMk >= plan.startMonth && currentMk <= endMk;
+    });
+  }, [installmentPlans, currentMk, completedNotifIds]);
+
+  const recurringNotifs = useMemo(() => {
+    const currentMonthTxs = transactions.filter(
+      (t) => monthKey(t.date) === currentMk,
+    );
+    return (recurringReminders || []).filter((reminder) => {
+      if (!reminder.active) return false;
+      if (completedNotifIds.includes(`rec:${reminder.id}`)) return false;
+      if (!reminder.category) return true;
+      const dismissed = currentMonthTxs.some((t) => {
+        const catId =
+          t.type === "income"
+            ? getCat(t.category, "income", allExpCats, allIncCats).id
+            : getCat(t.category, "expense", allExpCats, allIncCats).id;
+        return catId === reminder.category;
+      });
+      return !dismissed;
+    });
+  }, [
+    recurringReminders,
+    transactions,
+    currentMk,
+    allExpCats,
+    allIncCats,
+    completedNotifIds,
+  ]);
+
+  const notifCount = installmentNotifs.length + recurringNotifs.length;
+
   const getEffectivePlan = useCallback(
     (mKey) => {
       const specific = monthPlans[mKey];
@@ -567,23 +974,14 @@ export default function MainApp({ user }) {
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + +t.amount, 0);
     const expenses = inMonth
-      .filter(
-        (t) =>
-          t.type === "expense" ||
-          t.type === "card-purchase" ||
-          t.type === "card-interest",
-      )
+      .filter((t) => isSpendableExpense(t, allExpCats, allIncCats))
       .reduce((s, t) => s + +t.amount, 0);
     const byExpCat = {};
     const byIncCat = {};
     inMonth.forEach((t) => {
       if (t.type === "income")
         byIncCat[t.category] = (byIncCat[t.category] || 0) + +t.amount;
-      else if (
-        t.type === "expense" ||
-        t.type === "card-purchase" ||
-        t.type === "card-interest"
-      ) {
+      else if (isSpendableExpense(t, allExpCats, allIncCats)) {
         byExpCat[t.category] = (byExpCat[t.category] || 0) + +t.amount;
       }
     });
@@ -595,15 +993,64 @@ export default function MainApp({ user }) {
       byIncCat,
       list: inMonth,
     };
-  }, [transactions, viewMonth]);
+  }, [transactions, viewMonth, allExpCats, allIncCats]);
 
   if (!loaded) {
     return (
-      <div className="loading">
-        <div className="loading-ring" />
+      <div className="app">
+        <div className="app-glow" />
+        <main className="content">
+          <div className="view view-dashboard">
+            <div className="dash-topbar">
+              <div className="skel skel-pill" style={{ width: 110, height: 34 }} />
+            </div>
+            <div className="hero">
+              <div className="skel skel-text" style={{ width: 90, height: 12 }} />
+              <div
+                className="skel skel-text"
+                style={{ width: 160, height: 30, marginTop: 8 }}
+              />
+              <div
+                className="skel skel-text"
+                style={{ width: 110, height: 10, marginTop: 16 }}
+              />
+              <div
+                className="skel skel-text"
+                style={{ width: 220, height: 48, marginTop: 10 }}
+              />
+            </div>
+            <div className="dash-sections">
+              <div className="inout inout-section">
+                <div className="skel skel-card" style={{ height: 60, flex: 1 }} />
+                <div className="skel skel-card" style={{ height: 60, flex: 1 }} />
+              </div>
+              <div className="skel skel-card" style={{ height: 48 }} />
+              <div className="skel skel-card" style={{ height: 220 }} />
+              <div className="skel skel-card" style={{ height: 160 }} />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
+
+  const navVisible =
+    !showAdd &&
+    !editingTx &&
+    !showCardForm &&
+    !showSettings &&
+    !showHelp &&
+    !showCatsModal &&
+    !showReminders &&
+    !showNotifs &&
+    !showInvestmentForm &&
+    !recordingValueFor &&
+    !editingValuation &&
+    !showDrawer &&
+    !childModalOpen;
+
+  const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
+  const userInitial = (user.email || "?")[0].toUpperCase();
 
   return (
     <CurrencyCtx.Provider value={currency}>
@@ -613,6 +1060,46 @@ export default function MainApp({ user }) {
         <PWABanners />
 
         {errorBanner && <div className="error-banner">{errorBanner}</div>}
+
+        {/* Desktop/laptop only (see app.css) — month selector, notifications,
+            and account, shared across all four tabs and pinned while the
+            tab content scrolls underneath. Deliberately excludes the
+            Insights "Customize sections" control, which stays specific to
+            the Dashboard tab. */}
+        <div className="app-topbar">
+          <div className="month-pill">
+            <button
+              onClick={() => setViewMonth(shiftMonth(viewMonth, -1))}
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span>
+              {mLbl.slice(0, 3)} {yLbl}
+            </span>
+            <button
+              onClick={() => setViewMonth(shiftMonth(viewMonth, 1))}
+              aria-label="Next month"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <button
+            className="bell-btn"
+            onClick={() => setShowNotifs(true)}
+            aria-label="Notifications"
+          >
+            <Bell size={16} />
+            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+          </button>
+          <button
+            className="avatar-btn"
+            onClick={() => setShowSettings(true)}
+            aria-label="Account"
+          >
+            {userInitial}
+          </button>
+        </div>
 
         <main className="content">
           {tab === "home" && (
@@ -627,6 +1114,9 @@ export default function MainApp({ user }) {
               allExpCats={allExpCats}
               allIncCats={allIncCats}
               installmentPlans={installmentPlans}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
             />
           )}
           {tab === "dashboard" && (
@@ -634,16 +1124,16 @@ export default function MainApp({ user }) {
               transactions={transactions}
               getEffectivePlan={getEffectivePlan}
               cards={cardsWithBalance}
+              investments={investments}
               viewMonth={viewMonth}
               setViewMonth={setViewMonth}
               user={user}
-              onOpenSettings={() => setShowSettings(true)}
+              onOpenMenu={() => setShowDrawer(true)}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
               onModalChange={setChildModalOpen}
-              installmentPlans={installmentPlans}
-              recurringReminders={recurringReminders}
-              allTransactions={transactions}
+              notifCount={notifCount}
+              onOpenNotifications={() => setShowNotifs(true)}
             />
           )}
           {tab === "cards" && (
@@ -659,6 +1149,28 @@ export default function MainApp({ user }) {
               onCancelPlan={cancelInstallmentPlan}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+            />
+          )}
+          {tab === "investments" && (
+            <InvestmentsView
+              investments={investments}
+              valuations={investmentValuations}
+              onNew={() => setShowInvestmentForm("new")}
+              onEdit={(inv) => setShowInvestmentForm(inv)}
+              onDelete={removeInvestment}
+              onRecordValue={(inv) => setRecordingValueFor(inv)}
+              onEditValue={(inv, valuation) =>
+                setEditingValuation({ investment: inv, valuation })
+              }
+              onDeleteValue={(inv, valuation) =>
+                deleteInvestmentValueEntry(inv.id, valuation.id)
+              }
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
             />
           )}
           {tab === "budget" && (
@@ -672,19 +1184,29 @@ export default function MainApp({ user }) {
               setFixedPlan={saveFixedPlan}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+            />
+          )}
+          {tab === "user" && (
+            <UserView
+              user={user}
+              currency={currency}
+              onChangeCurrency={updateCurrency}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+              onOpenCategories={() => setShowCatsModal(true)}
+              onOpenHelp={() => setShowHelp(true)}
+              onOpenReminders={() => setShowReminders(true)}
             />
           )}
         </main>
 
-        {!showAdd &&
-          !editingTx &&
-          !showCardForm &&
-          !showSettings &&
-          !showHelp &&
-          !showCatsModal &&
-          !showReminders &&
-          !childModalOpen && (
-            <nav className="nav">
+        {navVisible && (
+          <nav className="nav">
+            <div className="nav-group">
               <NavBtn
                 icon={BarChart3}
                 label="Insights"
@@ -697,14 +1219,16 @@ export default function MainApp({ user }) {
                 active={tab === "home"}
                 onClick={() => setTab("home")}
               />
-              <button
-                className="nav-add"
-                onClick={() => setShowAdd(true)}
-                aria-label="New entry"
-              >
-                <Plus size={22} strokeWidth={2.5} />
-                <span>New</span>
-              </button>
+            </div>
+            <button
+              className="nav-add"
+              onClick={() => setShowAdd(true)}
+              aria-label="New entry"
+            >
+              <Plus size={22} strokeWidth={2.5} />
+              <span>New</span>
+            </button>
+            <div className="nav-group">
               <NavBtn
                 icon={CreditCard}
                 label="Cards"
@@ -712,13 +1236,62 @@ export default function MainApp({ user }) {
                 onClick={() => setTab("cards")}
               />
               <NavBtn
+                icon={User}
+                label="Profile"
+                active={tab === "user"}
+                onClick={() => setTab("user")}
+              />
+            </div>
+          </nav>
+        )}
+
+        {/* Desktop-only sidebar rail (≥1024px) — same tab state/handlers as
+            the bottom nav above, shown/hidden via CSS media query so mobile
+            and tablet are unaffected. */}
+        {navVisible && (
+          <nav className="nav-rail">
+            <button
+              className="rail-add"
+              onClick={() => setShowAdd(true)}
+              aria-label="New entry"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              <span>New</span>
+            </button>
+            <div className="rail-links">
+              <NavBtn
+                icon={BarChart3}
+                label="Insights"
+                active={tab === "dashboard"}
+                onClick={() => setTab("dashboard")}
+              />
+              <NavBtn
+                icon={Wallet}
+                label="Ledger"
+                active={tab === "home"}
+                onClick={() => setTab("home")}
+              />
+              <NavBtn
+                icon={CreditCard}
+                label="Cards"
+                active={tab === "cards"}
+                onClick={() => setTab("cards")}
+              />
+              <NavBtn
+                icon={LineChart}
+                label="Investments"
+                active={tab === "investments"}
+                onClick={() => setTab("investments")}
+              />
+              <NavBtn
                 icon={Target}
                 label="Budget"
                 active={tab === "budget"}
                 onClick={() => setTab("budget")}
               />
-            </nav>
-          )}
+            </div>
+          </nav>
+        )}
 
         {pendingDelete && (
           <div className="undo-snackbar">
@@ -777,6 +1350,48 @@ export default function MainApp({ user }) {
           />
         )}
 
+        {showInvestmentForm && (
+          <InvestmentFormModal
+            investment={
+              showInvestmentForm === "new" ? null : showInvestmentForm
+            }
+            onClose={() => setShowInvestmentForm(null)}
+            onSave={(inv) => {
+              saveInvestment(inv);
+              setShowInvestmentForm(null);
+            }}
+          />
+        )}
+
+        {recordingValueFor && (
+          <InvestmentValueModal
+            investment={recordingValueFor}
+            onClose={() => setRecordingValueFor(null)}
+            onSave={(value, date, note) => {
+              recordInvestmentValue(recordingValueFor.id, value, date, note);
+              setRecordingValueFor(null);
+            }}
+          />
+        )}
+
+        {editingValuation && (
+          <InvestmentValueModal
+            investment={editingValuation.investment}
+            valuation={editingValuation.valuation}
+            onClose={() => setEditingValuation(null)}
+            onSave={(value, date, note) => {
+              updateInvestmentValueEntry(
+                editingValuation.investment.id,
+                editingValuation.valuation.id,
+                value,
+                date,
+                note,
+              );
+              setEditingValuation(null);
+            }}
+          />
+        )}
+
         {showSettings && (
           <SettingsModal
             user={user}
@@ -798,7 +1413,33 @@ export default function MainApp({ user }) {
           />
         )}
 
+        {showDrawer && (
+          <NavDrawer
+            onClose={() => setShowDrawer(false)}
+            onNavigate={(destination) => {
+              setTab(destination);
+              setShowDrawer(false);
+            }}
+          />
+        )}
+
         {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+        {showNotifs && (
+          <NotificationsPanel
+            installmentNotifs={installmentNotifs}
+            recurringNotifs={recurringNotifs}
+            cards={cardsWithBalance}
+            currentMk={currentMk}
+            onClose={() => setShowNotifs(false)}
+            onCompleteInstallment={(planId) =>
+              markNotifCompleted(`inst:${planId}`)
+            }
+            onCompleteRecurring={(reminderId) =>
+              markNotifCompleted(`rec:${reminderId}`)
+            }
+          />
+        )}
 
         {showReminders && (
           <RecurringRemindersModal

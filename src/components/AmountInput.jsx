@@ -5,6 +5,7 @@ export default function AmountInput({
   onChange,
   placeholder,
   className,
+  autoFocus,
 }) {
   const fmtFull = (v) => {
     const n = Number(v);
@@ -32,6 +33,7 @@ export default function AmountInput({
       className={className}
       value={display}
       placeholder={placeholder}
+      autoFocus={autoFocus}
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, "");
         if (!/^\d*\.?\d*$/.test(raw)) return;

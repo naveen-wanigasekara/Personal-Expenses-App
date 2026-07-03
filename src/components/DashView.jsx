@@ -11,8 +11,9 @@ import {
   SlidersHorizontal,
   Eye,
   EyeOff,
-  X,
   Bell,
+  LineChart,
+  Menu,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
@@ -21,10 +22,15 @@ import {
   monthKey,
   monthLabel,
   getTimeOfDay,
+  shiftMonth,
 } from "../utils/format.js";
-import { getCat } from "../constants/categories.js";
+import {
+  getCat,
+  isSpendableExpense,
+  SAVINGS_CATEGORY_ID,
+} from "../constants/categories.js";
 import { loadInsightsLayout, saveInsightsLayout } from "../utils/storage.js";
-import NotificationsPanel from "./NotificationsPanel.jsx";
+import Sheet from "./Sheet.jsx";
 
 const SECTION_DEFS = [
   {
@@ -40,9 +46,19 @@ const SECTION_DEFS = [
     desc: "Cumulative cash balance across all time",
   },
   {
+    id: "total_savings",
+    label: "Total Savings",
+    desc: "Cumulative amount tagged as savings, all-time",
+  },
+  {
     id: "card_debt",
     label: "Card Debt",
     desc: "Total credit card balance and utilization",
+  },
+  {
+    id: "total_investments",
+    label: "Total Investments",
+    desc: "Sum of your holdings' latest known values",
   },
   {
     id: "net_worth",
@@ -97,76 +113,31 @@ export default function DashView({
   transactions,
   getEffectivePlan,
   cards,
+  investments,
   viewMonth,
   setViewMonth,
   user,
-  onOpenSettings,
+  onOpenMenu,
   allExpCats,
   allIncCats,
   onModalChange,
-  installmentPlans,
-  recurringReminders,
-  allTransactions,
+  notifCount,
+  onOpenNotifications,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
-  const [showNotifs, setShowNotifs] = useState(false);
   const [sections, setSections] = useState(() =>
     mergeLayout(loadInsightsLayout(user.id)),
   );
   useEffect(() => {
-    const anyOpen = showCustomize || showNotifs;
-    onModalChange?.(anyOpen);
-    document.body.style.overflow = anyOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showCustomize, showNotifs]);
+    onModalChange?.(showCustomize);
+  }, [showCustomize]);
 
-  const changeMonth = (dir) => {
-    const [y, m] = viewMonth.split("-").map(Number);
-    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
-  };
+  const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
   const isCurrentMonth = viewMonth === monthKey(new Date());
   const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
-  const initial = (user.email || "?")[0].toUpperCase();
   const greeting = getTimeOfDay();
-
-  const currentMk = useMemo(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  }, []);
-
-  const installmentNotifs = useMemo(() => {
-    return (installmentPlans || []).filter((plan) => {
-      if (!plan.active) return false;
-      const [sy, sm] = plan.startMonth.split("-").map(Number);
-      const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
-      const endMk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return currentMk >= plan.startMonth && currentMk <= endMk;
-    });
-  }, [installmentPlans, currentMk]);
-
-  const recurringNotifs = useMemo(() => {
-    const currentMonthTxs = (allTransactions || []).filter(
-      (t) => monthKey(t.date) === currentMk,
-    );
-    return (recurringReminders || []).filter((reminder) => {
-      if (!reminder.active) return false;
-      if (!reminder.category) return true;
-      const dismissed = currentMonthTxs.some((t) => {
-        const catId =
-          t.type === "income"
-            ? getCat(t.category, "income", allExpCats, allIncCats).id
-            : getCat(t.category, "expense", allExpCats, allIncCats).id;
-        return catId === reminder.category;
-      });
-      return !dismissed;
-    });
-  }, [recurringReminders, allTransactions, currentMk, allExpCats, allIncCats]);
-
-  const notifCount = installmentNotifs.length + recurringNotifs.length;
 
   const last6 = useMemo(() => {
     const out = [];
@@ -179,12 +150,7 @@ export default function DashView({
         .filter((t) => t.type === "income")
         .reduce((s, t) => s + +t.amount, 0);
       const expenses = inMonth
-        .filter(
-          (t) =>
-            t.type === "expense" ||
-            t.type === "card-purchase" ||
-            t.type === "card-interest",
-        )
+        .filter((t) => isSpendableExpense(t, allExpCats, allIncCats))
         .reduce((s, t) => s + +t.amount, 0);
       const p = getEffectivePlan(k);
       out.push({
@@ -198,7 +164,7 @@ export default function DashView({
       });
     }
     return out;
-  }, [transactions, getEffectivePlan, viewMonth]);
+  }, [transactions, getEffectivePlan, viewMonth, allExpCats, allIncCats]);
 
   const maxBar = Math.max(
     ...last6.flatMap((m) => [
@@ -236,9 +202,7 @@ export default function DashView({
       .filter(
         (t) =>
           monthKey(t.date) === prevMk &&
-          (t.type === "expense" ||
-            t.type === "card-purchase" ||
-            t.type === "card-interest"),
+          isSpendableExpense(t, allExpCats, allIncCats),
       )
       .forEach((t) => {
         const id = getCat(t.category, "expense", allExpCats, allIncCats).id;
@@ -247,7 +211,10 @@ export default function DashView({
     return by;
   }, [transactions, prevMk, allExpCats, allIncCats]);
 
-  // Net worth trend — cumulative cash balance for each of the past 12 months
+  // Net worth trend — cumulative cash balance for each of the past 12 months.
+  // Deliberately NOT excluding Savings-tagged transactions here — this is net
+  // worth/cash position, not spending, and moving cash to savings doesn't
+  // change net worth.
   const netWorthTrend = useMemo(() => {
     const now = new Date();
     return Array.from({ length: 12 }, (_, i) => {
@@ -269,13 +236,26 @@ export default function DashView({
     });
   }, [transactions]);
 
+  // Cumulative, all-time sum of every expense tagged as Savings — feeds the
+  // Total Savings dashboard stat. Uses getCat (not a raw string compare) to
+  // resolve the transaction's effective category, consistent with the rest
+  // of this file.
+  const totalSavings = useMemo(() => {
+    return transactions
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          getCat(t.category, "expense", allExpCats, allIncCats).id ===
+            SAVINGS_CATEGORY_ID,
+      )
+      .reduce((s, t) => s + +t.amount, 0);
+  }, [transactions, allExpCats, allIncCats]);
+
   const expCatSpend = useMemo(() => {
     const inMonth = transactions.filter(
       (t) =>
         monthKey(t.date) === viewMonth &&
-        (t.type === "expense" ||
-          t.type === "card-purchase" ||
-          t.type === "card-interest"),
+        isSpendableExpense(t, allExpCats, allIncCats),
     );
     // Group by effective category ID (resolves orphaned/deleted IDs via getCat fallback)
     const by = {};
@@ -289,12 +269,15 @@ export default function DashView({
       by[effectiveId] = (by[effectiveId] || 0) + +t.amount;
     });
     const total = Object.values(by).reduce((s, v) => s + v, 0);
-    // Only include budget entries for category IDs that still exist — orphaned IDs are dropped
+    // Only include budget entries for category IDs that still exist — orphaned
+    // IDs are dropped. Savings is excluded too: its actuals now live in the
+    // separate Total Savings stat, not this breakdown.
     const rawBudget = currentPlan?.expense?.categories || {};
     const validExpIds = new Set(allExpCats.map((c) => c.id));
     const effectiveBudget = {};
     Object.entries(rawBudget).forEach(([id, val]) => {
-      if (+val > 0 && validExpIds.has(id)) effectiveBudget[id] = +val;
+      if (+val > 0 && id !== SAVINGS_CATEGORY_ID && validExpIds.has(id))
+        effectiveBudget[id] = +val;
     });
     const allCatIds = new Set([
       ...Object.keys(by),
@@ -365,6 +348,8 @@ export default function DashView({
       .sort((a, b) => b.val - a.val);
   }, [transactions, viewMonth, currentPlan, allExpCats, allIncCats]);
 
+  // Deliberately NOT excluding Savings-tagged transactions here — this is
+  // cash position, not spending (see the netWorthTrend comment above).
   const runningBalance = useMemo(() => {
     return transactions
       .filter((t) => monthKey(t.date) <= viewMonth)
@@ -388,6 +373,11 @@ export default function DashView({
   const totalCardDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const totalUtil = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
+
+  const totalInvestmentsValue = (investments || []).reduce(
+    (s, i) => s + (+i.currentValue || 0),
+    0,
+  );
 
   const updateSections = (next) => {
     setSections(next);
@@ -467,6 +457,15 @@ export default function DashView({
       </div>
     ),
 
+    total_savings: (
+      <div className="running-bal">
+        <span className="running-bal-label">Total Savings</span>
+        <span className="running-bal-amt">
+          +{CURRENCY} {fmt(totalSavings)}
+        </span>
+      </div>
+    ),
+
     card_debt:
       cards.length > 0 && totalCardDebt !== 0 ? (
         <div className="debt-banner">
@@ -492,6 +491,20 @@ export default function DashView({
         </div>
       ) : null,
 
+    total_investments: (
+      <div className="debt-banner inv-banner">
+        <div className="db-left">
+          <LineChart size={16} />
+          <div>
+            <div className="db-label">Total Investments</div>
+            <div className="db-val">
+              {CURRENCY} {fmt(totalInvestmentsValue)}
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+
     net_worth: (() => {
       if (netWorthTrend.every((d) => d.balance === 0)) return null;
       const vals = netWorthTrend.map((d) => d.balance);
@@ -501,16 +514,17 @@ export default function DashView({
       const W = 220;
       const H = 52;
       const PAD = 4;
-      const pts = netWorthTrend
-        .map((d, i) => {
-          const x = PAD + (i / (netWorthTrend.length - 1)) * (W - PAD * 2);
-          const y = PAD + (1 - (d.balance - minV) / range) * (H - PAD * 2);
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        })
-        .join(" ");
+      const coords = netWorthTrend.map((d, i) => [
+        PAD + (i / (netWorthTrend.length - 1)) * (W - PAD * 2),
+        PAD + (1 - (d.balance - minV) / range) * (H - PAD * 2),
+      ]);
+      const pts = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+      const [lastX, lastY] = coords[coords.length - 1];
+      const areaPath = `M${coords[0][0].toFixed(1)},${H - PAD} L${pts.replaceAll(" ", " L")} L${lastX.toFixed(1)},${H - PAD} Z`;
       const last = netWorthTrend[netWorthTrend.length - 1];
       const first = netWorthTrend[0];
       const trending = last.balance >= first.balance;
+      const lineColor = trending ? "var(--in)" : "var(--out)";
       return (
         <div className="card">
           <div className="card-hd">
@@ -532,17 +546,26 @@ export default function DashView({
                 x2={W - PAD}
                 y2={PAD + (1 - (0 - minV) / range) * (H - PAD * 2)}
                 stroke="var(--border-2)"
-                strokeWidth="0.8"
-                strokeDasharray="3,3"
+                strokeWidth="1"
               />
             )}
+            <path d={areaPath} fill={lineColor} opacity="0.1" />
             <polyline
               points={pts}
               fill="none"
-              stroke={trending ? "var(--in)" : "var(--out)"}
-              strokeWidth="1.8"
+              stroke={lineColor}
+              strokeWidth="2"
               strokeLinejoin="round"
               strokeLinecap="round"
+            />
+            <circle cx={lastX} cy={lastY} r="3.5" fill={lineColor} />
+            <circle
+              cx={lastX}
+              cy={lastY}
+              r="3.5"
+              fill="none"
+              stroke="var(--surface)"
+              strokeWidth="2"
             />
           </svg>
           <div className="nw-labels">
@@ -1040,164 +1063,145 @@ export default function DashView({
   };
 
   return (
-    <div className="view">
+    <div className="view view-dashboard">
+      <div className="dash-topbar">
+        <div className="mheader-left">
+          <button className="icon-btn" onClick={onOpenMenu} aria-label="Menu">
+            <Menu size={16} />
+          </button>
+        </div>
+        <div className="mheader-center">
+          <div className="month-pill">
+            <button onClick={() => changeMonth(-1)} aria-label="Previous month">
+              <ChevronLeft size={16} />
+            </button>
+            <span>
+              {mLbl.slice(0, 3)} {yLbl}
+            </span>
+            <button onClick={() => changeMonth(1)} aria-label="Next month">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="mheader-right">
+          <button
+            className="bell-btn"
+            onClick={onOpenNotifications}
+            aria-label="Notifications"
+          >
+            <Bell size={16} />
+            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+          </button>
+        </div>
+      </div>
       <div className="hero">
-        <div className="hero-top">
+        <div className="hero-row">
           <div>
             <div className="hero-meta">
               {isCurrentMonth ? `Good ${greeting}` : "Viewing"}
             </div>
             <h1 className="hero-title">Your Money</h1>
           </div>
-          <div className="hero-right">
-            <div className="month-pill">
-              <button
-                onClick={() => changeMonth(-1)}
-                aria-label="Previous month"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span>
-                {mLbl.slice(0, 3)} {yLbl}
-              </span>
-              <button onClick={() => changeMonth(1)} aria-label="Next month">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <button
-              className="bell-btn"
-              onClick={() => setShowNotifs(true)}
-              aria-label="Notifications"
-            >
-              <Bell size={16} />
-              {notifCount > 0 && (
-                <span className="notif-badge">{notifCount}</span>
-              )}
-            </button>
-            <button
-              className="avatar-btn"
-              onClick={() => setShowCustomize(true)}
-              aria-label="Customize sections"
-            >
-              <SlidersHorizontal size={14} />
-            </button>
-            <button
-              className="avatar-btn"
-              onClick={onOpenSettings}
-              aria-label="Account"
-            >
-              {initial}
-            </button>
-          </div>
+          {/* Customize sections entry point — shown at every breakpoint now
+              that the topbar above is a strict 3-slot header (account/month/
+              bell) with no room left for a 4th control. */}
+          <button
+            className="hero-customize-btn"
+            onClick={() => setShowCustomize(true)}
+            aria-label="Customize sections"
+          >
+            <SlidersHorizontal size={14} />
+            <span>Customize</span>
+          </button>
         </div>
       </div>
 
-      {(() => {
-        const isInOut = (id) => id === "income_in" || id === "expense_out";
-        const visible = sections.filter((s) => s.visible);
-        const result = [];
-        let i = 0;
-        while (i < visible.length) {
-          const cur = visible[i];
-          const next = visible[i + 1];
-          if (
-            isInOut(cur.id) &&
-            next &&
-            isInOut(next.id) &&
-            cur.id !== next.id
-          ) {
-            result.push(
-              <div key="inout-pair" className="inout inout-section">
-                {sectionContent[cur.id]}
-                {sectionContent[next.id]}
-              </div>,
-            );
-            i += 2;
-          } else if (isInOut(cur.id)) {
-            result.push(
-              <div key={cur.id} className="inout inout-section">
-                {sectionContent[cur.id]}
-              </div>,
-            );
-            i++;
-          } else {
-            const content = sectionContent[cur.id];
-            if (content)
-              result.push(<Fragment key={cur.id}>{content}</Fragment>);
-            i++;
+      <div className="dash-sections">
+        {(() => {
+          const isInOut = (id) => id === "income_in" || id === "expense_out";
+          const visible = sections.filter((s) => s.visible);
+          const result = [];
+          let i = 0;
+          while (i < visible.length) {
+            const cur = visible[i];
+            const next = visible[i + 1];
+            if (
+              isInOut(cur.id) &&
+              next &&
+              isInOut(next.id) &&
+              cur.id !== next.id
+            ) {
+              result.push(
+                <div key="inout-pair" className="inout inout-section">
+                  {sectionContent[cur.id]}
+                  {sectionContent[next.id]}
+                </div>,
+              );
+              i += 2;
+            } else if (isInOut(cur.id)) {
+              result.push(
+                <div key={cur.id} className="inout inout-section">
+                  {sectionContent[cur.id]}
+                </div>,
+              );
+              i++;
+            } else {
+              const content = sectionContent[cur.id];
+              if (content)
+                result.push(<Fragment key={cur.id}>{content}</Fragment>);
+              i++;
+            }
           }
-        }
-        return result;
-      })()}
+          return result;
+        })()}
+      </div>
 
       {showCustomize && (
-        <div className="backdrop" onClick={() => setShowCustomize(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <div className="sheet-hd">
-              <h2>Customize</h2>
-              <button
-                className="close-btn"
-                onClick={() => setShowCustomize(false)}
+        <Sheet title="Customize" onClose={() => setShowCustomize(false)}>
+          <p className="customize-hint">
+            Choose which sections appear and arrange them in your preferred
+            order.
+          </p>
+          <div className="section-list">
+            {sections.map((s, i) => (
+              <div
+                key={s.id}
+                className={`section-row ${!s.visible ? "section-hidden" : ""}`}
               >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="customize-hint">
-              Choose which sections appear and arrange them in your preferred
-              order.
-            </p>
-            <div className="section-list">
-              {sections.map((s, i) => (
-                <div
-                  key={s.id}
-                  className={`section-row ${!s.visible ? "section-hidden" : ""}`}
-                >
-                  <div className="section-move">
-                    <button
-                      onClick={() => moveSection(s.id, -1)}
-                      disabled={i === 0}
-                      aria-label="Move up"
-                    >
-                      <ChevronUp size={14} />
-                    </button>
-                    <button
-                      onClick={() => moveSection(s.id, 1)}
-                      disabled={i === sections.length - 1}
-                      aria-label="Move down"
-                    >
-                      <ChevronDown size={14} />
-                    </button>
-                  </div>
-                  <div className="section-info">
-                    <div className="section-label">{s.label}</div>
-                    <div className="section-desc">{s.desc}</div>
-                  </div>
+                <div className="section-move">
                   <button
-                    className={`section-toggle ${s.visible ? "on" : "off"}`}
-                    onClick={() => toggleSection(s.id)}
-                    aria-label={s.visible ? "Hide section" : "Show section"}
+                    onClick={() => moveSection(s.id, -1)}
+                    disabled={i === 0}
+                    aria-label="Move up"
                   >
-                    {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    onClick={() => moveSection(s.id, 1)}
+                    disabled={i === sections.length - 1}
+                    aria-label="Move down"
+                  >
+                    <ChevronDown size={14} />
                   </button>
                 </div>
-              ))}
-            </div>
-            <button className="text-btn" onClick={resetSections}>
-              Reset to default
-            </button>
+                <div className="section-info">
+                  <div className="section-label">{s.label}</div>
+                  <div className="section-desc">{s.desc}</div>
+                </div>
+                <button
+                  className={`section-toggle ${s.visible ? "on" : "off"}`}
+                  onClick={() => toggleSection(s.id)}
+                  aria-label={s.visible ? "Hide section" : "Show section"}
+                >
+                  {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
-
-      {showNotifs && (
-        <NotificationsPanel
-          installmentNotifs={installmentNotifs}
-          recurringNotifs={recurringNotifs}
-          cards={cards}
-          currentMk={currentMk}
-          onClose={() => setShowNotifs(false)}
-        />
+          <button className="text-btn" onClick={resetSections}>
+            Reset to default
+          </button>
+        </Sheet>
       )}
     </div>
   );
