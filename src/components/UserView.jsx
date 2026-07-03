@@ -1,32 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
+  Menu,
+  Bell,
   HelpCircle,
   MoreHorizontal,
   ChevronRight,
   DollarSign,
+  ChevronDown,
+  CalendarClock,
   Lock,
   MessageCircle,
   LogOut,
   Loader2,
-  ChevronDown,
 } from "lucide-react";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
-import Sheet from "./Sheet.jsx";
 
-export default function SettingsModal({
+export default function UserView({
   user,
-  onClose,
+  currency,
+  onChangeCurrency,
+  onOpenMenu,
+  onOpenNotifications,
+  notifCount,
   onOpenCategories,
   onOpenHelp,
   onOpenReminders,
-  currency,
-  onChangeCurrency,
 }) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const activeCurrency =
     CURRENCIES.find((c) => c.symbol === currency) || CURRENCIES[0];
+  const initial = (user.email || "?")[0].toUpperCase();
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -39,11 +51,38 @@ export default function SettingsModal({
   };
 
   return (
-    <Sheet title="Account" onClose={onClose}>
-      <div className="account-info">
-        <div className="account-avatar">
-          {(user.email || "?")[0].toUpperCase()}
+    <div className="view view-user">
+      <div className="dash-topbar">
+        <div className="mheader-left">
+          <button className="icon-btn" onClick={onOpenMenu} aria-label="Menu">
+            <Menu size={16} />
+          </button>
         </div>
+        <div className="mheader-center">
+          <span className="mheader-title">Profile</span>
+        </div>
+        <div className="mheader-right">
+          <button
+            className="bell-btn"
+            onClick={onOpenNotifications}
+            aria-label="Notifications"
+          >
+            <Bell size={16} />
+            {notifCount > 0 && (
+              <span className="notif-badge">{notifCount}</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="user-scroll">
+      <div className="page-hd">
+        <div className="page-eyebrow">Account</div>
+        <h1 className="page-title">Profile</h1>
+      </div>
+
+      <div className="account-info">
+        <div className="account-avatar">{initial}</div>
         <div className="account-meta">
           <div className="account-email">{user.email}</div>
           <div className="account-since">
@@ -58,7 +97,7 @@ export default function SettingsModal({
 
       <button className="settings-menu-row" onClick={onOpenHelp}>
         <HelpCircle size={16} />
-        <span>Help &amp; user guide</span>
+        <span>User Guide</span>
         <ChevronRight
           size={15}
           style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
@@ -67,7 +106,16 @@ export default function SettingsModal({
 
       <button className="settings-menu-row" onClick={onOpenCategories}>
         <MoreHorizontal size={16} />
-        <span>Manage categories</span>
+        <span>Manage Categories</span>
+        <ChevronRight
+          size={15}
+          style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
+        />
+      </button>
+
+      <button className="settings-menu-row" onClick={onOpenReminders}>
+        <CalendarClock size={16} />
+        <span>Recurring Reminders</span>
         <ChevronRight
           size={15}
           style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
@@ -76,7 +124,7 @@ export default function SettingsModal({
 
       <div className="settings-menu-row settings-currency-row">
         <DollarSign size={16} />
-        <span>Currency</span>
+        <span>Currency Settings</span>
         <div className="currency-picker" style={{ marginLeft: "auto" }}>
           <span className="currency-code">{activeCurrency.code}</span>
           <ChevronDown size={13} style={{ color: "var(--ink-faint)" }} />
@@ -134,7 +182,7 @@ export default function SettingsModal({
           Couldn't sign out — check your connection and try again.
         </div>
       )}
-      <div style={{ height: 20 }} />
-    </Sheet>
+      </div>
+    </div>
   );
 }

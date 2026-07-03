@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Wallet, Mail, KeyRound, Loader2 } from "lucide-react";
+import {
+  Wallet,
+  Mail,
+  KeyRound,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
+  PieChart,
+} from "lucide-react";
 import { signUp, signIn, resetPassword } from "../lib/supabase.js";
 
 export default function AuthScreen() {
@@ -44,113 +54,154 @@ export default function AuthScreen() {
   return (
     <div className="auth-page">
       <div className="app-glow" />
-      <div className="auth-box">
-        <div className="auth-brand">
-          <div className="auth-logo">
-            <Wallet size={20} strokeWidth={2} />
+      <div className="auth-shell">
+        <div className="auth-brand-panel">
+          <div className="auth-brand">
+            <div className="auth-logo">
+              <Wallet size={20} strokeWidth={2} />
+            </div>
+            <div className="auth-brand-text">Ledger</div>
           </div>
-          <div className="auth-brand-text">Ledger</div>
+          <h2 className="auth-brand-headline">
+            See where your money actually goes.
+          </h2>
+          <p className="auth-brand-sub">
+            Track income and expenses, plan a budget, and manage credit cards
+            — all in one place, synced across your devices.
+          </p>
+          <ul className="auth-brand-points">
+            <li>
+              <TrendingUp size={16} /> Real-time cashflow &amp; net worth
+            </li>
+            <li>
+              <PieChart size={16} /> Budgets that compare plan vs. actual
+            </li>
+            <li>
+              <ShieldCheck size={16} /> Your data, encrypted in the browser
+            </li>
+          </ul>
         </div>
 
-        <h1 className="auth-title">
-          {mode === "signup"
-            ? "Create your account"
-            : mode === "forgot"
-              ? "Reset your password"
-              : "Welcome back"}
-        </h1>
-        <p className="auth-sub">
-          {mode === "signup"
-            ? "Start tracking income, expenses, and budgets."
-            : mode === "forgot"
-              ? "Enter your email and we'll send you a reset link."
-              : "Sign in to your account to continue."}
-        </p>
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label className="field-lbl">Email</label>
-          <div className="auth-input">
-            <Mail size={15} />
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
+        <div className="auth-box">
+          <div className="auth-brand auth-brand-mobile">
+            <div className="auth-logo">
+              <Wallet size={20} strokeWidth={2} />
+            </div>
+            <div className="auth-brand-text">Ledger</div>
           </div>
 
-          {mode !== "forgot" && (
-            <>
-              <div className="auth-pw-row">
-                <label className="field-lbl">Password</label>
-                {mode === "signin" && (
-                  <button
-                    type="button"
-                    className="forgot-link"
-                    onClick={() => switchMode("forgot")}
-                  >
-                    Forgot password?
-                  </button>
-                )}
-              </div>
+          <div className="auth-fade" key={mode}>
+            <h1 className="auth-title">
+              {mode === "signup"
+                ? "Create your account"
+                : mode === "forgot"
+                  ? "Reset your password"
+                  : "Welcome back"}
+            </h1>
+            <p className="auth-sub">
+              {mode === "signup"
+                ? "Start tracking income, expenses, and budgets."
+                : mode === "forgot"
+                  ? "Enter your email and we'll send you a reset link."
+                  : "Sign in to your account to continue."}
+            </p>
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <label className="field-lbl">Email</label>
               <div className="auth-input">
-                <KeyRound size={15} />
+                <Mail size={15} />
                 <input
-                  type="password"
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
                   required
-                  minLength={6}
                 />
               </div>
-            </>
-          )}
 
-          {err && <div className="auth-err">{err}</div>}
-          {msg && <div className="auth-msg">{msg}</div>}
+              {mode !== "forgot" && (
+                <>
+                  <div className="auth-pw-row">
+                    <label className="field-lbl">Password</label>
+                    {mode === "signin" && (
+                      <button
+                        type="button"
+                        className="forgot-link"
+                        onClick={() => switchMode("forgot")}
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <div className="auth-input">
+                    <KeyRound size={15} />
+                    <input
+                      type="password"
+                      autoComplete={
+                        mode === "signup" ? "new-password" : "current-password"
+                      }
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </>
+              )}
 
-          <button
-            type="submit"
-            className="save-btn"
-            disabled={busy || !email || (mode !== "forgot" && !password)}
-          >
-            {busy ? (
-              <>
-                <Loader2 size={16} className="spin" /> Please wait...
-              </>
-            ) : mode === "signup" ? (
-              "Create account"
-            ) : mode === "forgot" ? (
-              "Send reset link"
-            ) : (
-              "Sign in"
-            )}
-          </button>
-        </form>
+              {err && (
+                <div className="auth-err">
+                  <AlertCircle size={15} />
+                  <span>{err}</span>
+                </div>
+              )}
+              {msg && (
+                <div className="auth-msg">
+                  <CheckCircle2 size={15} />
+                  <span>{msg}</span>
+                </div>
+              )}
 
-        <div className="auth-switch">
-          {mode === "forgot" ? (
-            <>
-              Remember your password?{" "}
-              <button onClick={() => switchMode("signin")}>Sign in</button>
-            </>
-          ) : mode === "signup" ? (
-            <>
-              Already have an account?{" "}
-              <button onClick={() => switchMode("signin")}>Sign in</button>
-            </>
-          ) : (
-            <>
-              Don't have an account?{" "}
-              <button onClick={() => switchMode("signup")}>Sign up</button>
-            </>
-          )}
+              <button
+                type="submit"
+                className="save-btn"
+                disabled={busy || !email || (mode !== "forgot" && !password)}
+              >
+                {busy ? (
+                  <>
+                    <Loader2 size={16} className="spin" /> Please wait...
+                  </>
+                ) : mode === "signup" ? (
+                  "Create account"
+                ) : mode === "forgot" ? (
+                  "Send reset link"
+                ) : (
+                  "Sign in"
+                )}
+              </button>
+            </form>
+
+            <div className="auth-switch">
+              {mode === "forgot" ? (
+                <>
+                  Remember your password?{" "}
+                  <button onClick={() => switchMode("signin")}>Sign in</button>
+                </>
+              ) : mode === "signup" ? (
+                <>
+                  Already have an account?{" "}
+                  <button onClick={() => switchMode("signin")}>Sign in</button>
+                </>
+              ) : (
+                <>
+                  Don't have an account?{" "}
+                  <button onClick={() => switchMode("signup")}>Sign up</button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

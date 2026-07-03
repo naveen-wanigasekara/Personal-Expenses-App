@@ -231,3 +231,104 @@ export async function deleteRecurringReminder(id) {
     .eq("id", id);
   if (error) throw error;
 }
+
+const INVESTMENT_ENC = [
+  "name",
+  "type",
+  "initial_amount",
+  "current_value",
+  "start_date",
+  "notes",
+  "interest_rate",
+  "payout_frequency",
+  "tenure_months",
+];
+const VALUATION_ENC = ["value", "recorded_date"];
+
+/* Investments */
+export async function fetchInvestments(userId) {
+  const { data, error } = await supabase
+    .from("investments")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return Promise.all((data || []).map((r) => decryptFields(r, INVESTMENT_ENC)));
+}
+
+export async function insertInvestment(investment) {
+  const enc = await encryptFields(investment, INVESTMENT_ENC);
+  const { data, error } = await supabase
+    .from("investments")
+    .insert([enc])
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, INVESTMENT_ENC);
+}
+
+export async function updateInvestment(id, updates) {
+  const enc = await encryptFields(updates, INVESTMENT_ENC);
+  const { data, error } = await supabase
+    .from("investments")
+    .update(enc)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, INVESTMENT_ENC);
+}
+
+export async function deleteInvestment(id) {
+  const { error } = await supabase.from("investments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* Investment Valuations — dated value check-ins, one per investment history */
+export async function fetchInvestmentValuations(userId) {
+  const { data, error } = await supabase
+    .from("investment_valuations")
+    .select("*")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return Promise.all((data || []).map((r) => decryptFields(r, VALUATION_ENC)));
+}
+
+export async function insertInvestmentValuation(valuation) {
+  const enc = await encryptFields(valuation, VALUATION_ENC);
+  const { data, error } = await supabase
+    .from("investment_valuations")
+    .insert([enc])
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, VALUATION_ENC);
+}
+
+export async function updateInvestmentValuation(id, updates) {
+  const enc = await encryptFields(updates, VALUATION_ENC);
+  const { data, error } = await supabase
+    .from("investment_valuations")
+    .update(enc)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, VALUATION_ENC);
+}
+
+export async function deleteInvestmentValuation(id) {
+  const { error } = await supabase
+    .from("investment_valuations")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteInvestmentValuationsFor(investmentId) {
+  const { error } = await supabase
+    .from("investment_valuations")
+    .delete()
+    .eq("investment_id", investmentId);
+  if (error) throw error;
+}

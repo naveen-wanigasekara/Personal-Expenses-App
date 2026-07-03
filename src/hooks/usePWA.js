@@ -40,10 +40,19 @@ export function usePWA() {
     };
     window.addEventListener("appinstalled", onInstalled);
 
-    // Listen for service worker updates
+    // Listen for service worker updates. `serviceWorker.ready` (rather than
+    // a one-shot getRegistration()) waits until a registration actually
+    // exists, so this doesn't silently no-op if this effect runs before
+    // vite-plugin-pwa's registration call has resolved.
+    let refreshing = false;
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        if (!reg) return;
+      navigator.serviceWorker.ready.then((reg) => {
         setRegistration(reg);
 
         // If a waiting worker already exists, prompt to refresh
@@ -64,18 +73,21 @@ export function usePWA() {
         });
       });
 
-      // Reload page when the new SW takes control
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (refreshing) return;
-        refreshing = true;
-        window.location.reload();
-      });
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        onControllerChange,
+      );
     }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener(
+          "controllerchange",
+          onControllerChange,
+        );
+      }
     };
   }, []);
 

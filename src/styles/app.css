@@ -5,27 +5,60 @@
   --bg-2: #151a23;
   --surface: #1b2130;
   --surface-2: #232a3b;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-2: rgba(255, 255, 255, 0.11);
+  --surface-3: #2a3244;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-2: rgba(255, 255, 255, 0.13);
   --ink: #f0f2f6;
   --ink-soft: #a3acbd;
-  --ink-faint: #6a7388;
-  --accent: #7dd3c0;
-  --accent-soft: rgba(125, 211, 192, 0.12);
+  --ink-faint: #7d869b;
+
+  /* Primary accent — electric indigo/violet. The former teal accent moves to
+     the --bud/--neutral role below (a clean, still-tested-for-contrast
+     handoff) rather than being discarded. */
+  --accent: #7c6cf0;
+  --accent-2: #9a8bff;
+  --accent-soft: rgba(124, 108, 240, 0.14);
+  --accent-ring: rgba(124, 108, 240, 0.35);
+
   --in: #6ee7a8;
   --in-soft: rgba(110, 231, 168, 0.14);
   --out: #ff9478;
   --out-soft: rgba(255, 148, 120, 0.14);
-  --bud: #a594f9;
+  --bud: #7dd3c0;
+  --bud-soft: rgba(125, 211, 192, 0.14);
   --warn: #f5c265;
+  --warn-soft: rgba(245, 194, 101, 0.12);
   --danger: #ff6b6b;
   --danger-soft: rgba(255, 107, 107, 0.14);
-  --neutral: #a594f9;
-  --neutral-soft: rgba(165, 148, 249, 0.14);
-  --warn-soft: rgba(245, 194, 101, 0.12);
+  --neutral: #7dd3c0;
+  --neutral-soft: rgba(125, 211, 192, 0.14);
+
+  /* Spacing scale — 4px base. Existing hand-picked values (9/10/13/14px
+     paddings etc.) are left as-is on elements already shipped; new/updated
+     rules in this pass draw from this scale. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
   --radius: 18px;
   --radius-sm: 12px;
   --radius-lg: 24px;
+  --radius-pill: 100px;
+
+  /* Elevation — subtle, layered shadows rather than one heavy drop shadow.
+     Each step adds a soft ambient shadow plus a tighter contact shadow. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24), 0 1px 1px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-accent: 0 8px 24px rgba(124, 108, 240, 0.28);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
   --serif: "PT Serif", Cambria, "Georgia", "Times New Roman", serif;
   --sans: "Source Sans 3", -apple-system, sans-serif;
   --mono: "JetBrains Mono", monospace;
@@ -74,7 +107,12 @@ body {
   min-height: 100dvh;
   background: var(--bg);
   position: relative;
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) — `overflow-x: hidden` forces the browser to
+     compute overflow-y as `auto`, silently turning .app into a scroll
+     container that breaks position:sticky for any descendant (it sticks
+     to .app's own top instead of the viewport's). `clip` prevents the
+     same horizontal bleed without that side effect. */
+  overflow-x: clip;
   padding-bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px));
 }
 .app-glow {
@@ -86,7 +124,7 @@ body {
   height: 420px;
   background: radial-gradient(
     circle,
-    rgba(125, 211, 192, 0.08),
+    rgba(124, 108, 240, 0.08),
     transparent 60%
   );
   pointer-events: none;
@@ -113,35 +151,58 @@ body {
 
 /* ── AUTH ── */
 .auth-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: var(--sp-5);
+  overflow: hidden;
 }
-.auth-box {
+.auth-shell {
   width: 100%;
   max-width: 380px;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: stretch;
+}
+.auth-brand-panel {
+  display: none;
+}
+.auth-box {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-7) var(--sp-6);
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.5s var(--ease);
+}
+.auth-fade {
+  animation: fadeIn 0.35s var(--ease);
 }
 .auth-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 32px;
+  margin-bottom: var(--sp-7);
+}
+.auth-brand-mobile {
+  margin-bottom: var(--sp-6);
 }
 .auth-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: var(--bg);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 14px rgba(124, 108, 240, 0.4);
+  flex-shrink: 0;
 }
 .auth-brand-text {
   font-family: var(--serif);
@@ -159,7 +220,7 @@ body {
 .auth-sub {
   font-size: 13px;
   color: var(--ink-soft);
-  margin-bottom: 24px;
+  margin-bottom: var(--sp-6);
   line-height: 1.5;
 }
 .auth-form {
@@ -173,14 +234,17 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  transition: border-color 0.15s;
+  padding: 13px 14px;
+  margin-bottom: var(--sp-3);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   color: var(--ink-faint);
 }
 .auth-input:focus-within {
   border-color: var(--accent);
   color: var(--ink);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .auth-input input {
   flex: 1;
@@ -195,22 +259,30 @@ body {
 .auth-input input::placeholder {
   color: var(--ink-faint);
 }
+.auth-err,
+.auth-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin: 4px 0 var(--sp-3);
+  animation: fadeIn 0.25s var(--ease);
+}
+.auth-err svg,
+.auth-msg svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
 .auth-err {
   background: var(--danger-soft);
   color: var(--danger);
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-  margin: 4px 0 12px;
 }
 .auth-msg {
   background: var(--in-soft);
   color: var(--in);
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 12px;
-  margin: 4px 0 12px;
-  line-height: 1.4;
 }
 .auth-pw-row {
   display: flex;
@@ -224,34 +296,112 @@ body {
 .forgot-link {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-2);
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   padding: 0;
+  transition: color 0.15s;
 }
 .forgot-link:hover {
+  color: var(--accent);
   text-decoration: underline;
 }
 .auth-switch {
   text-align: center;
-  margin-top: 20px;
+  margin-top: var(--sp-5);
   font-size: 13px;
   color: var(--ink-soft);
 }
 .auth-switch button {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-2);
   font-weight: 600;
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
   padding: 0;
+  transition: color 0.15s;
 }
 .auth-switch button:hover {
+  color: var(--accent);
   text-decoration: underline;
+}
+
+/* Desktop/laptop: two-column layout — a branding panel alongside the form
+   card, instead of one narrow card floating in a sea of empty space. */
+@media (min-width: 1024px) {
+  .auth-shell {
+    max-width: 920px;
+    gap: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .auth-brand-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1 1 46%;
+    padding: var(--sp-8);
+    background:
+      radial-gradient(
+        circle at 20% 20%,
+        rgba(124, 108, 240, 0.22),
+        transparent 55%
+      ),
+      var(--bg-2);
+    border: 1px solid var(--border);
+    border-right: none;
+  }
+  .auth-brand-headline {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    margin: var(--sp-2) 0 var(--sp-3);
+    max-width: 22ch;
+  }
+  .auth-brand-sub {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    max-width: 34ch;
+    margin-bottom: var(--sp-6);
+  }
+  .auth-brand-points {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .auth-brand-points li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  .auth-brand-points svg {
+    color: var(--accent-2);
+    flex-shrink: 0;
+  }
+  .auth-brand-mobile {
+    display: none;
+  }
+  .auth-box {
+    flex: 1 1 54%;
+    border-radius: 0;
+    border-left: none;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    animation: none;
+  }
 }
 
 /* ── ERROR BANNER ── */
@@ -303,7 +453,7 @@ body {
 .pwa-banner.install {
   background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid rgba(125, 211, 192, 0.3);
+  border: 1px solid rgba(124, 108, 240, 0.3);
 }
 .pwa-banner.update {
   background: var(--in-soft);
@@ -345,19 +495,6 @@ body {
   padding: 14px 4px 0;
   margin-bottom: 22px;
 }
-.hero-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 28px;
-  gap: 12px;
-}
-.hero-right {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-shrink: 0;
-}
 .hero-meta {
   font-size: 12px;
   color: var(--ink-faint);
@@ -370,8 +507,141 @@ body {
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.05;
+  margin-bottom: 26px;
+}
+.hero-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hero-customize-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 100px);
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hero-customize-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.hero-customize-btn span {
+  display: none;
+}
+@media (min-width: 480px) {
+  .hero-customize-btn span {
+    display: inline;
+  }
+}
+
+/* ── SHARED MOBILE/TABLET HEADER (below 1024px) ──
+   Common 3-slot header used by Insights, Ledger, Cards, Budget, and the
+   Investments sub-tab: left = contextual control (menu/account or back),
+   center = title or month selector, right = notification bell. Desktop
+   views build their own header (.app-topbar in MainApp.jsx) and never use
+   this class — hidden outright at >=1024px below. */
+.mheader {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  background: var(--bg);
+  padding: var(--sp-4) var(--sp-5);
+  margin: 0 calc(-1 * var(--sp-5));
+  border-bottom: 1px solid var(--border);
+}
+.mheader-left,
+.mheader-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.mheader-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.mheader-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (min-width: 1024px) {
+  .mheader {
+    display: none;
+  }
+}
+
+/* ── DASHBOARD STICKY TOPBAR ──
+   3-slot shared header (account/menu left, month selector center, bell
+   right) — see .mheader-left/-center/-right above. Stays visible while the
+   rest of the dashboard scrolls underneath, above the greeting/balance
+   (which scroll normally as page content). */
+.dash-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  padding: 14px 18px;
+  margin: 0 -18px;
+  border-bottom: 1px solid var(--border);
+}
+/* The -18px bleed above only cancels out flush against the screen edges
+   when the parent already carries 18px of horizontal padding (true for
+   .view-dashboard/.view-budget/.view-user, which inherit the base .view
+   padding). Ledger and the Cards/Investments master panes are zero-padded
+   at the .view level instead (their own .home-header/.cards-header/
+   .cards-scroll children carry the 18px), so the same negative margin
+   there pulled the topbar 18px past both screen edges — landing the
+   hamburger/bell flush against the edges instead of correctly inset.
+   Scoped to >380px: below that, the .view media-query override further
+   down (same specificity, later in the cascade) already reintroduces a
+   14px padding on .view-home too, which happens to cancel the -18px
+   margin the same way it does for the other views — overriding margin
+   here as well would double-correct and misalign it the other way. */
+@media (min-width: 381px) {
+  .view-home > .dash-topbar,
+  .cards-master > .dash-topbar,
+  .investments-master > .dash-topbar {
+    margin: 0;
+  }
+}
+/* ── SHARED DESKTOP TOPBAR ──
+   Month selector + notifications + account, fixed at the top across all
+   four tabs at ≥1024px (see media query below). Hidden on mobile/tablet,
+   where each view's own .dash-topbar-style controls (currently only on
+   Dashboard) still apply. Deliberately excludes the Customize/Insight-card
+   editor control — that gets its own desktop-only entry point in the
+   Dashboard hero instead. */
+.app-topbar {
+  display: none;
 }
 .avatar-btn {
+  position: relative;
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -403,6 +673,7 @@ body {
   flex-shrink: 0;
 }
 .month-pill button {
+  position: relative;
   background: none;
   border: none;
   color: var(--ink-soft);
@@ -494,6 +765,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  box-shadow: var(--shadow-sm);
 }
 .io-dot {
   width: 28px;
@@ -536,6 +808,7 @@ body {
   padding: 12px 14px;
   margin-top: 10px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 .running-bal-label {
   font-family: var(--mono);
@@ -560,12 +833,13 @@ body {
   background: linear-gradient(
     135deg,
     rgba(255, 148, 120, 0.08),
-    rgba(165, 148, 249, 0.08)
+    rgba(124, 108, 240, 0.08)
   );
   border: 1px solid var(--border-2);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -575,6 +849,18 @@ body {
   align-items: center;
   gap: 10px;
   color: var(--out);
+}
+/* Investments are a positive/neutral concept, not debt — override the
+   inherited red icon tint and gradient tone. */
+.inv-banner {
+  background: linear-gradient(
+    135deg,
+    rgba(126, 211, 168, 0.08),
+    rgba(124, 108, 240, 0.08)
+  );
+}
+.inv-banner .db-left {
+  color: var(--in);
 }
 .db-label {
   font-size: 11px;
@@ -621,6 +907,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
 }
 .pi-top {
   display: flex;
@@ -736,6 +1023,7 @@ body {
   background: var(--surface);
   border: 1px dashed var(--border-2);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 .empty-icon {
   width: 48px;
@@ -766,16 +1054,9 @@ body {
 }
 
 /* ── BUDGET LAYOUT ── */
-.view-budget {
-  height: 100dvh;
-  overflow-y: auto;
-  padding: 20px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px));
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.view-budget::-webkit-scrollbar {
-  display: none;
-}
+/* .view-budget's base layout (flex frame + .budget-scroll inner pane) is
+   defined further down, after the ≤380px .view padding override — see the
+   comment there for why placement matters for cascade order. */
 
 /* ── CARD DETAIL LAYOUT ── */
 .view-card-detail {
@@ -791,6 +1072,20 @@ body {
 
 /* ── CARDS LAYOUT ── */
 .view-cards {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+}
+/* ── INVESTMENTS LAYOUT ── */
+/* Same shape as .view-cards above — a full-height flex column so the
+   master/detail panes in the responsive block below actually become flex
+   items (flex-direction: row can't do anything without this). Missing this
+   base rule left .investments-master pinned to its desktop width with
+   nothing filling the row next to it, and the detail pane just fell below
+   in normal document flow instead of sitting alongside it. */
+.view-investments {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -895,10 +1190,13 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 .tx {
   border-bottom: 1px solid var(--border);
   transition: background 0.15s;
+  position: relative;
+  overflow: hidden;
 }
 .tx:last-child {
   border-bottom: none;
@@ -918,15 +1216,17 @@ body {
   text-align: left;
   font-family: inherit;
   color: var(--ink);
-  transition: transform 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.15s;
 }
 .tx-main:hover {
   background: var(--surface-2);
 }
 .tx-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -947,6 +1247,15 @@ body {
   align-items: center;
   gap: 6px;
 }
+.tx-date-col {
+  display: none;
+}
+/* Desktop-only month filter — mobile/tablet use the .month-pill in the
+   shared header instead (see .dash-topbar in HomeView.jsx), since that
+   header itself is hidden at desktop in favor of the app-wide .app-topbar. */
+.tx-month-select {
+  display: none;
+}
 .tx-card-chip {
   font-family: var(--mono);
   font-size: 9px;
@@ -966,8 +1275,8 @@ body {
   color: var(--ink-faint);
 }
 .tx-amt {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
@@ -983,6 +1292,10 @@ body {
 .tx-amt-sign {
   margin-right: 1px;
   opacity: 0.6;
+}
+.tx-chevron {
+  flex-shrink: 0;
+  margin-left: -2px;
 }
 .tx-expand {
   padding: 0 14px 12px;
@@ -1062,6 +1375,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   transition: opacity 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 .section-hidden {
   opacity: 0.45;
@@ -1125,6 +1439,26 @@ body {
 .section-toggle:hover {
   background: var(--surface-2);
 }
+.section-chart-btn {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.section-chart-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.section-chart-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 .text-btn {
   background: none;
   border: none;
@@ -1160,6 +1494,18 @@ body {
   z-index: 40;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   overflow: visible;
+}
+/* Wraps the nav buttons on each side of .nav-add. Both groups get an equal
+   flex:1 share of the bar's width regardless of how many buttons are inside
+   each one (2 vs 3 today) — without this, giving every .nav-btn its own
+   flex:1 directly inside .nav made each button the same width, but left the
+   FAB positioned off-center whenever the two sides didn't have an equal
+   button count, since the side with more buttons ended up wider overall. */
+.nav-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 .nav-btn {
   flex: 1;
@@ -1202,15 +1548,15 @@ body {
   letter-spacing: 0.03em;
   margin-top: -20px;
   box-shadow:
-    0 4px 20px rgba(125, 211, 192, 0.45),
-    0 0 0 1px rgba(125, 211, 192, 0.2);
+    0 4px 20px rgba(124, 108, 240, 0.45),
+    0 0 0 1px rgba(124, 108, 240, 0.2);
   transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .nav-add:hover {
   transform: scale(1.08) translateY(-2px);
   box-shadow:
-    0 8px 28px rgba(125, 211, 192, 0.55),
-    0 0 0 1px rgba(125, 211, 192, 0.3);
+    0 8px 28px rgba(124, 108, 240, 0.55),
+    0 0 0 1px rgba(124, 108, 240, 0.3);
 }
 .nav-add:active {
   transform: scale(0.94);
@@ -1277,13 +1623,18 @@ body {
   text-align: left;
   font-family: inherit;
   color: inherit;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-sm);
 }
 .card-tile:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: var(--border-2);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-md);
+}
+.card-tile:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 .ct-visual {
@@ -1304,6 +1655,11 @@ body {
   min-height: 130px;
   border-radius: var(--radius);
   margin-bottom: 14px;
+}
+/* Investment tiles/detail/form don't have a per-item color picker like
+   cards do, so they share one fixed accent gradient. */
+.inv-visual {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 .ct-vis-top {
   display: flex;
@@ -1368,6 +1724,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
 }
 .ct-util-top {
   display: flex;
@@ -1429,6 +1786,7 @@ body {
 }
 .back-btn,
 .icon-btn {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--ink-soft);
@@ -1455,6 +1813,17 @@ body {
   display: flex;
   gap: 8px;
 }
+.detail-head-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+}
 .detail-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1466,6 +1835,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 12px;
+  box-shadow: var(--shadow-sm);
 }
 .ds-label {
   font-family: var(--mono);
@@ -1507,6 +1877,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
 }
 .monthly-total-banner-lbl {
   font-family: var(--mono);
@@ -1698,6 +2069,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
+  box-shadow: var(--shadow-sm);
 }
 .metric-top {
   display: flex;
@@ -1753,6 +2125,7 @@ body {
   border-radius: var(--radius);
   padding: 18px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 .card-hd {
   display: flex;
@@ -1814,6 +2187,12 @@ body {
 }
 .bar-col {
   flex: 1;
+  /* Without this, flexbox's default min-width:auto refuses to shrink a
+     column below its label's intrinsic text width — harmless at the
+     Cashflow chart's fixed 6 columns, but custom bar charts can have up to
+     12, whose combined minimum width overflows the card at typical
+     dashboard column widths. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1831,8 +2210,8 @@ body {
 }
 .bar {
   flex: 1;
-  max-width: 12px;
-  border-radius: 3px 3px 0 0;
+  max-width: 14px;
+  border-radius: 4px 4px 0 0;
   transition: height 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   min-height: 2px;
 }
@@ -1863,6 +2242,10 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-faint);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── CAT LIST V2 ── */
@@ -2027,10 +2410,13 @@ body {
   padding: 16px 18px;
   gap: 8px;
   margin-bottom: 8px;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .big-input:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .big-input.in-accent:focus-within {
   border-color: var(--in);
@@ -2086,6 +2472,7 @@ body {
   padding: 4px;
   border-radius: 12px;
   margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
 }
 .mode-slider,
 .side-slider {
@@ -2209,6 +2596,7 @@ body {
   border-radius: var(--radius);
   padding: 14px 16px;
   margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
 }
 .summary-row {
   display: flex;
@@ -2396,7 +2784,7 @@ body {
 }
 .save-btn:hover:not(.disabled):not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(125, 211, 192, 0.3);
+  box-shadow: 0 4px 16px rgba(124, 108, 240, 0.3);
 }
 .save-btn:active {
   transform: translateY(0);
@@ -2461,6 +2849,7 @@ body {
   max-height: 92dvh;
   overflow-y: auto;
   animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--shadow-lg);
 }
 @keyframes slideUp {
   from {
@@ -2477,6 +2866,42 @@ body {
   border-radius: 100px;
   margin: 0 auto 16px;
 }
+
+/* ── NAV DRAWER (mobile/tablet only) ──
+   Reshapes the shared Sheet chrome into a full-height panel sliding in from
+   the left instead of a bottom sheet — used for the Budget/Investments
+   menu opened from the hamburger control in each page's header. */
+.backdrop:has(.nav-drawer) {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.nav-drawer {
+  width: 280px;
+  max-width: 80vw;
+  height: 100%;
+  max-height: 100dvh;
+  margin: 0;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  border-left: none;
+  padding: max(20px, calc(env(safe-area-inset-top) + 12px)) 18px 20px;
+  animation: slideInLeft 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-drawer .sheet-handle {
+  display: none;
+}
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (min-width: 1024px) {
+  .nav-drawer {
+    display: none;
+  }
+}
 .sheet-hd {
   display: flex;
   justify-content: space-between;
@@ -2490,6 +2915,7 @@ body {
   letter-spacing: -0.01em;
 }
 .close-btn {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   width: 32px;
@@ -2515,6 +2941,7 @@ body {
   background: var(--surface);
   border-radius: var(--radius);
   margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 .account-avatar {
   width: 48px;
@@ -2573,11 +3000,12 @@ body {
 .type-chip:hover {
   background: var(--surface-2);
   color: var(--ink);
+  border-color: var(--border-2);
 }
 .type-chip.active {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 .type-chip.card.active {
   background: var(--neutral);
@@ -2594,10 +3022,13 @@ body {
   padding: 18px;
   gap: 8px;
   margin-bottom: 4px;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .amount-input:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .amt-cur {
   font-size: 16px;
@@ -2771,6 +3202,112 @@ body {
   background: var(--danger-soft);
   color: var(--danger);
 }
+.manage-cat-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.manage-cat-btn:disabled:hover {
+  background: none;
+  color: var(--ink-faint);
+}
+
+/* ── CUSTOM CHART FORM — segmented pickers (N options, unlike the 2-option
+   sliding-pill .mode-toggle) and the category multi-select checklist ── */
+.chart-form-preview {
+  margin-bottom: 16px;
+}
+.chart-form-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 120px;
+  padding: 20px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--ink-faint);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 100px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover {
+  color: var(--ink);
+}
+.chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chart-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 34dvh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  margin-bottom: 4px;
+}
+.chart-cat-list::-webkit-scrollbar {
+  display: none;
+}
+.chart-cat-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chart-cat-row.active {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.chart-cat-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chart-cat-label {
+  flex: 1;
+  text-align: left;
+}
+.chart-cat-row.active svg:last-child {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 .settings-menu-row {
   width: 100%;
   display: flex;
@@ -2798,8 +3335,8 @@ body {
   background: var(--surface);
 }
 .privacy-card {
-  background: rgba(125, 211, 192, 0.06);
-  border: 1px solid rgba(125, 211, 192, 0.18);
+  background: rgba(124, 108, 240, 0.06);
+  border: 1px solid rgba(124, 108, 240, 0.18);
   border-radius: var(--radius-sm);
   padding: 14px;
   margin-bottom: 12px;
@@ -2907,10 +3444,13 @@ body {
   font-size: 14px;
   color: var(--ink);
   outline: none;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .text-input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .text-input::placeholder {
   color: var(--ink-faint);
@@ -2973,6 +3513,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 .help-section-hd {
   width: 100%;
@@ -3003,12 +3544,16 @@ body {
 .help-section-title {
   flex: 1;
 }
-.help-chevron {
+/* ── SHARED DISCLOSURE CHEVRON ──
+   One chevron rotation pattern for every collapsible area in the app
+   (currently: Help's two-level accordion; also used as a purely visual
+   affordance on TxRow's existing tap-to-expand, see .tx-main below). */
+.disclosure-chevron {
   color: var(--ink-faint);
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
-.help-chevron.rotated {
+.disclosure-chevron.open {
   transform: rotate(180deg);
 }
 .help-items {
@@ -3109,6 +3654,22 @@ body {
   flex-shrink: 0;
 }
 
+/* Fixed Deposit active/matured badge — sits on the gradient hero card, so it
+   uses translucent white rather than the usual surface-based chip tokens. */
+.fd-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.fd-status.matured {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 /* ── ACTIVE PLANS PANEL (CardDetailView) ── */
 .installment-plans-list {
   display: flex;
@@ -3124,6 +3685,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px;
+  box-shadow: var(--shadow-sm);
 }
 .ipr-info {
   flex: 1;
@@ -3197,7 +3759,7 @@ body {
 .notif-badge {
   position: absolute;
   top: -2px;
-  right: -4px;
+  right: -2px;
   background: var(--danger);
   color: #fff;
   font-size: 9px;
@@ -3234,6 +3796,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
 }
 .notif-icon {
   width: 32px;
@@ -3272,6 +3835,31 @@ body {
   color: var(--ink);
   flex-shrink: 0;
 }
+.notif-complete-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.notif-complete-btn:hover {
+  background: var(--in-soft);
+  border-color: var(--in);
+  color: var(--in);
+}
+.value-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
 
 /* ── RECURRING REMINDERS MODAL ── */
 .reminder-list {
@@ -3288,6 +3876,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
 }
 .reminder-icon {
   width: 28px;
@@ -3323,6 +3912,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 14px;
   margin-bottom: 4px;
+  box-shadow: var(--shadow-sm);
 }
 
 /* ── TRANSACTION SEARCH BAR ── */
@@ -3335,9 +3925,13 @@ body {
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   margin-bottom: 10px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .tx-search-bar:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .tx-search-icon {
   color: var(--ink-faint);
@@ -3369,10 +3963,6 @@ body {
 }
 
 /* ── SWIPE TO DELETE ── */
-.tx {
-  position: relative;
-  overflow: hidden;
-}
 .tx-swipe-del-btn {
   position: absolute;
   right: 0;
@@ -3505,6 +4095,57 @@ body {
   color: var(--ink-faint);
 }
 
+/* ── DONUT CHART (custom charts, groupBy category/card) ──
+   Stacked (ring on top, full-width legend below) rather than side-by-side —
+   dashboard cards can be as narrow as ~280px in the 3-column masonry layout,
+   too tight for a side-by-side legend to show full category names. */
+.donut-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.donut-chart svg {
+  flex-shrink: 0;
+}
+.donut-center-label {
+  fill: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+.donut-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.donut-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.donut-legend-row .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.donut-legend-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.donut-legend-value {
+  font-family: var(--mono);
+  color: var(--ink);
+  font-weight: 500;
+}
+
 /* ── INSTALLMENT COMMITMENT ON CARD TILE ── */
 .ct-installment-note {
   font-size: 11px;
@@ -3545,5 +4186,785 @@ body {
   }
   .nav-btn {
     font-size: 8px;
+  }
+}
+
+/* ── FIXED-FRAME + INNER SCROLL PANE (Insights, Budget, Profile) ──
+   These three views used to be a single scrolling column with the topbar
+   held on screen via position:sticky. That works positionally (verified:
+   it never scrolls out of view), but visually reads as "floating" — the
+   topbar is the only thing anchored while everything, including it, lives
+   in the same scroll container, unlike Ledger/Cards/Investments, where the
+   topbar is structurally OUTSIDE the scrolling region entirely (a
+   non-scrolling flex sibling above a dedicated inner scroll pane), so no
+   part of the header ever appears to detach from the frame. This block
+   gives Insights/Budget/Profile that same structural split, purely at
+   mobile/tablet widths — desktop is reverted back to its original
+   behavior explicitly in the matching @media(min-width:1024px) blocks
+   below (search "reverted for desktop" for each).
+
+   Placed here (after the ≤380px .view padding override above) rather than
+   near each view's own section, because .view-dashboard/.view-budget/
+   .view-user share .view's base selector specificity — a rule defined
+   earlier in the file loses to that ≤380px override at narrow widths,
+   the exact bug this fixed for .view-home/.cards-master/.investments-master
+   earlier (see the .dash-topbar margin note below). Defining these here,
+   after it, means they correctly win the cascade at every mobile width. */
+.view-dashboard,
+.view-budget,
+.view-user {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+.dash-scroll,
+.budget-scroll,
+.user-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.dash-scroll::-webkit-scrollbar,
+.budget-scroll::-webkit-scrollbar,
+.user-scroll::-webkit-scrollbar {
+  display: none;
+}
+/* Same -18px horizontal bleed vs. zero-padding-parent mismatch as the
+   Ledger/Cards/Investments fix — these three views are now zero-padded at
+   every mobile width (not just >380px), so the override is unconditional
+   here; .dash-topbar isn't rendered at all at ≥1024px regardless. */
+.view-dashboard > .dash-topbar,
+.view-budget > .dash-topbar,
+.view-user > .dash-topbar {
+  margin: 0;
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET & DESKTOP
+   Everything above this line is the original mobile-first design
+   and renders identically below 768px. Rules below only ADD
+   behavior at wider viewports via min-width media queries —
+   nothing above is overridden for narrow screens.
+
+   Breakpoints:
+     tablet  ≥ 768px  — wider centered column, sheets stay sheets
+     desktop ≥ 1024px — sidebar rail, multi-column layouts, sheets
+                        become centered dialogs
+
+   New rules for each stage of the responsive rollout are appended
+   here, grouped by breakpoint then by screen/component, so the
+   mobile styles above never need to be touched.
+   ============================================================ */
+
+@media (min-width: 768px) {
+  .app {
+    max-width: 760px;
+  }
+  /* Default readable-width column for single-column screens.
+     Screens with a dedicated multi-column desktop layout (Cards,
+     Budget, Dashboard, Card Detail) override this per-screen. */
+  .view {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+}
+
+/* .app's ≥1024px width (now unbounded — every tab uses the full width) is
+   set once, in the DESKTOP SIDEBAR RAIL section below, to avoid the kind
+   of duplicate/overridden-rule confusion that caused an earlier bug here. */
+
+
+/* ── CARDS VIEW — MASTER-DETAIL STRUCTURE ──
+   .cards-master wraps the header+list (previously direct children of
+   .view-cards) so a detail pane can render alongside it instead of
+   replacing it outright. Below 1024px .cards-master is hidden while a
+   card is selected (same "push" navigation as before); at ≥1024px both
+   panes show side by side. */
+.cards-master {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+.cards-detail-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+@media (max-width: 1023px) {
+  .cards-master-hidden {
+    display: none;
+  }
+}
+
+/* ── CARDS VIEW — RESPONSIVE GRID ──
+   Card tiles are a real-world card shape; below 768px they stay a single
+   stacked column (unchanged). At tablet/desktop they use a grid instead of
+   just stretching a single wide column. */
+@media (min-width: 768px) {
+  .view-cards {
+    max-width: 760px;
+  }
+  .cards-stack {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .view-cards {
+    max-width: none;
+  }
+  /* auto-fit (not auto-fill) collapses any track beyond the last actual
+     card, so with e.g. only 2 cards they stretch to fill the row instead
+     of leaving invisible empty grid tracks (which auto-fill would keep,
+     looking identical to the dead-space problem this is fixing). */
+  .cards-stack {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+/* When a card is selected at desktop, widen to fit list + detail side by side */
+@media (min-width: 1024px) {
+  .view-cards:has(.cards-detail-pane) {
+    max-width: none;
+    flex-direction: row;
+  }
+  .view-cards:has(.cards-detail-pane) .cards-master {
+    width: 400px;
+    flex: none;
+    border-right: 1px solid var(--border);
+  }
+  .view-cards:has(.cards-detail-pane) .cards-stack {
+    grid-template-columns: 1fr;
+  }
+  .cards-detail-pane {
+    padding-left: 12px;
+  }
+  .cards-detail-pane .view {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+/* ── INVESTMENTS VIEW — MASTER-DETAIL STRUCTURE ──
+   Mirrors the Cards master-detail structure above exactly (list view with
+   summary + tile grid, click a tile → detail pane, mobile push-navigation
+   vs desktop side-by-side). Reuses .cards-header/.cards-scroll/.cards-stack
+   directly since those are purely structural/layout classes with nothing
+   cards-specific in them. */
+.investments-master {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+.investments-detail-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+@media (max-width: 1023px) {
+  .investments-master-hidden {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .view-investments {
+    max-width: 760px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .view-investments {
+    max-width: none;
+  }
+  .view-investments:has(.investments-detail-pane) {
+    max-width: none;
+    flex-direction: row;
+  }
+  .view-investments:has(.investments-detail-pane) .investments-master {
+    width: 400px;
+    flex: none;
+    border-right: 1px solid var(--border);
+  }
+  .view-investments:has(.investments-detail-pane) .cards-stack {
+    grid-template-columns: 1fr;
+  }
+  .investments-detail-pane {
+    padding-left: 12px;
+  }
+  .investments-detail-pane .view {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+/* ── BUDGET VIEW — TWO-PANE DESKTOP LAYOUT ──
+   The existing .summary-card (income/expense/savings) becomes a sticky
+   right-hand sidebar next to the editable plan form. No DOM/JSX reordering
+   needed — grid placement pulls it into column 2 regardless of where it
+   falls in render order.
+   .budget-scroll is set to display:contents here (reverting the
+   mobile/tablet-only fixed-frame split above), which promotes its children
+   to participate directly in .view-budget's grid — but CSS's child (>)
+   combinator matches actual DOM structure regardless of display:contents,
+   so the two selectors below target .budget-scroll's children rather than
+   .view-budget's, matching where .summary-card actually lives in the DOM. */
+@media (min-width: 1024px) {
+  .view-budget {
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+    /* Reverted for desktop: back to being the scroll container itself
+       (its original, pre-fixed-frame behavior), since .budget-scroll no
+       longer establishes one once it's display:contents. */
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 20px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px));
+  }
+  .budget-scroll {
+    display: contents;
+  }
+  .budget-scroll > *:not(.summary-card) {
+    grid-column: 1;
+  }
+  .budget-scroll > .summary-card {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-self: start;
+    position: sticky;
+    top: 24px;
+    margin-bottom: 0;
+  }
+}
+
+/* ── DASHBOARD/INSIGHTS — MULTI-COLUMN LAYOUT ──
+   Sections are user-reorderable (see Customize sheet), so we can't assume
+   which card ends up where — a CSS multi-column flow (rather than a grid)
+   handles an arbitrary sequence of variable-height cards without gaps,
+   masonry-style. The hero (balance + month picker) stays outside
+   .dash-sections and full-width at every size. */
+@media (min-width: 768px) {
+  .view-dashboard {
+    max-width: 760px;
+  }
+  .dash-sections {
+    column-count: 2;
+    column-gap: 16px;
+  }
+  .dash-sections > * {
+    break-inside: avoid;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Dashboard/Insights is a charts-and-panels screen — let it use the full
+     width to the right of the sidebar instead of capping to a readable-text
+     width like the other views. .app itself is unbounded via the
+     :has(.view-dashboard) rule further down, which needs to win the
+     cascade over the general centered-.app rule, so it's placed at the
+     end of the file. */
+  .view-dashboard {
+    max-width: none;
+    /* Reverted for desktop: the fixed-frame + .dash-scroll inner pane
+       above is mobile/tablet-only. Desktop keeps its original whole-page
+       scroll (with the sticky .app-topbar handling the header) exactly as
+       before this change. */
+    display: block;
+    height: auto;
+    overflow: visible;
+    padding: 20px 18px 24px;
+  }
+  .dash-scroll {
+    /* Unwraps for layout purposes — .hero/.dash-sections resume being
+       direct visual children of .view-dashboard, exactly as they were
+       before .dash-scroll existed. */
+    display: contents;
+  }
+  .dash-sections {
+    column-count: 3;
+  }
+}
+
+/* ── DESKTOP SIDEBAR RAIL ──
+   .nav-rail exists in the DOM at all sizes but is only shown at ≥1024px;
+   the mobile/tablet bottom pill nav (.nav) is hidden there instead. */
+.nav-rail {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .nav {
+    display: none;
+  }
+  .app {
+    /* Every tab now fills the full width to the right of the 220px
+       sidebar rather than being capped/centered — a fixed-width column
+       with large empty gutters read as broken on wide monitors. */
+    max-width: none;
+    margin-left: 220px;
+    margin-right: 0;
+    padding-bottom: 32px;
+  }
+  /* Ledger (view-home) has no dedicated width rule of its own and relies
+     on this generic fallback — remove the readable-width cap here too so
+     it fills the width like the other three tabs. Note: .view and
+     .view-dashboard/.view-cards/.view-budget are separate single-class
+     selectors of EQUAL specificity, not a combined `.view.view-x` rule —
+     if a future screen wants a narrower column again, its override must
+     come after this block in the file to win the cascade (see the
+     overflow-y bug note near .app for why source order, not "more
+     specific-looking," decides ties here). */
+  .view {
+    max-width: none;
+    margin: 0;
+  }
+  /* Dashboard's own topbar is superseded at desktop by the shared
+     .app-topbar below (month selector + notifications + account, common
+     to all four tabs) — hide it here to avoid a duplicate sticky bar. */
+  .dash-topbar {
+    display: none;
+  }
+  .app-topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-rail {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 220px;
+    padding: 24px 14px;
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    z-index: 40;
+  }
+  .rail-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 24px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s;
+  }
+  .rail-add:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(124, 108, 240, 0.35);
+  }
+  .rail-add:active {
+    transform: scale(0.97);
+  }
+  .rail-add:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .rail-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-rail .nav-btn {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  .nav-rail .nav-btn span {
+    font-family: var(--sans);
+  }
+  .nav-rail .nav-btn.active {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .nav-rail .nav-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ── MODALS BECOME CENTERED DIALOGS AT DESKTOP ──
+   Below 1024px, .backdrop/.sheet keep their original bottom-sheet look
+   and animation untouched. */
+@media (min-width: 1024px) {
+  .backdrop {
+    align-items: center;
+  }
+  .sheet {
+    max-width: 520px;
+    border-bottom: 1px solid var(--border-2);
+    border-radius: var(--radius-lg);
+    padding: 24px 24px 24px;
+    max-height: 88vh;
+    animation: dialogIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .sheet.sheet-wide {
+    max-width: 640px;
+  }
+  .sheet-handle {
+    display: none;
+  }
+  .close-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @keyframes dialogIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+/* ── DIALOG CONTENT POLISH AT DESKTOP ──
+   The centering/rounding above only changes the dialog's chrome — the
+   forms inside were still a straight mobile-width vertical stack of
+   full-width rows, which is what actually reads as "mobile popup" on a
+   1280px+ screen regardless of how the frame around it looks. These rules
+   reflow the highest-value cases (grids that were narrow purely because
+   phones are narrow, and label/input pairs that naturally fit side by
+   side) — mobile/tablet are untouched, everything here is inside this
+   min-width:1024px block. */
+@media (min-width: 1024px) {
+  /* AddModal/CardFormModal/InvestmentFormModal use this to place two
+     field-lbl+input pairs side by side instead of stacked — each pair
+     wrapped in .field-group so .field-row can split them evenly. */
+  .field-row {
+    display: flex;
+    gap: 16px;
+  }
+  .field-row .field-group {
+    flex: 1;
+    min-width: 0;
+  }
+  .field-row .field-lbl {
+    margin-top: 0;
+  }
+
+  /* Category/icon/color pickers were 2-6 columns purely to fit a phone —
+     a wider dialog can show more per row, cutting scroll height a lot. */
+  .cat-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .icon-picker,
+  .color-picker {
+    grid-template-columns: repeat(9, 1fr);
+  }
+  .color-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .card-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Customize's section list and Manage Categories' list are both long
+     single-column lists that exist purely because of phone width — a
+     2-column grid roughly halves the scrolling for both. */
+  .section-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .manage-cat-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    max-height: 55vh;
+  }
+  .manage-cat-row {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--surface);
+  }
+}
+
+/* ── CREATE CUSTOM CHART — SPLIT DESKTOP LAYOUT ──
+   The live preview used to sit stacked above a long single-column form,
+   pushing everything else further down exactly when there's finally
+   something to look at. At desktop this becomes a fixed preview column
+   beside an independently-scrolling field column, each capped to the
+   dialog's own height (min-height:0 lets a grid/flex child shrink below
+   its content size instead of overflowing the track, which is what
+   makes the internal overflow-y:auto scroll instead of the whole dialog
+   growing past max-height). */
+@media (min-width: 1024px) {
+  .sheet.sheet-split {
+    max-width: 940px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+    padding: 0;
+  }
+  .sheet.sheet-split .sheet-hd {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chart-form-preview {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow-y: auto;
+    padding: 20px;
+    background: var(--bg-2);
+    border-right: 1px solid var(--border);
+    border-radius: 0 0 0 var(--radius-lg);
+  }
+  .chart-form-preview-empty {
+    flex: 1;
+  }
+  .chart-form-fields {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 24px 24px;
+  }
+}
+
+/* ── ACCESSIBILITY ──
+   Keyboard focus ring for interactive elements that don't already have a
+   custom focus treatment (text inputs keep their existing border-color
+   focus style). Uses :focus-visible so it only shows for keyboard/assistive
+   navigation, not mouse clicks. */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Expand the tappable/clickable area of small icon buttons to closer to the
+   ~44px accessibility guideline without changing their visual size —
+   an invisible pseudo-element extends the hit area beyond the button's
+   own box. Applied conservatively (6px per side) to avoid overlap in
+   tightly-packed rows like .month-pill. */
+.avatar-btn::before,
+.month-pill button::before,
+.back-btn::before,
+.icon-btn::before,
+.close-btn::before,
+.bell-btn::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+/* ── LEDGER — DESKTOP ROW DETAIL ──
+   Extra horizontal space at desktop is used to show each transaction's
+   date inline (mobile/tablet already show it via the day-group header
+   above each cluster of rows, so this is additive, not a duplicate ask). */
+@media (min-width: 1024px) {
+  .tx-date-col {
+    display: block;
+    flex-shrink: 0;
+    width: 56px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-align: right;
+  }
+  /* The chevron is a new mobile/tablet-only visual affordance (see the
+     shared disclosure-chevron pattern) hinting that a row is tappable —
+     desktop already conveys this via hover state, so it's hidden here to
+     keep the desktop row exactly as it was before this pass. */
+  .tx-chevron {
+    display: none;
+  }
+  /* Desktop has no equivalent of the mobile/tablet .dash-topbar month-pill
+     (that header is hidden here in favor of .app-topbar), so restore the
+     original month dropdown here to keep desktop's ability to change
+     months in the Ledger unchanged. */
+  .tx-month-select {
+    display: block;
+  }
+}
+
+/* ── SKELETON LOADING STATE ──
+   Shown while the initial data fetch is in flight, shaped like the
+   Dashboard (the default landing tab) so there's no layout jump once real
+   content arrives. */
+.skel {
+  background: linear-gradient(
+    100deg,
+    var(--surface) 30%,
+    var(--surface-2) 50%,
+    var(--surface) 70%
+  );
+  background-size: 200% 100%;
+  animation: skelShimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+.skel-text {
+  border-radius: 6px;
+}
+.skel-pill {
+  border-radius: var(--radius-pill);
+}
+.skel-card {
+  border-radius: var(--radius);
+}
+@keyframes skelShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel {
+    animation: none;
+    background: var(--surface);
+  }
+}
+
+/* ── VERY LARGE MONITORS ──
+   .app is already full-width at ≥1024px (see the sidebar-rail section
+   above), so there's nothing left to widen here — .cards-master (the card
+   list column, not the whole view) still benefits from a bit more room
+   for its fixed-width sidebar role once there's a lot of spare width. */
+@media (min-width: 1600px) {
+  .view-cards:has(.cards-detail-pane) .cards-master {
+    width: 440px;
+  }
+}
+
+/* ── MOBILE/TABLET LIST-ROW ANATOMY ──
+   Below 1024px, standardize every list row (transactions, category
+   breakdowns, budget rows) on one anatomy: a rounded-square icon tile,
+   two-line text block, right-aligned signed amount — each row as its own
+   soft card instead of a flat divider inside one shared container. Desktop
+   (>=1024px) keeps the original flat divider-list treatment untouched;
+   nothing in this block is duplicated or overridden above 1024px. */
+@media (max-width: 1023px) {
+  /* Ledger transactions: unwrap .tx-stack's single shared card into a
+     borderless flex column, and give each .tx its own card. */
+  .tx-stack {
+    background: none;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .tx {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    border-bottom: none;
+  }
+  .tx:last-child {
+    border-bottom: none;
+  }
+  /* Reuse .tx's colored-by-direction amount for expenses too — --out is
+     already the app's established expense/negative semantic color (used by
+     the "Out" stat, .out-color, debt banners) elsewhere, just not applied
+     here before. */
+  .tx-amt.expense {
+    color: var(--out);
+  }
+
+  /* Dashboard category breakdown rows ("Where it went"/"Where it came
+     from") — same per-row card treatment, nested one level inside the
+     section's own card, so use a plain border (no extra shadow) to avoid
+     stacking two shadow layers. */
+  .cat-list-v2 {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .catv2 {
+    padding: var(--sp-3);
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+  .catv2:last-child {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--sp-3);
+  }
+  .cat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  /* Budget category rows — same treatment, nested inside the Budget card. */
+  .cat-budget {
+    padding: var(--sp-3);
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+  .cat-budget:last-child {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--sp-3);
+  }
+  .cb-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  /* Already-individually-carded rows (notifications, reminders, active
+     installment plans) — align icon tile geometry to match the standard
+     established above; their card/border/shadow treatment is unchanged. */
+  .notif-icon,
+  .reminder-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
   }
 }

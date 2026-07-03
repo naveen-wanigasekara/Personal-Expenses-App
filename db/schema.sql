@@ -49,12 +49,89 @@ create table if not exists public.budgets (
   primary key (user_id, month_key)
 );
 
+-- ─── INSTALLMENT PLANS TABLE ────────────────────────────────
+create table if not exists public.installment_plans (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  card_id text,
+  label text,                      -- encrypted
+  total_amount text,               -- encrypted
+  monthly_amount text,             -- encrypted
+  total_months text,               -- encrypted
+  start_month text,                -- encrypted
+  category text,                   -- encrypted
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+create index if not exists installment_plans_user_idx
+  on public.installment_plans (user_id);
+
+-- ─── RECURRING REMINDERS TABLE ──────────────────────────────
+create table if not exists public.recurring_reminders (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text,                      -- encrypted
+  amount text,                     -- encrypted
+  day_of_month text,               -- encrypted
+  category text,                   -- encrypted
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+create index if not exists recurring_reminders_user_idx
+  on public.recurring_reminders (user_id);
+
+-- ─── INVESTMENTS TABLE ──────────────────────────────────────
+create table if not exists public.investments (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,              -- encrypted
+  type text,                       -- encrypted
+  initial_amount text not null,    -- encrypted
+  current_value text not null,     -- encrypted
+  start_date text,                 -- encrypted
+  notes text,                      -- encrypted
+  created_at timestamptz default now()
+);
+
+-- Fixed Deposit-specific fields — null for every other investment type.
+-- alter/add-column-if-not-exists so this applies safely to the live table
+-- created by the block above in an earlier deploy.
+alter table public.investments add column if not exists interest_rate text;     -- encrypted
+alter table public.investments add column if not exists payout_frequency text; -- encrypted
+alter table public.investments add column if not exists tenure_months text;    -- encrypted
+
+create index if not exists investments_user_idx on public.investments (user_id);
+
+-- ─── INVESTMENT VALUATIONS TABLE ────────────────────────────
+-- investment_id is a plaintext join key (like card_id on transactions) — no
+-- FK/cascade; the app is responsible for cleanup when an investment is deleted.
+create table if not exists public.investment_valuations (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  investment_id text not null,
+  value text not null,             -- encrypted
+  recorded_date text not null,     -- encrypted
+  created_at timestamptz default now()
+);
+
+create index if not exists investment_valuations_investment_idx
+  on public.investment_valuations (investment_id);
+
+create index if not exists investment_valuations_user_idx
+  on public.investment_valuations (user_id);
+
 -- ============================================================
 -- ROW-LEVEL SECURITY: users can only see/modify their own data
 -- ============================================================
 alter table public.transactions enable row level security;
 alter table public.cards enable row level security;
 alter table public.budgets enable row level security;
+alter table public.installment_plans enable row level security;
+alter table public.recurring_reminders enable row level security;
+alter table public.investments enable row level security;
+alter table public.investment_valuations enable row level security;
 
 -- Transactions policies
 drop policy if exists "tx_select_own" on public.transactions;
@@ -105,4 +182,72 @@ create policy "budgets_update_own" on public.budgets
 
 drop policy if exists "budgets_delete_own" on public.budgets;
 create policy "budgets_delete_own" on public.budgets
+  for delete using (auth.uid() = user_id);
+
+-- Installment plans policies
+drop policy if exists "installment_plans_select_own" on public.installment_plans;
+create policy "installment_plans_select_own" on public.installment_plans
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "installment_plans_insert_own" on public.installment_plans;
+create policy "installment_plans_insert_own" on public.installment_plans
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "installment_plans_update_own" on public.installment_plans;
+create policy "installment_plans_update_own" on public.installment_plans
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "installment_plans_delete_own" on public.installment_plans;
+create policy "installment_plans_delete_own" on public.installment_plans
+  for delete using (auth.uid() = user_id);
+
+-- Recurring reminders policies
+drop policy if exists "recurring_reminders_select_own" on public.recurring_reminders;
+create policy "recurring_reminders_select_own" on public.recurring_reminders
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "recurring_reminders_insert_own" on public.recurring_reminders;
+create policy "recurring_reminders_insert_own" on public.recurring_reminders
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "recurring_reminders_update_own" on public.recurring_reminders;
+create policy "recurring_reminders_update_own" on public.recurring_reminders
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "recurring_reminders_delete_own" on public.recurring_reminders;
+create policy "recurring_reminders_delete_own" on public.recurring_reminders
+  for delete using (auth.uid() = user_id);
+
+-- Investments policies
+drop policy if exists "investments_select_own" on public.investments;
+create policy "investments_select_own" on public.investments
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "investments_insert_own" on public.investments;
+create policy "investments_insert_own" on public.investments
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "investments_update_own" on public.investments;
+create policy "investments_update_own" on public.investments
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "investments_delete_own" on public.investments;
+create policy "investments_delete_own" on public.investments
+  for delete using (auth.uid() = user_id);
+
+-- Investment valuations policies
+drop policy if exists "investment_valuations_select_own" on public.investment_valuations;
+create policy "investment_valuations_select_own" on public.investment_valuations
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "investment_valuations_insert_own" on public.investment_valuations;
+create policy "investment_valuations_insert_own" on public.investment_valuations
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "investment_valuations_update_own" on public.investment_valuations;
+create policy "investment_valuations_update_own" on public.investment_valuations
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "investment_valuations_delete_own" on public.investment_valuations;
+create policy "investment_valuations_delete_own" on public.investment_valuations
   for delete using (auth.uid() = user_id);

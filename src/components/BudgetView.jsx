@@ -8,15 +8,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Bell,
+  Menu,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
   fmt,
   fmtCompact,
-  monthKey,
   monthLabel,
   emptyPlan,
+  shiftMonth,
 } from "../utils/format.js";
+import { SAVINGS_CATEGORY_ID } from "../constants/categories.js";
 import AmountInput from "./AmountInput.jsx";
 
 export default function BudgetView({
@@ -29,6 +32,9 @@ export default function BudgetView({
   setFixedPlan,
   allExpCats,
   allIncCats,
+  onOpenMenu,
+  onOpenNotifications,
+  notifCount,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [mode, setMode] = useState("fixed");
@@ -55,10 +61,7 @@ export default function BudgetView({
     };
   }, []);
 
-  const changeMonth = (dir) => {
-    const [y, m] = viewMonth.split("-").map(Number);
-    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
-  };
+  const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
   const handleSave = async () => {
     if (mode === "fixed") await setFixedPlan(fixedEdit);
@@ -96,6 +99,27 @@ export default function BudgetView({
 
   return (
     <div className="view view-budget">
+      <div className="dash-topbar">
+        <div className="mheader-left">
+          <button className="icon-btn" onClick={onOpenMenu} aria-label="Menu">
+            <Menu size={16} />
+          </button>
+        </div>
+        <div className="mheader-center">
+          <span className="mheader-title">Budget</span>
+        </div>
+        <div className="mheader-right">
+          <button
+            className="bell-btn"
+            onClick={onOpenNotifications}
+            aria-label="Notifications"
+          >
+            <Bell size={16} />
+            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+          </button>
+        </div>
+      </div>
+      <div className="budget-scroll">
       <div className="page-hd">
         <div className="page-eyebrow">Plan</div>
         <h1 className="page-title">Budget</h1>
@@ -235,6 +259,7 @@ export default function BudgetView({
             const actual = isFixed ? 0 : actuals[c.id] || 0;
             const limit = +cats[c.id] || 0;
             const pct = limit && !isFixed ? (actual / limit) * 100 : 0;
+            const isSavingsRow = side === "expense" && c.id === SAVINGS_CATEGORY_ID;
             return (
               <div key={c.id} className="cat-budget">
                 <div className="cb-top">
@@ -256,28 +281,35 @@ export default function BudgetView({
                     />
                   </div>
                 </div>
-                {limit > 0 && !isFixed && (
-                  <>
-                    <div className="cb-bar">
-                      <div
-                        className={`cb-fill ${side === "expense" ? (pct > 100 ? "over" : pct > 80 ? "warn" : "") : ""}`}
-                        style={{
-                          width: `${Math.min(pct, 100)}%`,
-                          background:
-                            side === "expense"
-                              ? pct > 100
-                                ? undefined
-                                : c.color
-                              : c.color,
-                        }}
-                      />
+                {limit > 0 &&
+                  !isFixed &&
+                  (isSavingsRow ? (
+                    <div className="hint">
+                      Actual savings aren't tracked against this target — see
+                      Total Savings on your Dashboard.
                     </div>
-                    <div className="cb-foot">
-                      {CURRENCY} {fmt(actual)} / {CURRENCY} {fmt(limit)} ·{" "}
-                      {pct.toFixed(0)}%
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div className="cb-bar">
+                        <div
+                          className={`cb-fill ${side === "expense" ? (pct > 100 ? "over" : pct > 80 ? "warn" : "") : ""}`}
+                          style={{
+                            width: `${Math.min(pct, 100)}%`,
+                            background:
+                              side === "expense"
+                                ? pct > 100
+                                  ? undefined
+                                  : c.color
+                                : c.color,
+                          }}
+                        />
+                      </div>
+                      <div className="cb-foot">
+                        {CURRENCY} {fmt(actual)} / {CURRENCY} {fmt(limit)} ·{" "}
+                        {pct.toFixed(0)}%
+                      </div>
+                    </>
+                  ))}
               </div>
             );
           })}
@@ -299,6 +331,7 @@ export default function BudgetView({
         )}
       </button>
       <div style={{ height: "80px" }} />
+      </div>
     </div>
   );
 }

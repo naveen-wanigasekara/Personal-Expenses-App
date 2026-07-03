@@ -56,6 +56,8 @@ export async function encryptValue(value) {
 // Decrypts an encrypted value and returns the original typed value.
 // If the value is not in "enc:..." format (legacy unencrypted data), it is
 // returned as-is after a best-effort JSON.parse for type preservation.
+// A single corrupted/undecryptable field returns null instead of throwing,
+// so one bad row can't fail an entire fetch (see decryptFields callers).
 export async function decryptValue(value) {
   if (value == null) return value;
   const str = String(value);
@@ -68,14 +70,19 @@ export async function decryptValue(value) {
     }
   }
   if (!_key) throw new Error("Crypto not initialised — call initCrypto first");
-  const rest = str.slice(4); // strip "enc:"
-  const dot = rest.indexOf(".");
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromB64(rest.slice(0, dot)) },
-    _key,
-    fromB64(rest.slice(dot + 1)),
-  );
-  return JSON.parse(new TextDecoder().decode(plaintext));
+  try {
+    const rest = str.slice(4); // strip "enc:"
+    const dot = rest.indexOf(".");
+    const plaintext = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: fromB64(rest.slice(0, dot)) },
+      _key,
+      fromB64(rest.slice(dot + 1)),
+    );
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  } catch (e) {
+    console.error("Failed to decrypt a field — showing it as unavailable", e);
+    return null;
+  }
 }
 
 export async function encryptFields(obj, fields) {

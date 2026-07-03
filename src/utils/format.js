@@ -28,6 +28,18 @@ export const monthLabel = (key) => {
   });
 };
 
+// Shifts a "YYYY-MM" key by `dir` months (e.g. -1 for previous, +1 for next).
+export const shiftMonth = (key, dir) => {
+  const [y, m] = key.split("-").map(Number);
+  return monthKey(new Date(y, m - 1 + dir, 1));
+};
+
+export const ordinal = (n) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
 export const emptyPlan = () => ({
   income: { total: 0, categories: {} },
   expense: { total: 0, categories: {} },

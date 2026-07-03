@@ -1,17 +1,17 @@
-import { useContext } from "react";
+import { useContext, memo } from "react";
 import { CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
 import { fmt, fmtCompact } from "../utils/format.js";
 
-export default function CardTile({ card, onClick, installmentTotal }) {
+function CardTile({ card, onSelect, installmentTotal }) {
   const CURRENCY = useContext(CurrencyCtx);
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const [from, to] = card.colors || CARD_COLORS[0];
   const available = (+card.limit || 0) - card.currentBalance;
 
   return (
-    <button className="card-tile" onClick={onClick}>
+    <button className="card-tile" onClick={() => onSelect(card)}>
       <div
         className="ct-visual"
         style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
@@ -63,3 +63,5 @@ export default function CardTile({ card, onClick, installmentTotal }) {
     </button>
   );
 }
+
+export default memo(CardTile);

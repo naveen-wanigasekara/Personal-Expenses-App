@@ -77,9 +77,11 @@ Choose from 12 currencies in the Account settings — the selection is saved per
 | NZ$    | NZD  | New Zealand Dollar |
 | AED    | AED  | UAE Dirham         |
 
-### 🔒 End-to-end encryption
+### 🔒 Client-side encryption at rest
 
-All user-entered financial data — transaction amounts, categories, notes, dates; card names, limits, balances; budget totals and category breakdowns — is encrypted with **AES-GCM-256** in the browser before being sent to Supabase. The encryption key is derived from your user ID and a server-side secret via PBKDF2 (100,000 iterations, SHA-256). Raw financial values are never stored in plaintext. Even a full database dump reveals only ciphertext.
+All user-entered financial data — transaction amounts, categories, notes, dates; card names, limits, balances; budget totals and category breakdowns — is encrypted with **AES-GCM-256** in the browser before being sent to Supabase, using a key derived from your user ID and a shared secret via PBKDF2 (100,000 iterations, SHA-256). Raw financial values are never stored in plaintext.
+
+**Known limitation:** because `VITE_ENCRYPTION_SECRET` is bundled into the public client JS (it's not a real server-side secret — anyone can extract it from the deployed app), this encryption does not provide meaningful confidentiality against an attacker who has both the database and the app's source, since the key can be re-derived from a row's own `user_id` column. In practice, **Supabase's Row-Level Security policies are the actual access boundary** between users, not the encryption layer. This is a legitimate weakness worth being aware of if you're evaluating this app for genuinely sensitive data; a real fix would derive the key from a user-supplied passphrase instead (requiring a migration path for existing data) and is tracked as a future improvement rather than something patched in-place.
 
 ### 📱 Installable anywhere
 

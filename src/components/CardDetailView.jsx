@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,7 +9,13 @@ import {
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
-import { fmt, fmtCompact, monthKey, monthLabel } from "../utils/format.js";
+import {
+  fmt,
+  fmtCompact,
+  monthKey,
+  monthLabel,
+  shiftMonth,
+} from "../utils/format.js";
 import TxRow from "./TxRow.jsx";
 
 export default function CardDetailView({
@@ -24,10 +30,11 @@ export default function CardDetailView({
   onCancelPlan,
   allExpCats,
   allIncCats,
+  viewMonth,
+  setViewMonth,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
-  const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
 
   const now = new Date();
   const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -40,49 +47,17 @@ export default function CardDetailView({
     return Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
   };
 
-  const changeMonth = (dir) => {
-    const [y, m] = viewMonth.split("-").map(Number);
-    setViewMonth(monthKey(new Date(y, m - 1 + dir, 1)));
-  };
+  const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
-  const todayMonth = monthKey(new Date());
-
-  const currentOutstanding =
-  (+card.openingBalance || 0) +
-  transactions
-    .filter((t) => monthKey(t.date) <= todayMonth)
-    .reduce((sum, t) => {
-      switch (t.type) {
-        case "card-purchase":
-        case "card-interest":
-          return sum + Number(t.amount);
-
-        case "card-payment":
-          return sum - Number(t.amount);
-
-        default:
-          return sum;
-      }
-    }, 0);
-
-  const util = card.limit ? (currentOutstanding / card.limit) * 100 : 0;
-
-  const committedBalance = transactions.reduce((sum, t) => {
-  switch (t.type) {
-    case "card-purchase":
-    case "card-interest":
-      return sum + Number(t.amount);
-
-    case "card-payment":
-      return sum - Number(t.amount);
-
-    default:
-      return sum;
-  }
-}, 0);
-
-  const available =
-  (+card.limit || 0) - ((+card.openingBalance || 0) + committedBalance);
+  // card.currentBalance (from MainApp's cardsWithBalance) already includes
+  // the full amount of active installment plans, matching the documented
+  // behavior that installment purchases count against the balance
+  // immediately. Recomputing a month-filtered balance here previously
+  // produced a different, lower number than the Cards list/Dashboard for
+  // any card with an active plan — use the same source of truth as those
+  // screens instead.
+  const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
+  const available = (+card.limit || 0) - card.currentBalance;
 
   const selectedMonthTx = transactions.filter(
     (t) => monthKey(t.date) === viewMonth,
@@ -113,6 +88,14 @@ export default function CardDetailView({
         <button className="back-btn" onClick={onBack}>
           <ChevronLeft size={18} />
         </button>
+        {/* Kept as the month-pill (not the card name) in this center slot —
+            per the "month context matters more than the title on some
+            views" framing: this view is fundamentally about browsing a
+            card's activity by month, and the card's name is already shown
+            immediately below in the hero visual (.ct-bank). Changing this
+            would also touch CardDetailView's shared desktop pane, which
+            must stay pixel-identical, so left as-is rather than forking
+            markup for a marginal gain. */}
         <div className="month-pill">
           <button onClick={() => changeMonth(-1)} aria-label="Previous month">
             <ChevronLeft size={16} />
@@ -153,7 +136,7 @@ export default function CardDetailView({
         <div className="ct-vis-mid">
           <div className="ct-vis-label">Outstanding Balance</div>
           <div className="ct-vis-val big">
-            {CURRENCY} {fmt(currentOutstanding)}
+            {CURRENCY} {fmt(card.currentBalance)}
           </div>
         </div>
         <div className="ct-vis-bot">
@@ -268,11 +251,11 @@ export default function CardDetailView({
         <span className="count">{selectedMonthTx.length}</span>
       </div>
 
-      {currentOutstanding !== 0 && (
+      {card.currentBalance !== 0 && (
         <div className="monthly-total-banner">
           <span className="monthly-total-banner-lbl">Current Outstanding</span>
           <span className="monthly-total-banner-amt">
-            {CURRENCY} {fmt(currentOutstanding)}
+            {CURRENCY} {fmt(card.currentBalance)}
           </span>
         </div>
       )}

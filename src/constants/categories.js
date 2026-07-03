@@ -18,6 +18,10 @@ import {
   Wallet,
   Target,
   Percent,
+  Utensils,
+  GraduationCap,
+  Plane,
+  Sparkles,
 } from "lucide-react";
 
 export const EXPENSE_CATEGORIES = [
@@ -70,6 +74,61 @@ export const EXPENSE_CATEGORIES = [
   },
 ];
 
+// Seeded only for accounts created after CATEGORY_DEFAULTS_V2_CUTOVER (see
+// isPostCutoverAccount below) — existing accounts keep EXPENSE_CATEGORIES
+// above untouched. "Card Interest & Fees" isn't part of the curated list a
+// user asked for, but AddModal.jsx always tags card-interest transactions
+// with this exact id, so it must exist in every account's category list for
+// those transactions to display correctly — kept here for that reason.
+// "Savings & Investments" is deliberately not last, and "Miscellaneous" is
+// deliberately last, so getCat's orphaned-id fallback (list[length-1]) can
+// never land on the protected Savings category.
+export const NEW_SIGNUP_EXPENSE_CATEGORIES = [
+  { id: "food-dining", label: "Food & Dining", icon: Utensils, color: "#e08a5f" },
+  { id: "transport", label: "Transport", icon: Car, color: "#8a7555" },
+  { id: "shopping", label: "Shopping", icon: ShoppingBag, color: "#9878c0" },
+  {
+    id: "bills-utilities",
+    label: "Bills & Utilities",
+    icon: Zap,
+    color: "#e3a847",
+  },
+  { id: "entertainment", label: "Entertainment", icon: Film, color: "#c98a5a" },
+  { id: "healthcare", label: "Healthcare", icon: Heart, color: "#d96477" },
+  {
+    id: "education",
+    label: "Education",
+    icon: GraduationCap,
+    color: "#5a8ba3",
+  },
+  { id: "travel", label: "Travel", icon: Plane, color: "#7ba05b" },
+  {
+    id: "gifts-donations",
+    label: "Gifts & Donations",
+    icon: Gift,
+    color: "#c64a6f",
+  },
+  {
+    id: "personal-care",
+    label: "Personal Care",
+    icon: Sparkles,
+    color: "#a594f9",
+  },
+  {
+    id: "card-interest",
+    label: "Card Interest & Fees",
+    icon: Percent,
+    color: "#e0654a",
+  },
+  {
+    id: "savings-investments",
+    label: "Savings & Investments",
+    icon: PiggyBank,
+    color: "#4a9b7a",
+  },
+  { id: "misc", label: "Miscellaneous", icon: MoreHorizontal, color: "#8a8075" },
+];
+
 export const INCOME_CATEGORIES = [
   { id: "fixed", label: "Fixed Income", icon: Briefcase, color: "#4a9b7a" },
   {
@@ -114,6 +173,10 @@ export const ICON_MAP = {
   PiggyBank,
   MoreHorizontal,
   Percent,
+  Utensils,
+  GraduationCap,
+  Plane,
+  Sparkles,
 };
 
 export const getIconName = (ic) =>
@@ -146,3 +209,59 @@ export const getCat = (id, type, expList, incList) => {
       : expList || EXPENSE_CATEGORIES;
   return list.find((c) => c.id === id) || list[list.length - 1];
 };
+
+// The one expense category that can't be deleted or freely renamed, so the
+// app can reliably identify savings transactions for the Total Savings stat.
+// Protected for every account, regardless of signup date.
+export const SAVINGS_CATEGORY_ID = "savings-investments";
+export const SAVINGS_LABEL_OPTIONS = ["Savings", "Savings & Investments"];
+
+// True for transactions that count as regular "spending" — excludes anything
+// tagged as Savings, since setting money aside isn't spending it.
+export const isSpendableExpense = (t, expList, incList) => {
+  if (
+    t.type !== "expense" &&
+    t.type !== "card-purchase" &&
+    t.type !== "card-interest"
+  )
+    return false;
+  return (
+    getCat(t.category, "expense", expList, incList).id !== SAVINGS_CATEGORY_ID
+  );
+};
+
+// Fixed Income can't be deleted or freely renamed, for every account —
+// same universal treatment as Savings above.
+export const FIXED_INCOME_CATEGORY_ID = "fixed";
+export const FIXED_INCOME_LABEL_OPTIONS = ["Fixed Income", "Salary"];
+
+// Controls which default EXPENSE category set a brand-new signup is seeded
+// with (see NEW_SIGNUP_EXPENSE_CATEGORIES vs EXPENSE_CATEGORIES in
+// utils/storage.js) — unrelated to category protection, which is universal.
+// Deliberately end-of-day today, not midnight — guarantees any account
+// created earlier today (including test/dev accounts made while building
+// this feature) is still treated as an existing account. Adjust this if the
+// actual deploy happens on a different day than expected.
+export const CATEGORY_DEFAULTS_V2_CUTOVER = "2026-07-03T00:00:00Z";
+
+export function isPostCutoverAccount(createdAt) {
+  if (!createdAt) return false;
+  return (
+    new Date(createdAt).getTime() >=
+    new Date(CATEGORY_DEFAULTS_V2_CUTOVER).getTime()
+  );
+}
+
+// Single source of truth for "is this category protected, and if so what are
+// its only allowed labels" — used by CategoriesModal (disable delete),
+// CategoryFormModal (lock the name field to a picker), and MainApp's
+// editCat/deleteCat guards (defense-in-depth behind those UI guards).
+export function getProtectedCategory(type, id) {
+  if (type === "expense" && id === SAVINGS_CATEGORY_ID) {
+    return { labelOptions: SAVINGS_LABEL_OPTIONS };
+  }
+  if (type === "income" && id === FIXED_INCOME_CATEGORY_ID) {
+    return { labelOptions: FIXED_INCOME_LABEL_OPTIONS };
+  }
+  return null;
+}

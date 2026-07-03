@@ -1,7 +1,15 @@
 import { useState, useEffect, useMemo, useContext } from "react";
-import { Sparkles, Search, X } from "lucide-react";
+import {
+  Sparkles,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  Menu,
+} from "lucide-react";
 import { CurrencyCtx } from "../context.js";
-import { fmt, monthKey } from "../utils/format.js";
+import { fmt, monthKey, monthLabel, shiftMonth } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
 import TxRow from "./TxRow.jsx";
 
@@ -16,11 +24,15 @@ export default function HomeView({
   allExpCats,
   allIncCats,
   installmentPlans,
+  onOpenMenu,
+  onOpenNotifications,
+  notifCount,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [filterCat, setFilterCat] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [search, setSearch] = useState("");
+  const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -35,7 +47,13 @@ export default function HomeView({
     setSearch("");
   }, [viewMonth]);
 
-  const last12months = useMemo(() => {
+  // Not memoized with an empty dep array on purpose — needs to include the
+  // current month even if this component stays mounted across a month
+  // boundary in a long-lived PWA session. Cheap enough (12 iterations) to
+  // just recompute each render. Only rendered at desktop widths (see
+  // .tx-month-select below) — mobile/tablet use the .month-pill in the new
+  // shared header instead.
+  const last12months = (() => {
     const out = [];
     const now = new Date();
     for (let i = 11; i >= 0; i--) {
@@ -43,7 +61,7 @@ export default function HomeView({
       out.push(monthKey(d));
     }
     return out;
-  }, []);
+  })();
 
   // Resolve a transaction's effective category via getCat (same logic as TxRow)
   const effectiveCatId = (t) => {
@@ -100,19 +118,62 @@ export default function HomeView({
   }, [transactions, filterType, allIncCats, allExpCats]);
 
   const grouped = useMemo(() => {
+    // Group by the raw "YYYY-MM-DD" string rather than parsing it into a
+    // Date — new Date("YYYY-MM-DD") parses as UTC midnight, which shifts
+    // to the previous local day for any timezone west of UTC.
     const g = {};
     filtered.forEach((t) => {
-      const k = new Date(t.date).toDateString();
+      const k = t.date;
       if (!g[k]) g[k] = [];
       g[k].push(t);
     });
-    return Object.entries(g).sort(([a], [b]) => new Date(b) - new Date(a));
+    return Object.entries(g).sort(([a], [b]) => b.localeCompare(a));
   }, [filtered]);
 
-  const getCardName = (id) => cards.find((c) => c.id === id)?.name || "Card";
+  const cardNameById = useMemo(() => {
+    const m = new Map();
+    cards.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [cards]);
 
   return (
     <div className="view view-home">
+      <div className="dash-topbar">
+        <div className="mheader-left">
+          <button className="icon-btn" onClick={onOpenMenu} aria-label="Menu">
+            <Menu size={16} />
+          </button>
+        </div>
+        <div className="mheader-center">
+          <div className="month-pill">
+            <button
+              onClick={() => setViewMonth(shiftMonth(viewMonth, -1))}
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span>
+              {mLbl.slice(0, 3)} {yLbl}
+            </span>
+            <button
+              onClick={() => setViewMonth(shiftMonth(viewMonth, 1))}
+              aria-label="Next month"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="mheader-right">
+          <button
+            className="bell-btn"
+            onClick={onOpenNotifications}
+            aria-label="Notifications"
+          >
+            <Bell size={16} />
+            {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
+          </button>
+        </div>
+      </div>
       <div className="home-header">
         <div className="section-hd">
           <h2>Transactions</h2>
@@ -146,7 +207,7 @@ export default function HomeView({
 
         <div className="tx-filters">
           <select
-            className="fselect"
+            className="fselect tx-month-select"
             value={viewMonth}
             onChange={(e) => setViewMonth(e.target.value)}
           >
@@ -216,16 +277,15 @@ export default function HomeView({
                 if (t.type === "card-payment") return s;
                 return s + +t.amount;
               }, 0);
+              const [gy, gmo, gd] = date.split("-").map(Number);
+              const dateLabel = new Date(gy, gmo - 1, gd).toLocaleDateString(
+                "en-US",
+                { weekday: "short", month: "short", day: "numeric" },
+              );
               return (
                 <div key={date} className="tx-group">
                   <div className="tx-date">
-                    <span>
-                      {new Date(date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
+                    <span>{dateLabel}</span>
                     <span className="tx-date-total">
                       {CURRENCY} {fmt(dayTotal)}
                     </span>
@@ -237,7 +297,11 @@ export default function HomeView({
                         tx={t}
                         onDelete={onDelete}
                         onEdit={onEdit}
-                        cardName={t.cardId ? getCardName(t.cardId) : null}
+                        cardName={
+                          t.cardId
+                            ? cardNameById.get(t.cardId) || "Card"
+                            : null
+                        }
                         allExpCats={allExpCats}
                         allIncCats={allIncCats}
                         installmentPlan={

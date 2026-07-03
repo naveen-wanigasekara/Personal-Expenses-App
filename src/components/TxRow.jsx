@@ -1,12 +1,12 @@
-import { useState, useContext, useRef } from "react";
-import { Edit2, Trash2, CreditCard } from "lucide-react";
+import { useState, useContext, useRef, memo } from "react";
+import { Edit2, Trash2, CreditCard, ChevronDown } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
 import { fmt } from "../utils/format.js";
 
 const SWIPE_THRESHOLD = 60;
 
-export default function TxRow({
+function TxRow({
   tx,
   onDelete,
   onEdit,
@@ -51,6 +51,15 @@ export default function TxRow({
     const [ty, tm] = tx.date.slice(0, 7).split("-").map(Number);
     installmentSeq = (ty - sy) * 12 + (tm - sm) + 1;
   }
+
+  // Desktop-only date column (hidden on mobile/tablet via CSS). Built from
+  // the raw date components, not `new Date(tx.date)`, to avoid the UTC
+  // parsing shift that a bare ISO date string triggers.
+  const [dy, dmo, dd] = tx.date.split("-").map(Number);
+  const dateLabel = new Date(dy, dmo - 1, dd).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
@@ -130,10 +139,15 @@ export default function TxRow({
                   : cat.label}
           </div>
         </div>
+        <div className="tx-date-col">{dateLabel}</div>
         <div className={`tx-amt ${color}`}>
           <span className="tx-amt-sign">{sign}</span>
           {CURRENCY} {fmt(tx.amount)}
         </div>
+        <ChevronDown
+          size={14}
+          className={`disclosure-chevron tx-chevron ${open ? "open" : ""}`}
+        />
       </button>
       {open && (
         <div className="tx-expand">
@@ -150,3 +164,5 @@ export default function TxRow({
     </div>
   );
 }
+
+export default memo(TxRow);
