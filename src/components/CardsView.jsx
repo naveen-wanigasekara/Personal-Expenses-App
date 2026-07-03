@@ -17,6 +17,8 @@ export default function CardsView({
   onCancelPlan,
   allExpCats,
   allIncCats,
+  viewMonth,
+  setViewMonth,
   onOpenMenu,
   onOpenNotifications,
   notifCount,
@@ -156,6 +158,8 @@ export default function CardsView({
             onCancelPlan={onCancelPlan}
             allExpCats={allExpCats}
             allIncCats={allIncCats}
+            viewMonth={viewMonth}
+            setViewMonth={setViewMonth}
           />
         </div>
       )}

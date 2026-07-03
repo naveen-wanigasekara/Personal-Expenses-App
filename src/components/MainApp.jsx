@@ -1149,6 +1149,8 @@ export default function MainApp({ user }) {
               onCancelPlan={cancelInstallmentPlan}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
+              viewMonth={viewMonth}
+              setViewMonth={setViewMonth}
               onOpenMenu={() => setShowDrawer(true)}
               onOpenNotifications={() => setShowNotifs(true)}
               notifCount={notifCount}

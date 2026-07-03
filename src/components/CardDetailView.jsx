@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,10 +30,11 @@ export default function CardDetailView({
   onCancelPlan,
   allExpCats,
   allIncCats,
+  viewMonth,
+  setViewMonth,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
-  const [viewMonth, setViewMonth] = useState(monthKey(new Date()));
 
   const now = new Date();
   const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
