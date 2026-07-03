@@ -99,18 +99,31 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
         autoFocus
       />
 
-      <label className="field-lbl">Type</label>
-      <select
-        className="text-input"
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-      >
-        {INVESTMENT_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
+      <div className="field-row">
+        <div className="field-group">
+          <label className="field-lbl">Type</label>
+          <select
+            className="text-input"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
+            {INVESTMENT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-group">
+          <label className="field-lbl">Start date</label>
+          <input
+            type="date"
+            className="text-input"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </div>
+      </div>
 
       <label className="field-lbl">
         {investment ? "Initial amount" : "Starting amount"}
@@ -130,40 +143,37 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
         </div>
       )}
 
-      <label className="field-lbl">Start date</label>
-      <input
-        type="date"
-        className="text-input"
-        value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
-      />
-
       {isFd && (
         <>
-          <label className="field-lbl">Interest rate (% per annum)</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            className="text-input"
-            value={interestRate}
-            onChange={(e) => {
-              if (/^\d*\.?\d*$/.test(e.target.value)) setInterestRate(e.target.value);
-            }}
-            placeholder="e.g. 12"
-          />
-
-          <label className="field-lbl">Payout frequency</label>
-          <select
-            className="text-input"
-            value={payoutFrequency}
-            onChange={(e) => setPayoutFrequency(e.target.value)}
-          >
-            {FD_PAYOUT_FREQUENCIES.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+          <div className="field-row">
+            <div className="field-group">
+              <label className="field-lbl">Interest rate (% per annum)</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                className="text-input"
+                value={interestRate}
+                onChange={(e) => {
+                  if (/^\d*\.?\d*$/.test(e.target.value)) setInterestRate(e.target.value);
+                }}
+                placeholder="e.g. 12"
+              />
+            </div>
+            <div className="field-group">
+              <label className="field-lbl">Payout frequency</label>
+              <select
+                className="text-input"
+                value={payoutFrequency}
+                onChange={(e) => setPayoutFrequency(e.target.value)}
+              >
+                {FD_PAYOUT_FREQUENCIES.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <label className="field-lbl">Tenure (months)</label>
           <input

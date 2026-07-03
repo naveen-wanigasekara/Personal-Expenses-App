@@ -14,6 +14,9 @@ import {
   Bell,
   LineChart,
   Menu,
+  Edit2,
+  Trash2,
+  Plus,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
@@ -29,8 +32,15 @@ import {
   isSpendableExpense,
   SAVINGS_CATEGORY_ID,
 } from "../constants/categories.js";
-import { loadInsightsLayout, saveInsightsLayout } from "../utils/storage.js";
+import {
+  loadInsightsLayout,
+  saveInsightsLayout,
+  loadCustomCharts,
+  saveCustomCharts,
+} from "../utils/storage.js";
 import Sheet from "./Sheet.jsx";
+import ChartFormModal from "./ChartFormModal.jsx";
+import CustomChartCard from "./charts/CustomChartCard.jsx";
 
 const SECTION_DEFS = [
   {
@@ -92,17 +102,22 @@ const SECTION_DEFS = [
   },
 ];
 
-function mergeLayout(saved) {
-  if (!saved) return SECTION_DEFS.map((s) => ({ ...s, visible: true }));
-  const validIds = new Set(SECTION_DEFS.map((s) => s.id));
+// extraDefs lets user-authored entries (custom charts) survive this
+// reconciliation the same way built-in sections do — without it, an id
+// mergeLayout doesn't recognize gets silently dropped (by design, for
+// forward-compat when a built-in section is removed in a future release).
+function mergeLayout(saved, extraDefs = []) {
+  const allDefs = [...SECTION_DEFS, ...extraDefs];
+  if (!saved) return allDefs.map((s) => ({ ...s, visible: true }));
+  const validIds = new Set(allDefs.map((s) => s.id));
   const valid = saved
     .filter((s) => validIds.has(s.id))
     .map((s) => ({
-      ...SECTION_DEFS.find((d) => d.id === s.id),
+      ...allDefs.find((d) => d.id === s.id),
       visible: s.visible,
     }));
   const savedIds = new Set(saved.map((s) => s.id));
-  const missing = SECTION_DEFS.filter((s) => !savedIds.has(s.id)).map((s) => ({
+  const missing = allDefs.filter((s) => !savedIds.has(s.id)).map((s) => ({
     ...s,
     visible: true,
   }));
@@ -126,12 +141,30 @@ export default function DashView({
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
+  const [customCharts, setCustomCharts] = useState(() => loadCustomCharts(user.id));
+  const [editingChart, setEditingChart] = useState(null);
+  const [showAddChart, setShowAddChart] = useState(false);
   const [sections, setSections] = useState(() =>
-    mergeLayout(loadInsightsLayout(user.id)),
+    mergeLayout(
+      loadInsightsLayout(user.id),
+      customCharts.map((c) => ({ id: c.id, label: c.name, desc: "Custom chart" })),
+    ),
   );
   useEffect(() => {
     onModalChange?.(showCustomize);
   }, [showCustomize]);
+
+  // .view-dashboard is a fixed-height flex frame with an inner scroll pane
+  // (.dash-scroll) only below 1024px — see app.css. Desktop keeps the
+  // original whole-page scroll behind its own sticky .app-topbar, so body
+  // scroll must stay untouched there; only lock it at mobile/tablet widths.
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
@@ -399,7 +432,38 @@ export default function DashView({
     updateSections(next);
   };
   const resetSections = () =>
-    updateSections(SECTION_DEFS.map((s) => ({ ...s, visible: true })));
+    updateSections([
+      ...SECTION_DEFS.map((s) => ({ ...s, visible: true })),
+      ...customCharts.map((c) => ({
+        id: c.id,
+        label: c.name,
+        desc: "Custom chart",
+        visible: true,
+      })),
+    ]);
+
+  const saveChart = (chart) => {
+    const exists = customCharts.some((c) => c.id === chart.id);
+    const nextCharts = exists
+      ? customCharts.map((c) => (c.id === chart.id ? chart : c))
+      : [...customCharts, chart];
+    setCustomCharts(nextCharts);
+    saveCustomCharts(user.id, nextCharts);
+    updateSections(
+      exists
+        ? sections.map((s) => (s.id === chart.id ? { ...s, label: chart.name } : s))
+        : [...sections, { id: chart.id, label: chart.name, desc: "Custom chart", visible: true }],
+    );
+  };
+
+  const deleteChart = (id) => {
+    const nextCharts = customCharts.filter((c) => c.id !== id);
+    setCustomCharts(nextCharts);
+    saveCustomCharts(user.id, nextCharts);
+    // Drop it from the live layout immediately rather than waiting for the
+    // next mergeLayout reconciliation, so it disappears in this session too.
+    updateSections(sections.filter((s) => s.id !== id));
+  };
 
   const sectionContent = {
     net_this_month: (
@@ -1062,6 +1126,21 @@ export default function DashView({
     ),
   };
 
+  const getSectionContent = (id) => {
+    if (id in sectionContent) return sectionContent[id];
+    const chart = customCharts.find((c) => c.id === id);
+    if (!chart) return null;
+    return (
+      <CustomChartCard
+        config={chart}
+        transactions={transactions}
+        allExpCats={allExpCats}
+        allIncCats={allIncCats}
+        cards={cards}
+      />
+    );
+  };
+
   return (
     <div className="view view-dashboard">
       <div className="dash-topbar">
@@ -1094,6 +1173,7 @@ export default function DashView({
           </button>
         </div>
       </div>
+      <div className="dash-scroll">
       <div className="hero">
         <div className="hero-row">
           <div>
@@ -1133,20 +1213,20 @@ export default function DashView({
             ) {
               result.push(
                 <div key="inout-pair" className="inout inout-section">
-                  {sectionContent[cur.id]}
-                  {sectionContent[next.id]}
+                  {getSectionContent(cur.id)}
+                  {getSectionContent(next.id)}
                 </div>,
               );
               i += 2;
             } else if (isInOut(cur.id)) {
               result.push(
                 <div key={cur.id} className="inout inout-section">
-                  {sectionContent[cur.id]}
+                  {getSectionContent(cur.id)}
                 </div>,
               );
               i++;
             } else {
-              const content = sectionContent[cur.id];
+              const content = getSectionContent(cur.id);
               if (content)
                 result.push(<Fragment key={cur.id}>{content}</Fragment>);
               i++;
@@ -1154,6 +1234,7 @@ export default function DashView({
           }
           return result;
         })()}
+      </div>
       </div>
 
       {showCustomize && (
@@ -1163,45 +1244,95 @@ export default function DashView({
             order.
           </p>
           <div className="section-list">
-            {sections.map((s, i) => (
-              <div
-                key={s.id}
-                className={`section-row ${!s.visible ? "section-hidden" : ""}`}
-              >
-                <div className="section-move">
-                  <button
-                    onClick={() => moveSection(s.id, -1)}
-                    disabled={i === 0}
-                    aria-label="Move up"
-                  >
-                    <ChevronUp size={14} />
-                  </button>
-                  <button
-                    onClick={() => moveSection(s.id, 1)}
-                    disabled={i === sections.length - 1}
-                    aria-label="Move down"
-                  >
-                    <ChevronDown size={14} />
-                  </button>
-                </div>
-                <div className="section-info">
-                  <div className="section-label">{s.label}</div>
-                  <div className="section-desc">{s.desc}</div>
-                </div>
-                <button
-                  className={`section-toggle ${s.visible ? "on" : "off"}`}
-                  onClick={() => toggleSection(s.id)}
-                  aria-label={s.visible ? "Hide section" : "Show section"}
+            {sections.map((s, i) => {
+              const chart = customCharts.find((c) => c.id === s.id);
+              return (
+                <div
+                  key={s.id}
+                  className={`section-row ${!s.visible ? "section-hidden" : ""}`}
                 >
-                  {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-              </div>
-            ))}
+                  <div className="section-move">
+                    <button
+                      onClick={() => moveSection(s.id, -1)}
+                      disabled={i === 0}
+                      aria-label="Move up"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => moveSection(s.id, 1)}
+                      disabled={i === sections.length - 1}
+                      aria-label="Move down"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                  <div className="section-info">
+                    <div className="section-label">{s.label}</div>
+                    <div className="section-desc">{s.desc}</div>
+                  </div>
+                  {chart && (
+                    <>
+                      <button
+                        className="section-chart-btn"
+                        onClick={() => setEditingChart(chart)}
+                        aria-label="Edit chart"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        className="section-chart-btn danger"
+                        onClick={() => {
+                          if (confirm(`Delete the "${chart.name}" chart?`))
+                            deleteChart(chart.id);
+                        }}
+                        aria-label="Delete chart"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className={`section-toggle ${s.visible ? "on" : "off"}`}
+                    onClick={() => toggleSection(s.id)}
+                    aria-label={s.visible ? "Hide section" : "Show section"}
+                  >
+                    {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <button className="text-btn" onClick={resetSections}>
             Reset to default
           </button>
+          <button
+            className="save-btn"
+            style={{ marginTop: 8 }}
+            onClick={() => setShowAddChart(true)}
+          >
+            <Plus size={15} /> Create custom chart
+          </button>
         </Sheet>
+      )}
+
+      {(showAddChart || editingChart) && (
+        <ChartFormModal
+          editing={editingChart}
+          transactions={transactions}
+          allExpCats={allExpCats}
+          allIncCats={allIncCats}
+          cards={cards}
+          onClose={() => {
+            setShowAddChart(false);
+            setEditingChart(null);
+          }}
+          onSave={(chart) => {
+            saveChart(chart);
+            setShowAddChart(false);
+            setEditingChart(null);
+          }}
+        />
       )}
     </div>
   );

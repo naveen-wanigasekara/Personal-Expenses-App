@@ -61,22 +61,27 @@ export default function CardFormModal({ card, onClose, onSave }) {
         autoFocus
       />
 
-      <label className="field-lbl">Credit limit</label>
-      <div className="big-input">
-        <span className="big-cur">{CURRENCY}</span>
-        <AmountInput value={limit} onChange={setLimit} placeholder="0.00" />
-      </div>
-
-      <label className="field-lbl">
-        Current outstanding balance {card ? "" : "(optional)"}
-      </label>
-      <div className="big-input">
-        <span className="big-cur">{CURRENCY}</span>
-        <AmountInput
-          value={openingBalance}
-          onChange={setOpeningBalance}
-          placeholder="0.00"
-        />
+      <div className="field-row">
+        <div className="field-group">
+          <label className="field-lbl">Credit limit</label>
+          <div className="big-input">
+            <span className="big-cur">{CURRENCY}</span>
+            <AmountInput value={limit} onChange={setLimit} placeholder="0.00" />
+          </div>
+        </div>
+        <div className="field-group">
+          <label className="field-lbl">
+            Current outstanding balance {card ? "" : "(optional)"}
+          </label>
+          <div className="big-input">
+            <span className="big-cur">{CURRENCY}</span>
+            <AmountInput
+              value={openingBalance}
+              onChange={setOpeningBalance}
+              placeholder="0.00"
+            />
+          </div>
+        </div>
       </div>
       <div className="hint">
         {card

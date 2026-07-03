@@ -46,7 +46,8 @@
       "Bash(find . -maxdepth 2 -iname \"*playwright*\")",
       "Bash(find \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\" -maxdepth 2)",
       "Bash(find . -maxdepth 1 -iname \"*.cjs\")",
-      "Bash(find \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\" -maxdepth 1 -iname \"*.cjs\" -o -maxdepth 1 -iname \"*.js\")"
+      "Bash(find \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\" -maxdepth 1 -iname \"*.cjs\" -o -maxdepth 1 -iname \"*.js\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

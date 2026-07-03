@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Menu,
   Bell,
@@ -32,6 +32,13 @@ export default function UserView({
   const activeCurrency =
     CURRENCIES.find((c) => c.symbol === currency) || CURRENCIES[0];
   const initial = (user.email || "?")[0].toUpperCase();
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -68,6 +75,7 @@ export default function UserView({
         </div>
       </div>
 
+      <div className="user-scroll">
       <div className="page-hd">
         <div className="page-eyebrow">Account</div>
         <h1 className="page-title">Profile</h1>
@@ -174,6 +182,7 @@ export default function UserView({
           Couldn't sign out — check your connection and try again.
         </div>
       )}
+      </div>
     </div>
   );
 }

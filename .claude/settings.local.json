@@ -30,7 +30,8 @@
       "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\check-remaining-modals.cjs\")",
       "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\screenshot-all.cjs\" step5)",
       "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\screenshot-all.cjs\" step6)",
-      "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\check-budget-sticky.cjs\")"
+      "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\check-budget-sticky.cjs\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

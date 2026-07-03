@@ -176,6 +176,19 @@ export function saveInsightsLayout(userId, layout) {
   localStorage.setItem(`insights_layout_${userId}`, JSON.stringify(layout));
 }
 
+export function loadCustomCharts(userId) {
+  try {
+    const raw = localStorage.getItem(`custom_charts_${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomCharts(userId, charts) {
+  localStorage.setItem(`custom_charts_${userId}`, JSON.stringify(charts));
+}
+
 // Notifications are computed live from installment plans/recurring reminders,
 // not stored rows — marking one "Completed" just dismisses that specific
 // occurrence for the current month, keyed by month so it naturally

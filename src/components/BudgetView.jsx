@@ -119,6 +119,7 @@ export default function BudgetView({
           </button>
         </div>
       </div>
+      <div className="budget-scroll">
       <div className="page-hd">
         <div className="page-eyebrow">Plan</div>
         <h1 className="page-title">Budget</h1>
@@ -330,6 +331,7 @@ export default function BudgetView({
         )}
       </button>
       <div style={{ height: "80px" }} />
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export default function HelpModal({ onClose }) {
     setOpenItem((prev) => (prev === key ? null : key));
 
   return (
-    <Sheet title="Help & Guide" onClose={onClose} className="help-sheet">
+    <Sheet title="Help & Guide" onClose={onClose} className="help-sheet sheet-wide">
       <p className="help-intro">
         Tap a section to explore, then tap a question for the answer.
       </p>

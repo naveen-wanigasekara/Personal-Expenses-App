@@ -385,23 +385,27 @@ export default function AddModal({
         )}
 
       {!isInstallment && (
-        <>
-          <label className="field-lbl">Note</label>
-          <input
-            type="text"
-            className="text-input"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional description"
-          />
-          <label className="field-lbl">Date</label>
-          <input
-            type="date"
-            className="text-input"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </>
+        <div className="field-row">
+          <div className="field-group">
+            <label className="field-lbl">Note</label>
+            <input
+              type="text"
+              className="text-input"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional description"
+            />
+          </div>
+          <div className="field-group">
+            <label className="field-lbl">Date</label>
+            <input
+              type="date"
+              className="text-input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+        </div>
       )}
 
       <button

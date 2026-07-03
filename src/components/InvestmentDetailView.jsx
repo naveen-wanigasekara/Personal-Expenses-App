@@ -9,6 +9,7 @@ import {
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact } from "../utils/format.js";
 import { isFixedDeposit, getFdInfo } from "../utils/investmentCalc.js";
+import TrendLineChart from "./charts/TrendLineChart.jsx";
 
 function fmtDate(dateStr) {
   if (!dateStr) return null;
@@ -180,7 +181,29 @@ export default function InvestmentDetailView({
         </div>
       )}
 
-      <InvestmentValueChart points={sorted} />
+      {sorted.length >= 2 &&
+        (() => {
+          const first = sorted[0];
+          const last = sorted[sorted.length - 1];
+          const trending = last.value >= first.value;
+          return (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div className="card-hd">
+                <h3>Value Over Time</h3>
+                <span className={`card-sub ${trending ? "in-color" : "out-color"}`}>
+                  {trending ? "↑" : "↓"} {CURRENCY} {fmtCompact(Math.abs(last.value - first.value))}
+                </span>
+              </div>
+              <TrendLineChart
+                points={sorted}
+                width={280}
+                height={64}
+                showLabels={false}
+                formatValue={(v) => `${CURRENCY} ${fmtCompact(v)}`}
+              />
+            </div>
+          );
+        })()}
 
       <div className="section-hd">
         <h2>Value History</h2>
@@ -264,70 +287,3 @@ export default function InvestmentDetailView({
   );
 }
 
-// Adapted from DashView's Net Worth Trend chart — same mark spec (fixed
-// viewBox, area fill, trend-colored polyline, ring-marker last point).
-function InvestmentValueChart({ points }) {
-  const CURRENCY = useContext(CurrencyCtx);
-  if (points.length < 2) return null;
-
-  const vals = points.map((p) => p.value);
-  const minV = Math.min(...vals);
-  const maxV = Math.max(...vals);
-  const range = maxV - minV || 1;
-  const W = 280;
-  const H = 64;
-  const PAD = 4;
-  const coords = points.map((p, i) => [
-    PAD + (i / (points.length - 1)) * (W - PAD * 2),
-    PAD + (1 - (p.value - minV) / range) * (H - PAD * 2),
-  ]);
-  const pts = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const [lastX, lastY] = coords[coords.length - 1];
-  const areaPath = `M${coords[0][0].toFixed(1)},${H - PAD} L${pts.replaceAll(" ", " L")} L${lastX.toFixed(1)},${H - PAD} Z`;
-  const first = points[0];
-  const last = points[points.length - 1];
-  const trending = last.value >= first.value;
-  const lineColor = trending ? "var(--in)" : "var(--out)";
-
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="card-hd">
-        <h3>Value Over Time</h3>
-        <span className={`card-sub ${trending ? "in-color" : "out-color"}`}>
-          {trending ? "↑" : "↓"} {CURRENCY} {fmtCompact(Math.abs(last.value - first.value))}
-        </span>
-      </div>
-      <svg className="nw-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-        <path d={areaPath} fill={lineColor} opacity="0.1" />
-        <polyline
-          points={pts}
-          fill="none"
-          stroke={lineColor}
-          strokeWidth="2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        <circle cx={lastX} cy={lastY} r="3.5" fill={lineColor} />
-        <circle
-          cx={lastX}
-          cy={lastY}
-          r="3.5"
-          fill="none"
-          stroke="var(--surface)"
-          strokeWidth="2"
-        />
-      </svg>
-      <div className="nw-minmax">
-        <span>
-          {CURRENCY} {fmtCompact(minV)}
-        </span>
-        <span className={last.value >= first.value ? "in-color" : "out-color"}>
-          {CURRENCY} {fmtCompact(last.value)} now
-        </span>
-        <span>
-          {CURRENCY} {fmtCompact(maxV)}
-        </span>
-      </div>
-    </div>
-  );
-}
