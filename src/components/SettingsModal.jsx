@@ -9,6 +9,7 @@ import {
   LogOut,
   Loader2,
   ChevronDown,
+  CalendarClock,
 } from "lucide-react";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
@@ -68,6 +69,15 @@ export default function SettingsModal({
       <button className="settings-menu-row" onClick={onOpenCategories}>
         <MoreHorizontal size={16} />
         <span>Manage categories</span>
+        <ChevronRight
+          size={15}
+          style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
+        />
+      </button>
+
+      <button className="settings-menu-row" onClick={onOpenReminders}>
+        <CalendarClock size={16} />
+        <span>Recurring reminders</span>
         <ChevronRight
           size={15}
           style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
