@@ -265,3 +265,99 @@ export function getProtectedCategory(type, id) {
   }
   return null;
 }
+
+// Pure, in-memory default category set for a brand-new account — no
+// database row or localStorage read involved. Deterministic in createdAt, so
+// two devices that have never customized categories independently compute
+// the identical list rather than needing to sync anything.
+export function getDefaultUserCats(createdAt) {
+  const defaultExpenseCategories = isPostCutoverAccount(createdAt)
+    ? NEW_SIGNUP_EXPENSE_CATEGORIES
+    : EXPENSE_CATEGORIES;
+  return {
+    income: INCOME_CATEGORIES.map((c) => ({ ...c, iconName: getIconName(c.icon) })),
+    expense: defaultExpenseCategories.map((c) => ({
+      ...c,
+      iconName: getIconName(c.icon),
+    })),
+  };
+}
+
+// Guarantees the protected Savings category exists with a valid label,
+// repairing silently (no visible migration step) for accounts whose
+// user_settings row predates this feature or was edited before it became
+// protected. Inserted before "other"/"misc" rather than appended, so it can
+// never become getCat's list[list.length-1] fallback target for unrelated
+// orphaned category ids. Applies to every account.
+function ensureProtectedSavingsCategory(cats) {
+  const expense = [...cats.expense];
+  const idx = expense.findIndex((c) => c.id === SAVINGS_CATEGORY_ID);
+  const valid = idx !== -1 && SAVINGS_LABEL_OPTIONS.includes(expense[idx].label);
+  if (valid) return { cats, changed: false };
+
+  const defaultCat = {
+    id: SAVINGS_CATEGORY_ID,
+    label: "Savings & Investments",
+    iconName: "PiggyBank",
+    icon: ICON_MAP.PiggyBank,
+    color: "#4a9b7a",
+  };
+
+  if (idx === -1) {
+    const lastIdx = expense.findIndex((c) => c.id === "other" || c.id === "misc");
+    expense.splice(lastIdx === -1 ? expense.length : lastIdx, 0, defaultCat);
+  } else {
+    expense[idx] = { ...expense[idx], label: "Savings & Investments" };
+  }
+  return { cats: { ...cats, expense }, changed: true };
+}
+
+// Same idea as ensureProtectedSavingsCategory, but for Fixed Income — also
+// applies to every account. Inserted at the front (its canonical default
+// position) rather than appended.
+function ensureProtectedFixedIncomeCategory(cats) {
+  const income = [...cats.income];
+  const idx = income.findIndex((c) => c.id === FIXED_INCOME_CATEGORY_ID);
+  const valid =
+    idx !== -1 && FIXED_INCOME_LABEL_OPTIONS.includes(income[idx].label);
+  if (valid) return { cats, changed: false };
+
+  const defaultCat = {
+    id: FIXED_INCOME_CATEGORY_ID,
+    label: "Fixed Income",
+    iconName: "Briefcase",
+    icon: ICON_MAP.Briefcase,
+    color: "#4a9b7a",
+  };
+
+  if (idx === -1) {
+    income.unshift(defaultCat);
+  } else {
+    income[idx] = { ...income[idx], label: "Fixed Income" };
+  }
+  return { cats: { ...cats, income }, changed: true };
+}
+
+// Hydrates icon components from iconName (categories round-tripped through
+// the database only carry iconName, since components aren't serializable)
+// and repairs protected categories if missing or mislabeled. Pure — no
+// database or localStorage access — so it works equally on a freshly
+// fetched user_settings row. Returns `changed` in case a caller wants to
+// know whether the repaired copy differs from what was passed in.
+export function normalizeUserCats(raw) {
+  const hydrated = {
+    income: (raw?.income || []).map((c) => ({
+      ...c,
+      icon: ICON_MAP[c.iconName] || MoreHorizontal,
+    })),
+    expense: (raw?.expense || []).map((c) => ({
+      ...c,
+      icon: ICON_MAP[c.iconName] || MoreHorizontal,
+    })),
+  };
+  let { cats, changed } = ensureProtectedSavingsCategory(hydrated);
+  const fixedIncomeResult = ensureProtectedFixedIncomeCategory(cats);
+  cats = fixedIncomeResult.cats;
+  changed = changed || fixedIncomeResult.changed;
+  return { cats, changed };
+}

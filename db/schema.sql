@@ -16,6 +16,12 @@ create table if not exists public.transactions (
   created_at timestamptz default now()
 );
 
+-- Links an installment-plan-generated purchase back to its plan — was
+-- missing from this file even though the app has depended on it since the
+-- installment plans feature shipped; add-column-if-not-exists so re-running
+-- this file is still safe against the live table that already has it.
+alter table public.transactions add column if not exists installment_id text;
+
 create index if not exists transactions_user_date_idx
   on public.transactions (user_id, date desc);
 
@@ -122,6 +128,22 @@ create index if not exists investment_valuations_investment_idx
 create index if not exists investment_valuations_user_idx
   on public.investment_valuations (user_id);
 
+-- ─── USER SETTINGS TABLE ────────────────────────────────────
+-- One row per user. Each column is an independently-updatable JSON blob —
+-- categories, currency, insights layout, and custom charts were previously
+-- localStorage-only (never synced across devices); this is what makes them
+-- follow the user like every other table does. Columns are updated via
+-- partial upsert (only the changed column is sent), so a currency change
+-- never touches categories and vice versa.
+create table if not exists public.user_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  categories text,          -- encrypted: { income: [...], expense: [...] }
+  currency text,            -- encrypted: currency symbol string
+  insights_layout text,     -- encrypted: [{ id, visible }, ...]
+  custom_charts text,       -- encrypted: [chart config, ...]
+  updated_at timestamptz default now()
+);
+
 -- ============================================================
 -- ROW-LEVEL SECURITY: users can only see/modify their own data
 -- ============================================================
@@ -132,6 +154,7 @@ alter table public.installment_plans enable row level security;
 alter table public.recurring_reminders enable row level security;
 alter table public.investments enable row level security;
 alter table public.investment_valuations enable row level security;
+alter table public.user_settings enable row level security;
 
 -- Transactions policies
 drop policy if exists "tx_select_own" on public.transactions;
@@ -250,4 +273,21 @@ create policy "investment_valuations_update_own" on public.investment_valuations
 
 drop policy if exists "investment_valuations_delete_own" on public.investment_valuations;
 create policy "investment_valuations_delete_own" on public.investment_valuations
+  for delete using (auth.uid() = user_id);
+
+-- User settings policies
+drop policy if exists "user_settings_select_own" on public.user_settings;
+create policy "user_settings_select_own" on public.user_settings
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "user_settings_insert_own" on public.user_settings;
+create policy "user_settings_insert_own" on public.user_settings
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "user_settings_update_own" on public.user_settings;
+create policy "user_settings_update_own" on public.user_settings
+  for update using (auth.uid() = user_id);
+
+drop policy if exists "user_settings_delete_own" on public.user_settings;
+create policy "user_settings_delete_own" on public.user_settings
   for delete using (auth.uid() = user_id);

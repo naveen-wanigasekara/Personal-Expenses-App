@@ -44,7 +44,9 @@
       "Bash(timeout 40 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-plan-visibility2.js\")",
       "Bash(powershell.exe -Command \"Get-Process node,chrome -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(powershell.exe -Command \"Get-Process chrome -ErrorAction SilentlyContinue | Stop-Process -Force\")",
-      "Bash(timeout 60 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-viewmonth-plans.js\")"
+      "Bash(timeout 60 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-viewmonth-plans.js\")",
+      "Bash(sed -i \"s/await page.locator\\('.save-btn', { hasText: 'Add category' }\\).click\\(\\);/await page.locator\\('.save-btn', { hasText: 'Add category' }\\).last\\(\\).click\\(\\);/\" \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-cat-edit-nodb.js\")",
+      "Bash(timeout 50 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-cat-edit-nodb.js\")"
     ]
   }
 }
