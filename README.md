@@ -267,7 +267,7 @@ personal-expenses-tracker/
 
 ## Database schema
 
-Seven tables, all secured with Row-Level Security:
+Eight tables, all secured with Row-Level Security:
 
 - **`transactions`** — income, expenses, card purchases, card payments, and card interest. Encrypted columns: `amount`, `category`, `note`, `date`. Plain `installment_id` links transactions to a plan.
 - **`cards`** — credit card accounts with limits and opening balances. Encrypted columns: `name`, `credit_limit`, `opening_balance`, `colors`.
@@ -276,8 +276,11 @@ Seven tables, all secured with Row-Level Security:
 - **`recurring_reminders`** — user-defined recurring bill reminders; `active` boolean, optional `category` for auto-dismiss logic. Encrypted columns: `label`, `amount`, `day_of_month`, `category`.
 - **`investments`** — investment holdings (stocks, funds, crypto, real estate, fixed deposits). Encrypted columns: `name`, `type`, `initial_amount`, `current_value`, `start_date`, `notes`, plus `interest_rate`, `payout_frequency`, `tenure_months` for Fixed Deposits.
 - **`investment_valuations`** — dated value check-ins for an investment; plain `investment_id` (no foreign key/cascade — the app cleans these up itself when an investment is deleted). Encrypted columns: `value`, `recorded_date`.
+- **`user_settings`** — one row per user for everything that used to be localStorage-only: custom categories, currency, Insights layout, and custom charts. Each column is upserted independently so, e.g., a currency change never touches saved categories. Encrypted columns: `categories`, `currency`, `insights_layout`, `custom_charts`.
 
 All encrypted columns are stored as `text`; the encryption layer handles serialization. Full schema with RLS policies in [`db/schema.sql`](./db/schema.sql).
+
+**Upgrading an existing deployment:** re-run `db/schema.sql` in the Supabase SQL Editor — it's idempotent (`create table if not exists` / `add column if not exists`), so it's safe to paste the whole file again even though most of it already exists. Until you do, the app keeps working exactly as before; categories/currency/Insights layout/custom charts just stay local to whichever device made the change instead of syncing.
 
 ---
 

@@ -17,6 +17,8 @@ import {
   getCat,
   isSpendableExpense,
   getProtectedCategory,
+  getDefaultUserCats,
+  normalizeUserCats,
 } from "../constants/categories.js";
 import {
   fetchTransactions,
@@ -44,15 +46,10 @@ import {
   updateInvestmentValuation,
   deleteInvestmentValuation,
   deleteInvestmentValuationsFor,
+  fetchUserSettings,
+  upsertUserSettings,
 } from "../lib/supabase.js";
-import {
-  loadUserCats,
-  saveUserCats,
-  loadUserCurrency,
-  saveUserCurrency,
-  loadCompletedNotifs,
-  saveCompletedNotifs,
-} from "../utils/storage.js";
+import { loadCompletedNotifs, saveCompletedNotifs } from "../utils/storage.js";
 import { monthKey, monthLabel, shiftMonth, emptyPlan } from "../utils/format.js";
 import NavBtn from "./NavBtn.jsx";
 import PWABanners from "./PWABanners.jsx";
@@ -102,13 +99,26 @@ export default function MainApp({ user }) {
   // opened from the hamburger control in each page's header; desktop keeps
   // its own unchanged sidebar with both as standalone links.
   const [showDrawer, setShowDrawer] = useState(false);
+  // Categories/currency/insights-layout/custom-charts are database-only —
+  // the user_settings table is the single source of truth, never
+  // localStorage. These initial values are pure in-memory placeholders for
+  // the brief window before the fetch effect below resolves; the `!loaded`
+  // gate further down means the user never actually sees them — they're
+  // replaced by the real fetched values before the app renders anything.
   const [userCats, setUserCats] = useState(() =>
-    loadUserCats(user.id, user.created_at),
+    getDefaultUserCats(user.created_at),
   );
   const [showCatsModal, setShowCatsModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
-  const [currency, setCurrency] = useState(() => loadUserCurrency(user.id));
+  const [currency, setCurrency] = useState("Rs.");
+  // Lifted up from DashView (which used to load/save these itself) so the
+  // settings-fetch effect below can update them regardless of whether
+  // Insights happens to be the mounted tab — DashView unmounts/remounts on
+  // every tab switch, so state living only there would go stale the moment
+  // the fetch resolves after the user has navigated away.
+  const [insightsLayout, setInsightsLayout] = useState(null);
+  const [customCharts, setCustomCharts] = useState([]);
   const [installmentPlans, setInstallmentPlans] = useState([]);
   const [recurringReminders, setRecurringReminders] = useState([]);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -126,30 +136,77 @@ export default function MainApp({ user }) {
     window.location.reload();
   }, [tab]);
 
+  // Categories/currency/insights-layout/custom-charts are database-only —
+  // every change here is optimistic (updates local state immediately for a
+  // snappy UI) but rolls back and surfaces an error if the write to
+  // user_settings fails, exactly like addTx/saveCard/etc. below. There is no
+  // local fallback to quietly keep working from anymore, so a failed save
+  // has to be visible rather than silently swallowed.
   const updateCurrency = useCallback(
-    (sym) => {
+    async (sym) => {
+      const prev = currency;
       setCurrency(sym);
-      saveUserCurrency(user.id, sym);
+      try {
+        await upsertUserSettings(user.id, { currency: sym });
+      } catch (e) {
+        setCurrency(prev);
+        showError("Couldn't save currency. Try again.");
+      }
     },
-    [user.id],
+    [user.id, currency],
+  );
+
+  const updateInsightsLayout = useCallback(
+    async (next) => {
+      const prev = insightsLayout;
+      setInsightsLayout(next);
+      try {
+        await upsertUserSettings(user.id, { insights_layout: next });
+      } catch (e) {
+        setInsightsLayout(prev);
+        showError("Couldn't save your dashboard layout. Try again.");
+      }
+    },
+    [user.id, insightsLayout],
+  );
+
+  const updateCustomCharts = useCallback(
+    async (next) => {
+      const prev = customCharts;
+      setCustomCharts(next);
+      try {
+        await upsertUserSettings(user.id, { custom_charts: next });
+      } catch (e) {
+        setCustomCharts(prev);
+        showError("Couldn't save your chart. Try again.");
+      }
+    },
+    [user.id, customCharts],
   );
 
   const allExpCats = userCats.expense;
   const allIncCats = userCats.income;
 
   const addCat = useCallback(
-    (type, cat) => {
+    async (type, cat) => {
+      let prevCats, nextCats;
       setUserCats((prev) => {
-        const next = { ...prev, [type]: [...prev[type], cat] };
-        saveUserCats(user.id, next);
-        return next;
+        prevCats = prev;
+        nextCats = { ...prev, [type]: [...prev[type], cat] };
+        return nextCats;
       });
+      try {
+        await upsertUserSettings(user.id, { categories: nextCats });
+      } catch (e) {
+        setUserCats(prevCats);
+        showError("Couldn't save category. Try again.");
+      }
     },
     [user.id],
   );
 
   const editCat = useCallback(
-    (type, id, updates) => {
+    async (type, id, updates) => {
       let safeUpdates = updates;
       const protectedCat = getProtectedCategory(type, id);
       if (
@@ -160,28 +217,42 @@ export default function MainApp({ user }) {
         const { label: _droppedLabel, ...rest } = updates;
         safeUpdates = rest;
       }
+      let prevCats, nextCats;
       setUserCats((prev) => {
-        const next = {
+        prevCats = prev;
+        nextCats = {
           ...prev,
           [type]: prev[type].map((c) =>
             c.id === id ? { ...c, ...safeUpdates } : c,
           ),
         };
-        saveUserCats(user.id, next);
-        return next;
+        return nextCats;
       });
+      try {
+        await upsertUserSettings(user.id, { categories: nextCats });
+      } catch (e) {
+        setUserCats(prevCats);
+        showError("Couldn't save category. Try again.");
+      }
     },
     [user.id],
   );
 
   const deleteCat = useCallback(
-    (type, id) => {
+    async (type, id) => {
       if (getProtectedCategory(type, id)) return;
+      let prevCats, nextCats;
       setUserCats((prev) => {
-        const next = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
-        saveUserCats(user.id, next);
-        return next;
+        prevCats = prev;
+        nextCats = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
+        return nextCats;
       });
+      try {
+        await upsertUserSettings(user.id, { categories: nextCats });
+      } catch (e) {
+        setUserCats(prevCats);
+        showError("Couldn't delete category. Try again.");
+      }
     },
     [user.id],
   );
@@ -201,6 +272,7 @@ export default function MainApp({ user }) {
           reminderRows,
           investmentRows,
           valuationRows,
+          settingsRow,
         ] = await Promise.all([
           fetchTransactions(user.id),
           fetchCards(user.id),
@@ -209,6 +281,7 @@ export default function MainApp({ user }) {
           fetchRecurringReminders(user.id),
           fetchInvestments(user.id),
           fetchInvestmentValuations(user.id),
+          fetchUserSettings(user.id),
         ]);
 
         setTransactions(
@@ -301,6 +374,21 @@ export default function MainApp({ user }) {
             recordedDate: r.recorded_date,
           })),
         );
+
+        // user_settings is the only source for categories/currency/insights
+        // layout/custom charts — no localStorage fallback. A brand-new
+        // account (settingsRow is null) just gets pure in-memory defaults;
+        // nothing is written until the user actually changes something, so
+        // two never-customized devices can't disagree (getDefaultUserCats is
+        // a deterministic function of created_at, not device state).
+        setUserCats(
+          settingsRow?.categories
+            ? normalizeUserCats(settingsRow.categories).cats
+            : getDefaultUserCats(user.created_at),
+        );
+        setCurrency(settingsRow?.currency || "Rs.");
+        setInsightsLayout(settingsRow?.insights_layout ?? null);
+        setCustomCharts(settingsRow?.custom_charts ?? []);
       } catch (e) {
         console.error(e);
         setErrorBanner("Couldn't load your data. Please refresh.");
@@ -1293,6 +1381,10 @@ export default function MainApp({ user }) {
               onOpenNotifications={() => setShowNotifs(true)}
               showQuickRefresh={isStandalone}
               onQuickRefresh={handleQuickRefresh}
+              insightsLayout={insightsLayout}
+              onInsightsLayoutChange={updateInsightsLayout}
+              customCharts={customCharts}
+              onCustomChartsChange={updateCustomCharts}
             />
           )}
           {tab === "cards" && (

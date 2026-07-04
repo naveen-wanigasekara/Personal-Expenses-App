@@ -332,3 +332,34 @@ export async function deleteInvestmentValuationsFor(investmentId) {
     .eq("investment_id", investmentId);
   if (error) throw error;
 }
+
+const SETTINGS_ENC = ["categories", "currency", "insights_layout", "custom_charts"];
+
+/* User Settings — one row per user (categories/currency/insights layout/
+   custom charts), previously localStorage-only. fetchUserSettings returns
+   null if the row doesn't exist yet (brand-new account, or an account that
+   hasn't been migrated from localStorage). upsertUserSettings takes a
+   PARTIAL object — e.g. {currency: "$"} — and only touches those columns;
+   onConflict lets the same call create the row on first write or merge into
+   an existing one on every write after that. */
+export async function fetchUserSettings(userId) {
+  const { data, error } = await supabase
+    .from("user_settings")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return decryptFields(data, SETTINGS_ENC);
+}
+
+export async function upsertUserSettings(userId, updates) {
+  const enc = await encryptFields(updates, SETTINGS_ENC);
+  const { data, error } = await supabase
+    .from("user_settings")
+    .upsert({ user_id: userId, ...enc }, { onConflict: "user_id" })
+    .select()
+    .single();
+  if (error) throw error;
+  return decryptFields(data, SETTINGS_ENC);
+}

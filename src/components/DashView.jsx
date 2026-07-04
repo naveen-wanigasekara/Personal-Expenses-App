@@ -33,12 +33,6 @@ import {
   isSpendableExpense,
   SAVINGS_CATEGORY_ID,
 } from "../constants/categories.js";
-import {
-  loadInsightsLayout,
-  saveInsightsLayout,
-  loadCustomCharts,
-  saveCustomCharts,
-} from "../utils/storage.js";
 import Sheet from "./Sheet.jsx";
 import ChartFormModal from "./ChartFormModal.jsx";
 import CustomChartCard from "./charts/CustomChartCard.jsx";
@@ -141,17 +135,26 @@ export default function DashView({
   onOpenNotifications,
   showQuickRefresh,
   onQuickRefresh,
+  insightsLayout,
+  onInsightsLayoutChange,
+  customCharts,
+  onCustomChartsChange,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
-  const [customCharts, setCustomCharts] = useState(() => loadCustomCharts(user.id));
   const [editingChart, setEditingChart] = useState(null);
   const [showAddChart, setShowAddChart] = useState(false);
-  const [sections, setSections] = useState(() =>
-    mergeLayout(
-      loadInsightsLayout(user.id),
-      customCharts.map((c) => ({ id: c.id, label: c.name, desc: "Custom chart" })),
-    ),
+  // Derived, not local state — insightsLayout/customCharts are owned by
+  // MainApp now (so a settings-sync fetch can update them regardless of
+  // which tab is mounted), so this just recomputes whenever those props
+  // change instead of holding its own copy that could go stale.
+  const sections = useMemo(
+    () =>
+      mergeLayout(
+        insightsLayout,
+        customCharts.map((c) => ({ id: c.id, label: c.name, desc: "Custom chart" })),
+      ),
+    [insightsLayout, customCharts],
   );
   useEffect(() => {
     onModalChange?.(showCustomize);
@@ -416,11 +419,7 @@ export default function DashView({
   );
 
   const updateSections = (next) => {
-    setSections(next);
-    saveInsightsLayout(
-      user.id,
-      next.map(({ id, visible }) => ({ id, visible })),
-    );
+    onInsightsLayoutChange(next.map(({ id, visible }) => ({ id, visible })));
   };
   const toggleSection = (id) =>
     updateSections(
@@ -450,21 +449,22 @@ export default function DashView({
     const nextCharts = exists
       ? customCharts.map((c) => (c.id === chart.id ? chart : c))
       : [...customCharts, chart];
-    setCustomCharts(nextCharts);
-    saveCustomCharts(user.id, nextCharts);
-    updateSections(
-      exists
-        ? sections.map((s) => (s.id === chart.id ? { ...s, label: chart.name } : s))
-        : [...sections, { id: chart.id, label: chart.name, desc: "Custom chart", visible: true }],
-    );
+    onCustomChartsChange(nextCharts);
+    // Renaming an existing chart needs no sections update — sections
+    // re-derives its label from the fresh customCharts prop automatically.
+    // A brand-new chart does need appending, so it shows up immediately.
+    if (!exists) {
+      updateSections([
+        ...sections,
+        { id: chart.id, label: chart.name, desc: "Custom chart", visible: true },
+      ]);
+    }
   };
 
   const deleteChart = (id) => {
-    const nextCharts = customCharts.filter((c) => c.id !== id);
-    setCustomCharts(nextCharts);
-    saveCustomCharts(user.id, nextCharts);
-    // Drop it from the live layout immediately rather than waiting for the
-    // next mergeLayout reconciliation, so it disappears in this session too.
+    onCustomChartsChange(customCharts.filter((c) => c.id !== id));
+    // Drop it from the persisted layout immediately too, instead of leaving
+    // a stale entry that mergeLayout would just filter out silently forever.
     updateSections(sections.filter((s) => s.id !== id));
   };
 
