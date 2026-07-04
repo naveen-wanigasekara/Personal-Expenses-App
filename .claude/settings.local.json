@@ -34,7 +34,10 @@
       "Bash(node -e ' *)",
       "Bash(awk -F= '{ if \\(length\\($2\\) > 3\\) print $1\": set \\(\"length\\($2\\)\" chars\\)\"; else print $1\": MISSING/EMPTY\" }' .env.local)",
       "Bash(pkill -f \"vite\")",
-      "Bash(taskkill //F //IM chrome.exe)"
+      "Bash(taskkill //F //IM chrome.exe)",
+      "Bash(git fetch *)",
+      "Bash(ls .github)",
+      "Bash(find . -iname \"*pull_request_template*\" -not -path \"*/node_modules/*\")"
     ]
   }
 }
