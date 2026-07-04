@@ -30,7 +30,14 @@ export default function CardsView({
   const [selectedCard, setSelectedCard] = useState(null);
   const totalDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
-  const totalAvailable = totalLimit - totalDebt;
+  const totalFutureInstallments = cards.reduce(
+    (s, c) => s + (c.futureInstallmentTotal || 0),
+    0,
+  );
+  // Same fix as CardTile/CardDetailView's Available to Spend — not-yet-billed
+  // installments are committed spending, so they must come out of the
+  // aggregate figure too, not just the per-card one.
+  const totalAvailable = totalLimit - totalDebt - totalFutureInstallments;
   const totalUtil = totalLimit ? (totalDebt / totalLimit) * 100 : 0;
 
   useEffect(() => {

@@ -82,7 +82,11 @@ export default function CardDetailView({
   // nothing month-filtered here; use the same source of truth as the Cards
   // list/Dashboard so the numbers always agree.
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
-  const available = (+card.limit || 0) - card.currentBalance;
+  // Available to Spend also reserves room for those not-yet-billed
+  // installments — they're committed spending, so ignoring them here would
+  // overstate how much of the limit is actually free to use.
+  const available =
+    (+card.limit || 0) - card.currentBalance - (card.futureInstallmentTotal || 0);
 
   const selectedMonthTx = transactions.filter(
     (t) => monthKey(t.date) === viewMonth,
