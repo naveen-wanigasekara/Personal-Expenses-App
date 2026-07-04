@@ -8,7 +8,11 @@ function CardTile({ card, onSelect, installmentTotal }) {
   const CURRENCY = useContext(CurrencyCtx);
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const [from, to] = card.colors || CARD_COLORS[0];
-  const available = (+card.limit || 0) - card.currentBalance;
+  // Available to Spend must also reserve room for installments that haven't
+  // been billed yet — they're committed spending even though they're not
+  // part of currentBalance (see MainApp's cardsWithBalance), so ignoring
+  // them here would overstate how much credit is actually free to use.
+  const available = (+card.limit || 0) - card.currentBalance - (installmentTotal || 0);
 
   return (
     <button className="card-tile" onClick={() => onSelect(card)}>

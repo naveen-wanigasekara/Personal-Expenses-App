@@ -173,7 +173,9 @@ export default function AddModal({
       ? +amount * +installMonths
       : 0;
   const availableCredit = selectedCard
-    ? (+selectedCard.limit || 0) - selectedCard.currentBalance
+    ? (+selectedCard.limit || 0) -
+      selectedCard.currentBalance -
+      (selectedCard.futureInstallmentTotal || 0)
     : 0;
   const exceedsLimit =
     isInstallment &&
