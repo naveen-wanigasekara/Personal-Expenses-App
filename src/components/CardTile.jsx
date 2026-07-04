@@ -56,7 +56,8 @@ function CardTile({ card, onSelect, installmentTotal }) {
         </div>
         {installmentTotal > 0 && (
           <div className="ct-installment-note">
-            {CURRENCY} {fmtCompact(installmentTotal)} in active plans
+            {CURRENCY} {fmtCompact(installmentTotal)} upcoming in installment
+            plans
           </div>
         )}
       </div>
