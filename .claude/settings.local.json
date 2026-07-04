@@ -37,7 +37,14 @@
       "Bash(taskkill //F //IM chrome.exe)",
       "Bash(git fetch *)",
       "Bash(ls .github)",
-      "Bash(find . -iname \"*pull_request_template*\" -not -path \"*/node_modules/*\")"
+      "Bash(find . -iname \"*pull_request_template*\" -not -path \"*/node_modules/*\")",
+      "Bash(powershell.exe -Command \"Get-Process chrome -ErrorAction SilentlyContinue | Measure-Object | Select-Object -ExpandProperty Count\")",
+      "Bash(powershell.exe -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, StartTime\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Id 15500,16432,21748,31664 -Force -ErrorAction SilentlyContinue\")",
+      "Bash(timeout 40 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-plan-visibility2.js\")",
+      "Bash(powershell.exe -Command \"Get-Process node,chrome -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(powershell.exe -Command \"Get-Process chrome -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(timeout 60 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-viewmonth-plans.js\")"
     ]
   }
 }

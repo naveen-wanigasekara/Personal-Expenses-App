@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Bell,
   Menu,
+  RefreshCw,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, monthKey, monthLabel, shiftMonth } from "../utils/format.js";
@@ -27,6 +28,8 @@ export default function HomeView({
   onOpenMenu,
   onOpenNotifications,
   notifCount,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [filterCat, setFilterCat] = useState("all");
@@ -164,6 +167,15 @@ export default function HomeView({
           </div>
         </div>
         <div className="mheader-right">
+          {showQuickRefresh && (
+            <button
+              className="bell-btn"
+              onClick={onQuickRefresh}
+              aria-label="Refresh"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
           <button
             className="bell-btn"
             onClick={onOpenNotifications}

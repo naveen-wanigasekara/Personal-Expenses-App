@@ -39,13 +39,38 @@ export default function CardDetailView({
 
   const now = new Date();
   const currentMk = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // A plan's end month is its last installment's month (startMonth +
+  // totalMonths - 1). Active Plans is scoped to the browsed viewMonth (not
+  // real "now") so it matches whatever month the user is looking at — a
+  // May-July plan only shows while viewMonth is May, June, or July,
+  // regardless of today's actual date.
+  const planEndMk = (plan) => {
+    const [sy, sm] = plan.startMonth.split("-").map(Number);
+    const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
   const activePlans = (installmentPlans || []).filter(
-    (p) => p.cardId === card.id && p.active,
+    (p) =>
+      p.cardId === card.id &&
+      p.active &&
+      viewMonth >= p.startMonth &&
+      viewMonth <= planEndMk(p),
   );
+  // Paid/remaining months stay pinned to the real calendar (not viewMonth) —
+  // this reflects actual billing state (used by the progress bar and by the
+  // Cancel confirmation, which only ever removes real not-yet-billed
+  // transactions), so it can't be changed just by browsing to another month.
   const planElapsed = (plan) => {
     const [sy, sm] = plan.startMonth.split("-").map(Number);
     const [cy, cm] = currentMk.split("-").map(Number);
-    return Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
+    // Clamped to 0 as well as totalMonths — the viewMonth-based filter above
+    // can now surface a plan whose real start month is still in the future
+    // (e.g. browsing forward to a plan's start month before today catches
+    // up to it), which would otherwise go negative here.
+    return Math.max(
+      0,
+      Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths),
+    );
   };
 
   const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));

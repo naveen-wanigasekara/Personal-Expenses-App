@@ -12,6 +12,7 @@ import {
   MessageCircle,
   LogOut,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
@@ -26,6 +27,8 @@ export default function UserView({
   onOpenCategories,
   onOpenHelp,
   onOpenReminders,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
@@ -62,6 +65,15 @@ export default function UserView({
           <span className="mheader-title">Profile</span>
         </div>
         <div className="mheader-right">
+          {showQuickRefresh && (
+            <button
+              className="bell-btn"
+              onClick={onQuickRefresh}
+              aria-label="Refresh"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
           <button
             className="bell-btn"
             onClick={onOpenNotifications}
