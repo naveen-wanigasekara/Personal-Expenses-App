@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
+import { usePWA } from "../hooks/usePWA.js";
 import {
   getCat,
   isSpendableExpense,
@@ -73,8 +74,18 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
+const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user"];
+const LAST_TAB_KEY = "quick_refresh_last_tab";
+
 export default function MainApp({ user }) {
-  const [tab, setTab] = useState("dashboard");
+  // Quick Refresh (installed-PWA header button) does a real page reload —
+  // sessionStorage is what lets the app land back on the same tab instead
+  // of resetting to Insights, since navigation is in-memory state, not a
+  // URL route.
+  const [tab, setTab] = useState(() => {
+    const saved = sessionStorage.getItem(LAST_TAB_KEY);
+    return VALID_TABS.includes(saved) ? saved : "dashboard";
+  });
   const [loaded, setLoaded] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [cards, setCards] = useState([]);
@@ -108,6 +119,12 @@ export default function MainApp({ user }) {
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
+  const { isStandalone } = usePWA();
+
+  const handleQuickRefresh = useCallback(() => {
+    sessionStorage.setItem(LAST_TAB_KEY, tab);
+    window.location.reload();
+  }, [tab]);
 
   const updateCurrency = useCallback(
     (sym) => {
@@ -1255,6 +1272,8 @@ export default function MainApp({ user }) {
               onOpenMenu={() => setShowDrawer(true)}
               onOpenNotifications={() => setShowNotifs(true)}
               notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
           {tab === "dashboard" && (
@@ -1272,6 +1291,8 @@ export default function MainApp({ user }) {
               onModalChange={setChildModalOpen}
               notifCount={notifCount}
               onOpenNotifications={() => setShowNotifs(true)}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
           {tab === "cards" && (
@@ -1293,6 +1314,8 @@ export default function MainApp({ user }) {
               onOpenMenu={() => setShowDrawer(true)}
               onOpenNotifications={() => setShowNotifs(true)}
               notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
           {tab === "investments" && (
@@ -1312,6 +1335,8 @@ export default function MainApp({ user }) {
               onOpenMenu={() => setShowDrawer(true)}
               onOpenNotifications={() => setShowNotifs(true)}
               notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
           {tab === "budget" && (
@@ -1328,6 +1353,8 @@ export default function MainApp({ user }) {
               onOpenMenu={() => setShowDrawer(true)}
               onOpenNotifications={() => setShowNotifs(true)}
               notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
           {tab === "user" && (
@@ -1341,6 +1368,8 @@ export default function MainApp({ user }) {
               onOpenCategories={() => setShowCatsModal(true)}
               onOpenHelp={() => setShowHelp(true)}
               onOpenReminders={() => setShowReminders(true)}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
             />
           )}
         </main>

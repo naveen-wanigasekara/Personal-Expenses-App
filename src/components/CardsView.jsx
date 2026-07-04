@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { CreditCard, Plus, Bell, Menu } from "lucide-react";
+import { CreditCard, Plus, Bell, Menu, RefreshCw } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact } from "../utils/format.js";
 import CardTile from "./CardTile.jsx";
@@ -23,6 +23,8 @@ export default function CardsView({
   onOpenMenu,
   onOpenNotifications,
   notifCount,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [selectedCard, setSelectedCard] = useState(null);
@@ -55,6 +57,15 @@ export default function CardsView({
             <span className="mheader-title">Cards</span>
           </div>
           <div className="mheader-right">
+            {showQuickRefresh && (
+              <button
+                className="bell-btn"
+                onClick={onQuickRefresh}
+                aria-label="Refresh"
+              >
+                <RefreshCw size={16} />
+              </button>
+            )}
             <button
               className="bell-btn"
               onClick={onOpenNotifications}

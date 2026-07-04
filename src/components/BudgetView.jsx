@@ -10,6 +10,7 @@ import {
   Copy,
   Bell,
   Menu,
+  RefreshCw,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
@@ -35,6 +36,8 @@ export default function BudgetView({
   onOpenMenu,
   onOpenNotifications,
   notifCount,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [mode, setMode] = useState("fixed");
@@ -109,6 +112,15 @@ export default function BudgetView({
           <span className="mheader-title">Budget</span>
         </div>
         <div className="mheader-right">
+          {showQuickRefresh && (
+            <button
+              className="bell-btn"
+              onClick={onQuickRefresh}
+              aria-label="Refresh"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
           <button
             className="bell-btn"
             onClick={onOpenNotifications}

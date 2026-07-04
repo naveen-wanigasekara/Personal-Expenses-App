@@ -17,6 +17,7 @@ import {
   Edit2,
   Trash2,
   Plus,
+  RefreshCw,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import {
@@ -138,6 +139,8 @@ export default function DashView({
   onModalChange,
   notifCount,
   onOpenNotifications,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -1163,6 +1166,15 @@ export default function DashView({
           </div>
         </div>
         <div className="mheader-right">
+          {showQuickRefresh && (
+            <button
+              className="bell-btn"
+              onClick={onQuickRefresh}
+              aria-label="Refresh"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
           <button
             className="bell-btn"
             onClick={onOpenNotifications}

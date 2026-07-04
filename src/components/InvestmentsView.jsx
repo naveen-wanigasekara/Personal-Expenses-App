@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { LineChart, Plus, Bell, Menu } from "lucide-react";
+import { LineChart, Plus, Bell, Menu, RefreshCw } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmtCompact } from "../utils/format.js";
 import InvestmentTile from "./InvestmentTile.jsx";
@@ -17,6 +17,8 @@ export default function InvestmentsView({
   onOpenMenu,
   onOpenNotifications,
   notifCount,
+  showQuickRefresh,
+  onQuickRefresh,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const [selectedInvestment, setSelectedInvestment] = useState(null);
@@ -52,6 +54,15 @@ export default function InvestmentsView({
             <span className="mheader-title">Investments</span>
           </div>
           <div className="mheader-right">
+            {showQuickRefresh && (
+              <button
+                className="bell-btn"
+                onClick={onQuickRefresh}
+                aria-label="Refresh"
+              >
+                <RefreshCw size={16} />
+              </button>
+            )}
             <button
               className="bell-btn"
               onClick={onOpenNotifications}
