@@ -33,7 +33,11 @@
       "Bash(node \"C:\\\\Users\\\\WANIGA~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wanigasekara-Projects-personal-expenses-app\\\\8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2\\\\scratchpad\\\\check-budget-sticky.cjs\")",
       "Bash(node -e ' *)",
       "Bash(awk -F= '{ if \\(length\\($2\\) > 3\\) print $1\": set \\(\"length\\($2\\)\" chars\\)\"; else print $1\": MISSING/EMPTY\" }' .env.local)",
-      "Bash(pkill -f \"vite\")"
+      "Bash(pkill -f \"vite\")",
+      "Bash(taskkill //F //IM chrome.exe)",
+      "Bash(git fetch *)",
+      "Bash(ls .github)",
+      "Bash(find . -iname \"*pull_request_template*\" -not -path \"*/node_modules/*\")"
     ]
   }
 }

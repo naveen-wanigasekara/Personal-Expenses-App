@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useMemo } from "react";
+import { useState, useEffect, useContext } from "react";
 import { CreditCard, Plus, Bell, Menu } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, fmtCompact } from "../utils/format.js";
@@ -15,6 +15,7 @@ export default function CardsView({
   onEditTx,
   installmentPlans,
   onCancelPlan,
+  onEditPlan,
   allExpCats,
   allIncCats,
   viewMonth,
@@ -36,17 +37,6 @@ export default function CardsView({
       document.body.style.overflow = "";
     };
   }, []);
-
-  const installmentTotalByCard = useMemo(() => {
-    const totals = {};
-    (installmentPlans || [])
-      .filter((p) => p.active)
-      .forEach((p) => {
-        totals[p.cardId] =
-          (totals[p.cardId] || 0) + p.monthlyAmount * p.totalMonths;
-      });
-    return totals;
-  }, [installmentPlans]);
 
   const currentSelected = selectedCard
     ? cards.find((c) => c.id === selectedCard.id)
@@ -131,7 +121,7 @@ export default function CardsView({
                   key={card.id}
                   card={card}
                   onSelect={setSelectedCard}
-                  installmentTotal={installmentTotalByCard[card.id] || 0}
+                  installmentTotal={card.futureInstallmentTotal || 0}
                 />
               ))}
             </div>
@@ -156,6 +146,7 @@ export default function CardsView({
             onEditTx={onEditTx}
             installmentPlans={installmentPlans}
             onCancelPlan={onCancelPlan}
+            onEditPlan={onEditPlan}
             allExpCats={allExpCats}
             allIncCats={allIncCats}
             viewMonth={viewMonth}

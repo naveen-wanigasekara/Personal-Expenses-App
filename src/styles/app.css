@@ -3722,6 +3722,16 @@ body {
   border-radius: 100px;
   transition: width 0.3s;
 }
+.ipr-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ipr-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+}
 .ipr-cancel {
   flex-shrink: 0;
   background: var(--danger-soft);

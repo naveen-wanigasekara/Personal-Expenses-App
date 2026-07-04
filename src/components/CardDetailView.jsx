@@ -28,6 +28,7 @@ export default function CardDetailView({
   onEditTx,
   installmentPlans,
   onCancelPlan,
+  onEditPlan,
   allExpCats,
   allIncCats,
   viewMonth,
@@ -49,13 +50,12 @@ export default function CardDetailView({
 
   const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
-  // card.currentBalance (from MainApp's cardsWithBalance) already includes
-  // the full amount of active installment plans, matching the documented
-  // behavior that installment purchases count against the balance
-  // immediately. Recomputing a month-filtered balance here previously
-  // produced a different, lower number than the Cards list/Dashboard for
-  // any card with an active plan — use the same source of truth as those
-  // screens instead.
+  // card.currentBalance (from MainApp's cardsWithBalance) only includes
+  // installment purchases dated this month or earlier — future months of an
+  // active plan haven't been billed yet, so they're excluded here and
+  // surfaced separately via card.futureInstallmentTotal instead. Recompute
+  // nothing month-filtered here; use the same source of truth as the Cards
+  // list/Dashboard so the numbers always agree.
   const util = card.limit ? (card.currentBalance / card.limit) * 100 : 0;
   const available = (+card.limit || 0) - card.currentBalance;
 
@@ -174,6 +174,12 @@ export default function CardDetailView({
             <span>High utilization hurts credit score. Aim for under 30%.</span>
           </div>
         )}
+        {card.futureInstallmentTotal > 0 && (
+          <div className="ct-installment-note">
+            {CURRENCY} {fmtCompact(card.futureInstallmentTotal)} upcoming in
+            installment plans
+          </div>
+        )}
       </div>
 
       <div className="detail-stats">
@@ -225,20 +231,29 @@ export default function CardDetailView({
                       />
                     </div>
                   </div>
-                  <button
-                    className="ipr-cancel"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Cancel "${plan.label}"? Past installments are kept. ${remaining} future installment(s) will be removed.`,
-                        )
-                      ) {
-                        onCancelPlan(plan.id);
-                      }
-                    }}
-                  >
-                    Cancel
-                  </button>
+                  <div className="ipr-actions">
+                    <button
+                      className="icon-btn"
+                      aria-label={`Edit ${plan.label}`}
+                      onClick={() => onEditPlan(plan)}
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      className="ipr-cancel"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Cancel "${plan.label}"? Past installments are kept. ${remaining} future installment(s) will be removed.`,
+                          )
+                        ) {
+                          onCancelPlan(plan.id);
+                        }
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               );
             })}

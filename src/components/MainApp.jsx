@@ -71,6 +71,7 @@ import SettingsModal from "./SettingsModal.jsx";
 import HelpModal from "./HelpModal.jsx";
 import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
+import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
 export default function MainApp({ user }) {
   const [tab, setTab] = useState("dashboard");
@@ -106,6 +107,7 @@ export default function MainApp({ user }) {
   const [showInvestmentForm, setShowInvestmentForm] = useState(null);
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
+  const [editingPlan, setEditingPlan] = useState(null);
 
   const updateCurrency = useCallback(
     (sym) => {
@@ -807,6 +809,130 @@ export default function MainApp({ user }) {
     [transactions, installmentPlans],
   );
 
+  // Edits an existing plan's label/amount/duration/category/card. Months
+  // already billed (this month included) are financial history and stay
+  // untouched — matching cancelInstallmentPlan's "past installments are
+  // kept" rule — except for label/category, which are purely descriptive
+  // and get applied retroactively so Activity/reports never show a plan's
+  // old name or category for its already-billed months. Amount/card/
+  // duration changes only reshape the not-yet-billed future transactions.
+  const updateInstallmentPlanDetails = useCallback(
+    async (planId, updates) => {
+      const plan = installmentPlans.find((p) => p.id === planId);
+      if (!plan) return;
+
+      const currentMk = monthKey(new Date());
+      const [sy, sm] = plan.startMonth.split("-").map(Number);
+      const [cy, cm] = currentMk.split("-").map(Number);
+      const paid = Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
+      const newTotalMonths = Math.max(+updates.totalMonths, paid);
+
+      const scheduleChanged =
+        +updates.monthlyAmount !== plan.monthlyAmount ||
+        updates.cardId !== plan.cardId ||
+        newTotalMonths !== plan.totalMonths;
+      const metaChanged =
+        updates.category !== plan.category || updates.label !== plan.label;
+
+      const prevTransactions = transactions;
+      const prevPlans = installmentPlans;
+
+      const planTxs = transactions.filter((t) => t.installmentId === planId);
+      const pastTxs = planTxs.filter((t) => monthKey(t.date) <= currentMk);
+      const oldFutureTxs = planTxs.filter((t) => monthKey(t.date) > currentMk);
+
+      const newFutureTxs = [];
+      if (scheduleChanged) {
+        for (let i = paid; i < newTotalMonths; i++) {
+          const d = new Date(sy, sm - 1 + i, 1);
+          newFutureTxs.push({
+            id: `ptx_${planId}_${i}`,
+            type: "card-purchase",
+            amount: +updates.monthlyAmount,
+            category: updates.category,
+            cardId: updates.cardId,
+            note: updates.label,
+            date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`,
+            installmentId: planId,
+          });
+        }
+      }
+
+      const updatedPlan = {
+        ...plan,
+        label: updates.label,
+        category: updates.category,
+        monthlyAmount: +updates.monthlyAmount,
+        totalMonths: newTotalMonths,
+        totalAmount: +updates.monthlyAmount * newTotalMonths,
+        cardId: updates.cardId,
+      };
+
+      setInstallmentPlans((prev) =>
+        prev.map((p) => (p.id === planId ? updatedPlan : p)),
+      );
+      setTransactions((prev) => {
+        const base = scheduleChanged
+          ? prev.filter(
+              (t) => t.installmentId !== planId || monthKey(t.date) <= currentMk,
+            )
+          : prev;
+        return [
+          ...base.map((t) =>
+            t.installmentId === planId && metaChanged
+              ? { ...t, category: updates.category, note: updates.label }
+              : t,
+          ),
+          ...newFutureTxs,
+        ];
+      });
+
+      try {
+        await updateInstallmentPlan(planId, {
+          label: updatedPlan.label,
+          category: updatedPlan.category,
+          monthly_amount: updatedPlan.monthlyAmount,
+          total_months: updatedPlan.totalMonths,
+          total_amount: updatedPlan.totalAmount,
+          card_id: updatedPlan.cardId,
+        });
+        if (metaChanged) {
+          await Promise.all(
+            pastTxs.map((t) =>
+              updateTransaction(t.id, {
+                category: updates.category,
+                note: updates.label,
+              }),
+            ),
+          );
+        }
+        if (scheduleChanged) {
+          await Promise.all(oldFutureTxs.map((t) => deleteTransaction(t.id)));
+          await Promise.all(
+            newFutureTxs.map((t) =>
+              insertTransaction({
+                id: t.id,
+                user_id: user.id,
+                type: t.type,
+                amount: t.amount,
+                category: t.category,
+                card_id: t.cardId,
+                note: t.note,
+                date: t.date,
+                installment_id: planId,
+              }),
+            ),
+          );
+        }
+      } catch (e) {
+        setTransactions(prevTransactions);
+        setInstallmentPlans(prevPlans);
+        showError("Couldn't update installment plan. Try again.");
+      }
+    },
+    [transactions, installmentPlans, user.id],
+  );
+
   const saveRecurringReminder = useCallback(
     async (reminder) => {
       if (reminder.id) {
@@ -863,25 +989,36 @@ export default function MainApp({ user }) {
     [recurringReminders],
   );
 
-  const cardsWithBalance = useMemo(() => {
-    return cards.map((card) => {
-      let balance = card.openingBalance || 0;
-      transactions.forEach((t) => {
-        if (t.cardId !== card.id) return;
-        if (t.type === "card-purchase" || t.type === "card-interest")
-          balance += +t.amount;
-        else if (t.type === "card-payment") balance -= +t.amount;
-      });
-      return { ...card, currentBalance: balance };
-    });
-  }, [cards, transactions]);
-
   // Notifications live here (not in DashView) so the bell in the shared
   // desktop topbar can open the same panel from any tab. Not memoized with
   // an empty dep array on purpose — must reflect "now" on every render, or
   // a long-lived PWA session that crosses a month boundary would keep
   // evaluating due dates against a stale month.
   const currentMk = monthKey(new Date());
+
+  // Outstanding Balance only reflects what's actually been billed — i.e.
+  // installment purchases dated this month or earlier. Installment
+  // transactions are inserted for every future month up front (see
+  // saveInstallmentPlan above), so without this split, taking out a plan
+  // would inflate Outstanding Balance by months of charges that haven't
+  // come due yet. Those are surfaced separately via futureInstallmentTotal
+  // instead (see CardTile's "in active plans" note).
+  const cardsWithBalance = useMemo(() => {
+    return cards.map((card) => {
+      let balance = card.openingBalance || 0;
+      let futureInstallmentTotal = 0;
+      transactions.forEach((t) => {
+        if (t.cardId !== card.id) return;
+        const isFutureInstallment =
+          t.installmentId && monthKey(t.date) > currentMk;
+        if (t.type === "card-purchase" || t.type === "card-interest") {
+          if (isFutureInstallment) futureInstallmentTotal += +t.amount;
+          else balance += +t.amount;
+        } else if (t.type === "card-payment") balance -= +t.amount;
+      });
+      return { ...card, currentBalance: balance, futureInstallmentTotal };
+    });
+  }, [cards, transactions, currentMk]);
 
   // Notifications are computed live, not stored rows, so "Completed" just
   // dismisses a specific occurrence for the current month — keyed by month
@@ -1046,6 +1183,7 @@ export default function MainApp({ user }) {
     !showInvestmentForm &&
     !recordingValueFor &&
     !editingValuation &&
+    !editingPlan &&
     !showDrawer &&
     !childModalOpen;
 
@@ -1147,6 +1285,7 @@ export default function MainApp({ user }) {
               onEditTx={setEditingTx}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
+              onEditPlan={setEditingPlan}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
               viewMonth={viewMonth}
@@ -1348,6 +1487,19 @@ export default function MainApp({ user }) {
             onSave={(c) => {
               saveCard(c);
               setShowCardForm(null);
+            }}
+          />
+        )}
+
+        {editingPlan && (
+          <InstallmentPlanFormModal
+            plan={editingPlan}
+            cards={cardsWithBalance}
+            allExpCats={allExpCats}
+            onClose={() => setEditingPlan(null)}
+            onSave={(planId, updates) => {
+              updateInstallmentPlanDetails(planId, updates);
+              setEditingPlan(null);
             }}
           />
         )}
