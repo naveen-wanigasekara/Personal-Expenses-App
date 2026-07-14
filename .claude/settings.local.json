@@ -46,7 +46,17 @@
       "Bash(powershell.exe -Command \"Get-Process chrome -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(timeout 60 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-viewmonth-plans.js\")",
       "Bash(sed -i \"s/await page.locator\\('.save-btn', { hasText: 'Add category' }\\).click\\(\\);/await page.locator\\('.save-btn', { hasText: 'Add category' }\\).last\\(\\).click\\(\\);/\" \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-cat-edit-nodb.js\")",
-      "Bash(timeout 50 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-cat-edit-nodb.js\")"
+      "Bash(timeout 50 node \"C:/Users/WANIGA~1/AppData/Local/Temp/claude/c--Users-wanigasekara-Projects-personal-expenses-app/8ae3b1bd-9b32-4e3f-95ef-f15a8dad85c2/scratchpad/verify-cat-edit-nodb.js\")",
+      "Read(//Users/wanigasekara/**)",
+      "Bash(brew list *)",
+      "Bash(echo \"--- brew node search ---\"; brew list 2>/dev/null | grep -i node; echo \"--- nodenv/volta/fnm ---\"; which nodenv volta fnm asdf 2>/dev/null; echo \"--- find node binaries ---\"; find /usr/local /opt/homebrew ~/.volta ~/.asdf -maxdepth 3 -iname \"node*\" 2>/dev/null; echo \"--- zsh profile files existence ---\"; ls -la ~/.zshrc ~/.zprofile ~/.zshenv 2>/dev/null)",
+      "Read(//usr/local/**)",
+      "Bash(brew --version)",
+      "Bash(brew install *)",
+      "Bash(sudo chown -R wanigasekara /opt/homebrew/var/homebrew)",
+      "Read(//opt/homebrew/var/homebrew/**)",
+      "Bash(npm -v)",
+      "Bash(npm audit *)"
     ]
   }
 }
