@@ -180,3 +180,57 @@ html { color-scheme: dark; }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Iteration 3: Galaxy S24 Ultra / installed-PWA usability refinements. */
+@media (max-width: 1023px) {
+  .hero { padding-top: 8px; margin-bottom: 12px; }
+  .hero-title { margin-bottom: 15px; font-size: clamp(27px, 7vw, 34px); }
+  .balance-amt {
+    font-family: var(--sans);
+    font-size: clamp(34px, 8vw, 48px);
+    line-height: 1.12;
+    margin-bottom: 16px;
+    gap: 3px;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+  .balance-sign { font-size: .72em; }
+  .balance-cur { font-size: .34em; }
+  .balance-num { font-size: 1em; letter-spacing: -.055em; }
+  .nav {
+    width: calc(100% - 28px);
+    max-width: 420px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 6px 7px;
+    border-radius: 26px;
+  }
+  .nav-btn { min-height: 48px; padding: 7px 3px; }
+  .nav-add {
+    width: 50px;
+    height: 50px;
+    margin-top: -10px;
+    border-width: 2px;
+  }
+  .app { padding-bottom: max(135px, calc(env(safe-area-inset-bottom) + 112px)); }
+  .catv2-head { align-items: flex-start; gap: 8px; }
+  .catv2-left { min-width: 0; }
+  .catv2-name { font-size: 13px; line-height: 1.4; }
+  .catv2-sub { font-family: var(--sans); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+  .catv2-head > :last-child { min-width: 0; max-width: 48%; overflow-wrap: anywhere; }
+  .catv2 { padding: 14px; }
+  .sheet {
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 8px));
+    overscroll-behavior: contain;
+    scroll-padding-bottom: 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sheet input, .sheet select, .sheet textarea { font-size: max(16px, 1em); }
+  .sheet button { touch-action: manipulation; }
+}
+@media (max-width: 360px) {
+  .balance-amt { font-size: 33px; }
+  .nav-btn { font-size: 9px; }
+  .catv2-head { flex-wrap: wrap; }
+  .catv2-head > :last-child { max-width: 100%; margin-left: 48px; }
+}
