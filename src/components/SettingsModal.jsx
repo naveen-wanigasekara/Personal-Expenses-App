@@ -11,6 +11,7 @@ import {
   ChevronDown,
   CalendarClock,
 } from "lucide-react";
+import ThemePicker from "./ThemePicker.jsx";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
 import Sheet from "./Sheet.jsx";
@@ -104,6 +105,8 @@ export default function SettingsModal({
           </select>
         </div>
       </div>
+
+      <ThemePicker />
 
       <div className="privacy-card">
         <div className="privacy-card-header">

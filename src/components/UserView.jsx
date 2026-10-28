@@ -14,6 +14,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
+import ThemePicker from "./ThemePicker.jsx";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
 
@@ -154,6 +155,8 @@ export default function UserView({
           </select>
         </div>
       </div>
+
+      <ThemePicker />
 
       <div className="privacy-card">
         <div className="privacy-card-header">

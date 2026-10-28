@@ -365,3 +365,10 @@ MIT — see [LICENSE](./LICENSE) for details.
 ---
 
 <p align="center">Built with care for anyone trying to make sense of their money.</p>
+
+
+### Appearance
+
+Choose **Dark**, **Light**, or **System** under **Profile → Appearance** on mobile, or **Account → Appearance** on desktop. Dark is the default. The choice is saved on this device and shared across its open app tabs; System follows the operating system’s appearance. It also applies to the sign-in and loading screens on the next visit. No database change is required.
+
+Run theme behavior checks with `npm test`.

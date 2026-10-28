@@ -29,9 +29,9 @@ Signed into the provided test account on the Vercel branch preview. Checked the 
 - Nested dialog: Shift+Tab wraps within the child; Escape closes only the child and returns focus to Add category; parent scroll lock remains until its dismissal.
 - `npm run build` and `git diff --check` pass. Build retains the existing large-bundle warning.
 
-## Test-account cleanup pending
+## Test data retained for future development
 
-Only clearly labeled QA data was added: the UI QA long-note transaction, UI QA Card, and UI QA Investment with its initial and updated valuation. The budget values were restored to zero. Permanent removal of the QA card/investment history requires user confirmation under the browser's deletion rules, so their delete confirmations were not accepted. No existing user records were deleted. No merge or production deployment was performed.
+Only clearly labeled QA data was added: the UI QA long-note transaction, UI QA Card, and UI QA Investment with its initial and updated valuation. The budget values were restored to zero. The user requested that these clearly labeled QA records remain available for future development and testing. No existing user records were deleted. No merge or production deployment was performed.
 
 ## Limits
 
