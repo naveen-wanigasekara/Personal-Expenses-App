@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { activateAppUpdate } from "../utils/pwaUpdate.js";
 
 /**
  * Hook to manage the PWA install prompt and update notifications.
@@ -51,27 +52,37 @@ export function usePWA() {
       window.location.reload();
     };
 
+    let disposed = false;
+    let activeRegistration;
+    let watchedWorker;
+    let onWorkerStateChange;
+    const checkForUpdates = () => {
+      if (!document.hidden) activeRegistration?.update().catch(() => {});
+    };
+    const onUpdateFound = () => {
+      watchedWorker?.removeEventListener("statechange", onWorkerStateChange);
+      watchedWorker = activeRegistration.installing;
+      if (!watchedWorker) return;
+      onWorkerStateChange = () => {
+        if (watchedWorker.state === "installed" && navigator.serviceWorker.controller) setNeedsRefresh(true);
+      };
+      watchedWorker.addEventListener("statechange", onWorkerStateChange);
+    };
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then((reg) => {
+        if (disposed) return;
+        activeRegistration = reg;
         setRegistration(reg);
 
         // If a waiting worker already exists, prompt to refresh
         if (reg.waiting) setNeedsRefresh(true);
 
         // Watch for new updates
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (
-              newWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
-              setNeedsRefresh(true);
-            }
-          });
-        });
-      });
+        reg.addEventListener("updatefound", onUpdateFound);
+        window.addEventListener("focus", checkForUpdates);
+        document.addEventListener("visibilitychange", checkForUpdates);
+        checkForUpdates();
+      }).catch(() => {});
 
       navigator.serviceWorker.addEventListener(
         "controllerchange",
@@ -80,6 +91,11 @@ export function usePWA() {
     }
 
     return () => {
+      disposed = true;
+      activeRegistration?.removeEventListener("updatefound", onUpdateFound);
+      watchedWorker?.removeEventListener("statechange", onWorkerStateChange);
+      window.removeEventListener("focus", checkForUpdates);
+      document.removeEventListener("visibilitychange", checkForUpdates);
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
       if ("serviceWorker" in navigator) {
@@ -99,12 +115,14 @@ export function usePWA() {
     return outcome === "accepted";
   };
 
-  const updateApp = () => {
-    if (!registration?.waiting) {
-      window.location.reload();
-      return;
+  const updateApp = async () => {
+    try {
+      const reg = registration || ("serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null);
+      await activateAppUpdate(reg);
+    } catch {
+      // A normal reload remains available if the update check is offline.
     }
-    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    window.location.reload();
   };
 
   return {

@@ -133,12 +133,12 @@ export default function MainApp({ user }) {
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
-  const { isStandalone } = usePWA();
+  const { isStandalone, updateApp } = usePWA();
 
   const handleQuickRefresh = useCallback(() => {
     sessionStorage.setItem(LAST_TAB_KEY, tab);
-    window.location.reload();
-  }, [tab]);
+    void updateApp();
+  }, [tab, updateApp]);
 
   // Categories/currency/insights-layout/custom-charts are database-only —
   // every change here is optimistic (updates local state immediately for a
