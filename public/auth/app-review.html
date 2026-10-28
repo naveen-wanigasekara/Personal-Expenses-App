@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080f14"><meta name="color-scheme" content="dark"><title>Loan calculator preview review</title><script src="/theme-init.js?calculator-review"></script></head><body><div id="root"></div><script type="module">
+const response = await fetch('/index.html?calculator-review', { cache: 'reload' });
+if (!response.ok) throw new Error('Unable to load app preview');
+const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+await Promise.all([...page.querySelectorAll('link[rel="stylesheet"]')].map(source => new Promise((resolve,reject) => { const link=document.createElement('link');link.rel='stylesheet';link.href=source.getAttribute('href');link.onload=resolve;link.onerror=reject;document.head.append(link); })));
+const entry = page.querySelector('script[type="module"][src]')?.getAttribute('src');
+if (!entry?.startsWith('/assets/')) throw new Error('Missing app entry');
+await import(entry);
+</script></body></html>
