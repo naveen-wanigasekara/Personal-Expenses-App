@@ -52,3 +52,131 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   .view, .auth-box, .auth-fade { animation: none !important; }
 }
+
+
+/* Design system v2 — responsive fintech surfaces and interaction polish. */
+:root {
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.15);
+  --shadow-md: 0 14px 40px rgba(0,0,0,.22), 0 1px 0 rgba(177,237,208,.04) inset;
+  --shadow-lg: 0 28px 76px rgba(0,0,0,.38);
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
+::selection { background: rgba(82,217,160,.32); color: var(--ink); }
+html { color-scheme: dark; }
+.app { background: transparent; }
+.view { padding-top: 24px; }
+.hero-title { font-size: clamp(24px, 3.2vw, 36px); }
+.hero-meta, .balance-label, .metric-label, .summary-label { letter-spacing: .025em; }
+.balance-amt, .metric-val, .summary-val {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.035em;
+}
+.balance-num { letter-spacing: -.055em; }
+.card, .metric, .summary-card, .plan-card, .debt-card, .card-tile,
+.privacy-card, .auth-box {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.card, .metric, .summary-card, .plan-card, .debt-card, .privacy-card {
+  background: linear-gradient(160deg, rgba(33,54,59,.64), rgba(17,31,37,.86));
+  border-radius: var(--radius);
+}
+.card, .metric, .summary-card, .plan-card, .debt-card,
+.tx, .catv2, .cat-budget, .section-row {
+  transition: border-color .2s var(--ease), background-color .2s var(--ease),
+              box-shadow .2s var(--ease), transform .2s var(--ease);
+}
+.section-hd { letter-spacing: -.025em; }
+.section-hd, .mheader-title { font-family: var(--sans); font-weight: 700; }
+.metric-chip { border-radius: 999px; }
+.nav {
+  border: 1px solid var(--border-2);
+  background: rgba(18,32,38,.94);
+  box-shadow: 0 12px 48px rgba(0,0,0,.32);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.nav-btn {
+  border-radius: 14px;
+  font-size: 10px;
+  gap: 5px;
+  min-height: 48px;
+}
+.nav-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent-2);
+}
+.nav-add {
+  background: linear-gradient(145deg,#95f4c6,#39c68e);
+  color: #08251a;
+  box-shadow: 0 8px 26px rgba(53,206,145,.26);
+}
+.nav-add:active { transform: scale(.96); }
+.dash-topbar, .mheader {
+  background: rgba(8,15,20,.88);
+  border-bottom-color: var(--border);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+.auth-input, .tx-search-bar {
+  border-color: var(--border-2);
+  background: rgba(22,39,45,.8);
+}
+.auth-input:focus-within, .tx-search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.sheet {
+  background: #14232a;
+  border-color: var(--border-2);
+  box-shadow: 0 -18px 70px rgba(0,0,0,.45);
+}
+.save-btn {
+  background: linear-gradient(135deg, #76eeb7, #38c58d);
+  color: #08251a;
+  font-weight: 700;
+  box-shadow: var(--shadow-accent);
+}
+.save-btn:active { transform: translateY(1px); }
+.tx-icon, .cat-icon, .cb-icon { border-radius: 13px; }
+@media (hover:hover) and (pointer:fine) {
+  .card:hover, .metric:hover, .summary-card:hover {
+    border-color: var(--border-2);
+    box-shadow: var(--shadow-md);
+  }
+  .tx:hover, .catv2:hover, .cat-budget:hover, .section-row:hover {
+    border-color: rgba(120,215,173,.25);
+  }
+  .nav-btn:hover:not(.active) {
+    background: rgba(153,224,195,.07);
+    color: var(--ink);
+  }
+}
+@media (max-width: 1023px) {
+  .app { padding-bottom: max(116px, calc(env(safe-area-inset-bottom) + 92px)); }
+  .view { padding-left: 18px; padding-right: 18px; }
+  .tx, .catv2, .cat-budget {
+    border: 1px solid var(--border);
+    background: rgba(22,39,45,.88);
+  }
+  .nav { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+}
+@media (min-width: 1024px) {
+  .view { padding-top: 32px; }
+  .nav-rail {
+    background: linear-gradient(180deg,#111f26 0%,#0d181e 100%);
+    border-right: 1px solid var(--border);
+  }
+  .app-topbar {
+    background: rgba(8,15,20,.86);
+    border-bottom-color: var(--border);
+    backdrop-filter: blur(18px);
+  }
+  .dash-sections { gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .metric, .summary-card, .plan-card, .debt-card,
+  .tx, .catv2, .cat-budget, .section-row, .nav-add {
+    transition-duration: .01ms !important;
+  }
+}
