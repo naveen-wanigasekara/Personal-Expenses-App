@@ -65,6 +65,7 @@ function ChipRow({ options, value, onChange }) {
             key={opt.id}
             type="button"
             className={`chip ${value === opt.id ? "active" : ""}`}
+            aria-pressed={value === opt.id}
             onClick={() => onChange(opt.id)}
           >
             {Icon && <Icon size={14} strokeWidth={2} />}

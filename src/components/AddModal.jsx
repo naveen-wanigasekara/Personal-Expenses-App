@@ -34,7 +34,7 @@ export default function AddModal({
 
   const [type, setType] = useState(editing?.type || "expense");
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
-  const [category, setCategory] = useState(editing?.category || "loan");
+  const [category, setCategory] = useState(editing?.category || allExpCats[0]?.id || "other");
   const [note, setNote] = useState(editing?.note || "");
   const [date, setDate] = useState(() => {
     if (editing?.date) return editing.date;
@@ -81,14 +81,9 @@ export default function AddModal({
     }
 
     const validCats = type === "income" ? allIncCats : allExpCats;
-    const defaults = {
-      income: "fixed",
-      expense: "loan",
-      "card-purchase": "loan",
-    };
     const last = userId ? loadLastCategory(userId, type) : null;
-    const isValid = last && validCats.find((c) => c.id === last);
-    setCategory(isValid ? last : defaults[type] || "loan");
+    const isValid = last && validCats.some((c) => c.id === last);
+    setCategory(isValid ? last : validCats[0]?.id || (type === "income" ? "other-income" : "other"));
 
     if (type !== "card-purchase") setIsInstallment(false);
   }, [type]);
@@ -123,6 +118,7 @@ export default function AddModal({
     if (isInstallment) {
       if (
         !amount ||
+        !Number.isFinite(+amount) ||
         +amount <= 0 ||
         !installLabel.trim() ||
         !Number.isInteger(+installMonths) ||
@@ -140,7 +136,7 @@ export default function AddModal({
       });
       return;
     }
-    if (!amount || +amount <= 0) return;
+    if (!amount || !Number.isFinite(+amount) || +amount <= 0) return;
     if (isCardType && !cardId) return;
     const tx = { type, amount: +amount, note, date };
     if (type === "income") tx.category = category;

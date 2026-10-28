@@ -250,7 +250,7 @@ export default function HomeView({
             <option value="all">All types</option>
             <option value="income">Income</option>
             <option value="expense">Cash Purchase</option>
-            <option value="card">CC Purchase</option>
+            <option value="card">Card transactions</option>
           </select>
           <select
             className="fselect"

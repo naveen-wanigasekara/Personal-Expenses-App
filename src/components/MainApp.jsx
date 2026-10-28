@@ -376,6 +376,7 @@ export default function MainApp({ user }) {
             investmentId: r.investment_id,
             value: +r.value,
             recordedDate: r.recorded_date,
+            note: r.note || "",
           })),
         );
 
@@ -644,13 +645,13 @@ export default function MainApp({ user }) {
 
       const nextForInvestment = [
         ...investmentValuations.filter((v) => v.investmentId === investmentId),
-        { id: valuationId, investmentId, value: +value, recordedDate: date },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
       ];
       const newCurrentValue = latestValuationValue(nextForInvestment);
 
       setInvestmentValuations((p) => [
         ...p,
-        { id: valuationId, investmentId, value: +value, recordedDate: date },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
       ]);
       setInvestments((p) =>
         p.map((i) =>
@@ -665,6 +666,7 @@ export default function MainApp({ user }) {
           investment_id: investmentId,
           value,
           recorded_date: date,
+          note: note || "",
         });
         await updateInvestment(investmentId, { current_value: newCurrentValue });
       } catch (e) {
@@ -685,7 +687,7 @@ export default function MainApp({ user }) {
         .filter((v) => v.investmentId === investmentId)
         .map((v) =>
           v.id === valuationId
-            ? { ...v, value: +value, recordedDate: date }
+            ? { ...v, value: +value, recordedDate: date, note: note || "" }
             : v,
         );
       const newCurrentValue = latestValuationValue(nextForInvestment);
@@ -693,7 +695,7 @@ export default function MainApp({ user }) {
       setInvestmentValuations((p) =>
         p.map((v) =>
           v.id === valuationId
-            ? { ...v, value: +value, recordedDate: date }
+            ? { ...v, value: +value, recordedDate: date, note: note || "" }
             : v,
         ),
       );
@@ -707,6 +709,7 @@ export default function MainApp({ user }) {
         await updateInvestmentValuation(valuationId, {
           value,
           recorded_date: date,
+          note: note || "",
         });
         await updateInvestment(investmentId, { current_value: newCurrentValue });
       } catch (e) {
@@ -757,7 +760,6 @@ export default function MainApp({ user }) {
 
   const setMonthPlan = useCallback(
     async (month, plan) => {
-      setMonthPlans((p) => ({ ...p, [month]: plan }));
       try {
         await upsertBudget({
           user_id: user.id,
@@ -767,8 +769,11 @@ export default function MainApp({ user }) {
           expense_total: plan.expense?.total || 0,
           expense_categories: plan.expense?.categories || {},
         });
+        setMonthPlans((p) => ({ ...p, [month]: plan }));
+        return true;
       } catch (e) {
         showError("Couldn't save budget.");
+        return false;
       }
     },
     [user.id],
@@ -776,7 +781,6 @@ export default function MainApp({ user }) {
 
   const saveFixedPlan = useCallback(
     async (plan) => {
-      setFixedPlan(plan);
       try {
         await upsertBudget({
           user_id: user.id,
@@ -786,8 +790,11 @@ export default function MainApp({ user }) {
           expense_total: plan.expense?.total || 0,
           expense_categories: plan.expense?.categories || {},
         });
+        setFixedPlan(plan);
+        return true;
       } catch (e) {
         showError("Couldn't save fixed plan.");
+        return false;
       }
     },
     [user.id],

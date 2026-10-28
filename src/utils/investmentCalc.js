@@ -34,15 +34,17 @@ export function isFixedDeposit(investment) {
 
 function addMonths(dateStr, months) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1 + months, d);
+  const target = new Date(y, m - 1 + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  const date = new Date(target.getFullYear(), target.getMonth(), Math.min(d, lastDay));
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function monthsBetween(fromStr, toStr) {
-  const [fy, fm, fd] = fromStr.split("-").map(Number);
-  const [ty, tm, td] = toStr.split("-").map(Number);
+  const [fy, fm] = fromStr.split("-").map(Number);
+  const [ty, tm] = toStr.split("-").map(Number);
   let months = (ty - fy) * 12 + (tm - fm);
-  if (td < fd) months -= 1;
+  if (months >= 0 && addMonths(fromStr, months) > toStr) months -= 1;
   return Math.max(0, months);
 }
 
@@ -78,6 +80,7 @@ export function getFdInfo(investment, today = new Date()) {
       totalEarned: isMatured ? totalAtMaturity : 0,
       totalAtMaturity,
       nextPayoutDate: isMatured ? null : maturityDate,
+      nextPayoutAmount: isMatured ? null : totalAtMaturity,
     };
   }
 
@@ -88,18 +91,20 @@ export function getFdInfo(investment, today = new Date()) {
     Math.floor(elapsedMonths / periodMonths),
     totalPeriods,
   );
-  const nextPayoutDate =
-    !isMatured && startDate
-      ? addMonths(startDate, (completedPeriods + 1) * periodMonths)
-      : null;
+  const nextRegularDate = startDate ? addMonths(startDate, (completedPeriods + 1) * periodMonths) : null;
+  const nextPayoutDate = !isMatured && nextRegularDate
+    ? (maturityDate && maturityDate < nextRegularDate ? maturityDate : nextRegularDate)
+    : null;
+  const totalAtMaturity = principal * (rate / 100) * (tenureMonths / 12);
 
   return {
     maturityDate,
     isMatured,
     payoutPerPeriod,
     perLabel: freq.perLabel,
-    totalEarned: completedPeriods * payoutPerPeriod,
-    totalAtMaturity: totalPeriods * payoutPerPeriod,
+    totalEarned: isMatured ? totalAtMaturity : completedPeriods * payoutPerPeriod,
+    totalAtMaturity,
     nextPayoutDate,
+    nextPayoutAmount: isMatured ? null : Math.min(payoutPerPeriod, Math.max(0, totalAtMaturity - completedPeriods * payoutPerPeriod)),
   };
 }

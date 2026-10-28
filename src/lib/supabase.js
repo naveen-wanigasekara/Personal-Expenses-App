@@ -243,7 +243,7 @@ const INVESTMENT_ENC = [
   "payout_frequency",
   "tenure_months",
 ];
-const VALUATION_ENC = ["value", "recorded_date"];
+const VALUATION_ENC = ["value", "recorded_date", "note"];
 
 /* Investments */
 export async function fetchInvestments(userId) {
@@ -289,7 +289,9 @@ export async function fetchInvestmentValuations(userId) {
   const { data, error } = await supabase
     .from("investment_valuations")
     .select("*")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
   if (error) throw error;
   return Promise.all((data || []).map((r) => decryptFields(r, VALUATION_ENC)));
 }

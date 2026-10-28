@@ -156,6 +156,7 @@ export default function UserView({
         </div>
       </div>
 
+      <p className="hint">Display currency only. Existing amounts are not converted.</p>
       <ThemePicker />
 
       <div className="privacy-card">
@@ -164,10 +165,9 @@ export default function UserView({
           <span>Privacy &amp; Security</span>
         </div>
         <p className="privacy-card-body">
-          Your financial data is end-to-end encrypted and securely stored in
-          the cloud, and only you can access it—we never share, sell, or read
-          your personal information, ensuring it remains 100% private with
-          secure cloud sync.
+          Financial details are encrypted in the app before cloud storage.
+          Account access rules keep each user's records separate. Use a
+          strong password and keep your devices secure.
         </p>
       </div>
 

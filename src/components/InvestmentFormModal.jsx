@@ -51,9 +51,9 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
   const valid =
     name.trim() &&
     initialAmount &&
-    +initialAmount > 0 &&
+    Number.isFinite(+initialAmount) && +initialAmount > 0 &&
     startDate &&
-    (!isFd || (+interestRate > 0 && +tenureMonths > 0));
+    (!isFd || (Number.isFinite(+interestRate) && +interestRate > 0 && Number.isSafeInteger(+tenureMonths) && +tenureMonths > 0 && Number.isFinite(+initialAmount * +interestRate * +tenureMonths)));
 
   const handleSave = () => {
     if (!valid) return;
@@ -196,14 +196,14 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           {payoutPeriodTooLong ? (
             <div className="warn-hint">
               {selectedFreq.label} payouts happen every {12 / selectedFreq.periodsPerYear}{" "}
-              months, but the tenure is only {tenureMonths} — no payout would
-              ever complete. Pick a shorter frequency or a longer tenure.
+              months. For this shorter {tenureMonths}-month tenure, the
+              prorated interest is paid at maturity.
             </div>
           ) : (
             <div className="hint">
               Interest is paid out separately each period — the deposit's own
               value stays at the principal until maturity, matching how a
-              real fixed deposit works.
+              real fixed deposit works. Any remaining partial period is paid at maturity.
             </div>
           )}
         </>

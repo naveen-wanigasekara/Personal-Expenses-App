@@ -67,7 +67,7 @@ const SECTION_DEFS = [
   },
   {
     id: "net_worth",
-    label: "Net Worth Trend",
+    label: "Cash Balance Trend",
     desc: "Cumulative cash balance over the past 12 months",
   },
   {
@@ -595,7 +595,7 @@ export default function DashView({
       return (
         <div className="card">
           <div className="card-hd">
-            <h3>Net Worth Trend</h3>
+            <h3>Cash Balance Trend</h3>
             <span className={`card-sub ${trending ? "in-color" : "out-color"}`}>
               {trending ? "↑" : "↓"} {CURRENCY}{" "}
               {fmtCompact(Math.abs(last.balance - first.balance))} vs 12 mo ago
@@ -1074,7 +1074,7 @@ export default function DashView({
                             )}
                           </div>
                           <div className="catv2-remaining-lbl">
-                            {isOver || isUnbudgeted ? "over" : "left"}
+                            {isUnbudgeted ? "spent" : isOver ? "over" : "left"}
                           </div>
                         </>
                       ) : (

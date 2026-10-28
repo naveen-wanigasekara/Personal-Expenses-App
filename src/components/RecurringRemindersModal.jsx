@@ -30,9 +30,10 @@ export default function RecurringRemindersModal({
     if (
       !label.trim() ||
       !dayOfMonth ||
+      !Number.isInteger(+dayOfMonth) ||
       +dayOfMonth < 1 ||
       +dayOfMonth > 28 ||
-      (amount && +amount < 0)
+      (amount && (!Number.isFinite(+amount) || +amount < 0))
     )
       return;
     onSave({
@@ -47,9 +48,10 @@ export default function RecurringRemindersModal({
   const valid =
     label.trim() &&
     dayOfMonth &&
+    Number.isInteger(+dayOfMonth) &&
     +dayOfMonth >= 1 &&
     +dayOfMonth <= 28 &&
-    !(amount && +amount < 0);
+    !(amount && (!Number.isFinite(+amount) || +amount < 0));
 
   return (
     <Sheet title="Recurring Reminders" onClose={onClose}>
@@ -80,6 +82,7 @@ export default function RecurringRemindersModal({
                   </div>
                   <button
                     className="manage-cat-btn danger"
+                    aria-label={`Delete ${r.label} reminder`}
                     onClick={() => {
                       if (confirm(`Delete the "${r.label}" reminder?`))
                         onDelete(r.id);

@@ -309,3 +309,6 @@ html { color-scheme: dark; }
   .cards-master > .dash-topbar,
   .investments-master > .dash-topbar { margin: 0; }
 }
+
+.valuation-note { overflow-wrap: anywhere; white-space: pre-wrap; }
+.budget-save-error { color: var(--danger); font-size: 13px; margin: 12px 0; }

@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getFdInfo} from '../src/utils/investmentCalc.js';
+import {getCat,NEW_SIGNUP_EXPENSE_CATEGORIES,INCOME_CATEGORIES} from '../src/constants/categories.js';
+import {isValidMoneyDraft} from '../src/utils/moneyInput.js';
+const fd=(overrides={},today=new Date(2026,1,28))=>getFdInfo({initialAmount:1000,interestRate:12,tenureMonths:1,payoutFrequency:'monthly',startDate:'2026-01-31',...overrides},today);
+test('month-end FD maturity clamps to February and completes its monthly interest',()=>{
+ const result=fd();assert.equal(result.maturityDate,'2026-02-28');assert.equal(result.isMatured,true);assert.equal(result.totalEarned,10);assert.equal(result.nextPayoutDate,null);
+});
+test('FD maturity handles leap years and December rollover',()=>{
+ assert.equal(fd({startDate:'2024-01-31'}).maturityDate,'2024-02-29');assert.equal(fd({startDate:'2025-12-31',tenureMonths:2}).maturityDate,'2026-02-28');
+});
+test('quarterly FD includes a partial final period and shows the correct next payout',()=>{
+ const config={startDate:'2026-01-01',tenureMonths:5,payoutFrequency:'quarterly'};
+ const before=fd(config,new Date(2026,3,2));assert.equal(before.totalEarned,30);assert.equal(before.totalAtMaturity,50);assert.equal(before.nextPayoutDate,'2026-06-01');assert.equal(before.nextPayoutAmount,20);
+ assert.equal(fd(config,new Date(2026,5,1)).totalEarned,50);
+});
+test('at-maturity FD next payout is interest instead of zero',()=>{
+ const result=fd({payoutFrequency:'maturity',startDate:'2026-01-01',tenureMonths:12},new Date(2026,1,1));assert.equal(result.nextPayoutAmount,120);assert.equal(result.totalEarned,0);
+});
+test('no FD payouts accrue before start; shorter-than-frequency term pays at maturity',()=>{
+ const result=fd({startDate:'2026-03-01',tenureMonths:1,payoutFrequency:'quarterly'},new Date(2026,1,1));assert.equal(result.totalEarned,0);assert.equal(result.nextPayoutDate,'2026-04-01');assert.equal(result.nextPayoutAmount,10);
+});
+test('orphaned categories stay in a catch-all after custom categories are appended',()=>{
+ const custom={id:'custom-qa',label:'QA custom'};const expenses=[...NEW_SIGNUP_EXPENSE_CATEGORIES,custom];
+ assert.equal(getCat('old-deleted','expense',expenses,INCOME_CATEGORIES).id,'misc');
+ assert.equal(getCat('old-deleted','income',expenses,[...INCOME_CATEGORIES,custom]).id,'other-income');
+ assert.equal(getCat('custom-qa','expense',expenses,INCOME_CATEGORIES),custom);
+});
+test('empty or catch-all-deleted category lists retain a safe fallback',()=>{
+ assert.equal(getCat('missing','expense',[],[]).id,'other');
+ assert.equal(getCat('missing','expense',[{id:'savings-investments'}],[]).id,'other');
+});
+test('amount input accepts cents and rejects invisible precision or non-finite values',()=>{
+ for(const value of ['', '.', '0','0.00','0.01','1234567.89'])assert.equal(isValidMoneyDraft(value),true,value);
+ for(const value of ['1.234','Infinity','NaN','-1','1e5','1,000','9'.repeat(400)])assert.equal(isValidMoneyDraft(value),false,value);
+});

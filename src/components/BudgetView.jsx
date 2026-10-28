@@ -47,6 +47,8 @@ export default function BudgetView({
     monthPlans[viewMonth] || emptyPlan(),
   );
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setFixedEdit(fixedPlan);
@@ -67,10 +69,20 @@ export default function BudgetView({
   const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
   const handleSave = async () => {
-    if (mode === "fixed") await setFixedPlan(fixedEdit);
-    else await setMonthPlan(viewMonth, monthEdit);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    if (saving) return;
+    setSaving(true);
+    setSaved(false);
+    setSaveError("");
+    try {
+      const ok = mode === "fixed" ? await setFixedPlan(fixedEdit) : await setMonthPlan(viewMonth, monthEdit);
+      if (ok === false) setSaveError("Couldn't save your budget. Please try again.");
+      else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1800);
+      }
+    } catch {
+      setSaveError("Couldn't save your budget. Please try again.");
+    } finally { setSaving(false); }
   };
 
   const copyFromFixed = () =>
@@ -330,11 +342,13 @@ export default function BudgetView({
         </div>
       </div>
 
+      {saveError && <p className="budget-save-error" role="alert">{saveError}</p>}
       <button
         className={`save-btn ${saved ? "saved" : ""}`}
+        disabled={saving}
         onClick={handleSave}
       >
-        {saved ? (
+        {saving ? "Saving…" : saved ? (
           <>
             <Check size={17} strokeWidth={2.5} /> Saved
           </>

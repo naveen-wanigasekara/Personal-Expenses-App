@@ -166,7 +166,7 @@ export default function InvestmentDetailView({
       {isFd && !fdInfo.isMatured && fdInfo.nextPayoutDate && (
         <div className="hint" style={{ marginBottom: 16 }}>
           Next payout: {fmtDate(fdInfo.nextPayoutDate)} — {CURRENCY}{" "}
-          {fmt(fdInfo.payoutPerPeriod)}
+          {fmt(fdInfo.nextPayoutAmount)}
         </div>
       )}
       {isFd && fdInfo.isMatured && (
@@ -241,6 +241,7 @@ export default function InvestmentDetailView({
                   </div>
                   <div className="notif-body">
                     <div className="notif-title">{label}</div>
+                    {v.note && <div className="notif-meta valuation-note">{v.note}</div>}
                     {delta != null && (
                       <div className="notif-meta">
                         <span className={delta >= 0 ? "in-color" : "out-color"}>

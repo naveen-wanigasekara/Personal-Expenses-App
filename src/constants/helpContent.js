@@ -214,7 +214,7 @@ export const HELP_SECTIONS = [
     items: [
       {
         q: "What does the Insights tab show?",
-        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash in Hand, Total Savings, Card Debt, Total Investments, Net Worth Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
+        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash in Hand, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
       },
       {
         q: "What is the notification bell?",
@@ -225,7 +225,7 @@ export const HELP_SECTIONS = [
         a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank.",
       },
       {
-        q: "What is the Net Worth Trend?",
+        q: "What is the Cash Balance Trend?",
         a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash in Hand — plotted month by month so you can see whether it's trending up or down.",
       },
       {
@@ -365,7 +365,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Backfill investment values instead of guessing",
-        a: "If you're setting up an investment you've held for a while, record a few historical value check-ins with their real dates rather than just today's value. The Value Over Time chart and your Net Worth Trend will both be more useful with real history behind them.",
+        a: "If you're setting up an investment you've held for a while, record a few historical value check-ins with their real dates rather than just today's value. The Value Over Time chart will be more useful with real history behind it.",
       },
       {
         q: "Build a chart before you need it",
@@ -373,7 +373,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Changing your currency",
-        a: "Open Profile (phone/tablet) or Account (desktop) and tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app.",
+        a: "Open Profile (phone/tablet) or Account (desktop) and tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app. This changes the display currency only; existing amounts are not converted.",
       },
       {
         q: "Number formatting",
