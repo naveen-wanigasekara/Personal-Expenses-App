@@ -48,3 +48,12 @@ Dark, Light, and System controls are available in mobile Profile and desktop Acc
 ### Android automatic darkening follow-up
 
 A user screenshot showed the intended Light palette rendered dark on a phone. Browser auto-darkening is suspected from the altered surface/accent colors, but the phone/browser state has not been directly inspected. Light now declares `only light` in both the pre-render/runtime color-scheme metadata and the root CSS, using Chrome's documented opt-out from automatic darkening. Dark and System resolution remain unchanged. Theme tests assert the opt-out at first paint, after switching, and when System resolves to Light. Native phone confirmation is still required.
+
+
+## Loan calculator
+
+Added Loan Calculator directly below Investments in the mobile drawer and desktop sidebar. It accepts principal, nominal annual interest percentage, and a term in years or months. The result is a monthly reducing-balance installment with payments at month end; fees and insurance are excluded. It uses the current display currency and theme, and creates no financial records.
+
+Eleven tests pass, including six loan checks: reference installments, zero interest, amortization to zero, numerical stability, invalid inputs, and years/months conversion. The build and whitespace checks pass. Method reference: https://learn.microsoft.com/en-us/office/vba/api/Excel.WorksheetFunction.Pmt
+
+Live desktop/mobile browser verification remains pending: the agent's temporary Vercel preview access expired. Automatic approval review rejected revoking/regenerating the temporary preview share link because it changes access control without explicit authorization. No protection settings were changed. Temporary review pages have been removed from the final branch. No merge or production deployment was performed.
