@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell, Building2, Check, Copy, Edit2, Menu, Plus, RefreshCw, Trash2 } from "lucide-react";
 import Sheet from "./Sheet.jsx";
 import { bankDetailsStore } from "../lib/bankDetails.js";
@@ -11,24 +12,49 @@ const FIELDS = [
   ["accountNumber", "Account number", "Your account number"],
 ];
 
-function BankDetailsForm({ account, onClose, onSave, saving, error }) {
+export function BankDetailsForm({ account, onClose, onSave, saving, error }) {
   const id = useId();
+  const layerRef = useRef(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const resize = () => {
+      const layer = layerRef.current;
+      if (!layer) return;
+      layer.style.height = `${viewport.height}px`;
+      layer.style.top = `${viewport.offsetTop}px`;
+    };
+    resize();
+    viewport.addEventListener("resize", resize);
+    viewport.addEventListener("scroll", resize);
+    return () => {
+      viewport.removeEventListener("resize", resize);
+      viewport.removeEventListener("scroll", resize);
+    };
+  }, []);
   const [details, setDetails] = useState(() => normalizeBankDetails(account));
-  return (
-    <Sheet title={account ? "Edit bank details" : "Add bank details"} onClose={onClose}>
-      <form onSubmit={(event) => { event.preventDefault(); if (validBankDetails(details) && !saving) onSave(details); }}>
-        {FIELDS.map(([key, label, placeholder], index) => (
-          <div key={key}>
-            <label className="field-lbl" htmlFor={`${id}-${key}`}>{label}</label>
-            <input id={`${id}-${key}`} className="text-input" type="text" value={details[key]} placeholder={placeholder}
-              onChange={(event) => setDetails((previous) => ({ ...previous, [key]: event.target.value }))}
-              maxLength={key === "accountNumber" ? 80 : 120} required autoFocus={index === 0} disabled={saving} autoComplete="off" />
+  return createPortal(
+    <div className="bank-form-layer" ref={layerRef}>
+      <Sheet className="bank-form-sheet" title={account ? "Edit bank details" : "Add bank details"} onClose={onClose}>
+        <form className="bank-form" onSubmit={(event) => { event.preventDefault(); if (validBankDetails(details) && !saving) onSave(details); }}>
+          <div className="bank-form-fields">
+          {FIELDS.map(([key, label, placeholder], index) => (
+            <div key={key}>
+              <label className="field-lbl" htmlFor={`${id}-${key}`}>{label}</label>
+              <input id={`${id}-${key}`} className="text-input" type="text" value={details[key]} placeholder={placeholder}
+                onChange={(event) => setDetails((previous) => ({ ...previous, [key]: event.target.value }))}
+                maxLength={key === "accountNumber" ? 80 : 120} required enterKeyHint={index === FIELDS.length - 1 ? "done" : "next"} disabled={saving} autoComplete="off" />
+            </div>
+          ))}
           </div>
-        ))}
-        {error && <p className="bank-error" role="alert">{error}</p>}
-        <button className="save-btn" type="submit" disabled={saving || !validBankDetails(details)}>{saving ? "Saving…" : "Save bank details"}</button>
-      </form>
-    </Sheet>
+          <div className="bank-form-footer">
+          {error && <p className="bank-error" role="alert">{error}</p>}
+          <button className="save-btn" type="submit" disabled={saving || !validBankDetails(details)}>{saving ? "Saving…" : "Save bank details"}</button>
+          </div>
+        </form>
+      </Sheet>
+    </div>,
+    document.body,
   );
 }
 
