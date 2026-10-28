@@ -5,6 +5,7 @@ import "./styles/premium-fintech.css";
 import App from "./App.jsx";
 import ThemeProvider from "./components/ThemeProvider.jsx";
 import "./styles/themes.css";
+import "./styles/loan-calculator.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

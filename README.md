@@ -372,3 +372,8 @@ MIT — see [LICENSE](./LICENSE) for details.
 Choose **Dark**, **Light**, or **System** under **Profile → Appearance** on mobile, or **Account → Appearance** on desktop. Dark is the default. The choice is saved on this device and shared across its open app tabs; System follows the operating system’s appearance. It also applies to the sign-in and loading screens on the next visit. No database change is required.
 
 Run theme behavior checks with `npm test`.
+
+
+### Loan calculator
+
+Open **Loan Calculator**, directly below **Investments** in the mobile menu or desktop sidebar. Enter the loan amount, annual interest rate, and repayment period in years or months to see the estimated monthly installment. Uses fixed-rate reducing-balance repayments at month end, supports zero interest, and excludes lender fees and insurance. Calculations do not create transactions or loan records.

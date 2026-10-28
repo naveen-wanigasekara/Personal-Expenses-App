@@ -1,4 +1,4 @@
-import { Target, LineChart, ChevronRight } from "lucide-react";
+import { Target, LineChart, Calculator, ChevronRight } from "lucide-react";
 import Sheet from "./Sheet.jsx";
 
 // Mobile/tablet-only full-height slide-in menu (desktop keeps Budget and
@@ -30,6 +30,11 @@ export default function NavDrawer({ onClose, onNavigate }) {
           size={15}
           style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
         />
+      </button>
+      <button className="settings-menu-row" onClick={() => onNavigate("loan-calculator")}>
+        <Calculator size={16} />
+        <span>Loan Calculator</span>
+        <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
       </button>
     </Sheet>
   );

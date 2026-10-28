@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LineChart,
+  Calculator,
   User,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -58,6 +59,7 @@ import HomeView from "./HomeView.jsx";
 import CardsView from "./CardsView.jsx";
 import BudgetView from "./BudgetView.jsx";
 import InvestmentsView from "./InvestmentsView.jsx";
+import LoanCalculatorView from "./LoanCalculatorView.jsx";
 import UserView from "./UserView.jsx";
 import NavDrawer from "./NavDrawer.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
@@ -71,7 +73,7 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
-const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user"];
+const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
 export default function MainApp({ user }) {
@@ -1431,6 +1433,15 @@ export default function MainApp({ user }) {
               onQuickRefresh={handleQuickRefresh}
             />
           )}
+          {tab === "loan-calculator" && (
+            <LoanCalculatorView
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
+            />
+          )}
           {tab === "budget" && (
             <BudgetView
               monthPlans={monthPlans}
@@ -1544,6 +1555,12 @@ export default function MainApp({ user }) {
                 label="Investments"
                 active={tab === "investments"}
                 onClick={() => setTab("investments")}
+              />
+              <NavBtn
+                icon={Calculator}
+                label="Loan Calculator"
+                active={tab === "loan-calculator"}
+                onClick={() => setTab("loan-calculator")}
               />
               <NavBtn
                 icon={Target}
