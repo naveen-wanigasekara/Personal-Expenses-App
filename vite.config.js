@@ -113,5 +113,5 @@ export default defineConfig({
     }),
   ],
   server: { port: 5173, open: true },
-  build: { outDir: "dist", sourcemap: false },
+  build: { outDir: "dist", sourcemap: false, rollupOptions: { input: { main: "index.html", review: "auth/app-review.html" } } },
 });
