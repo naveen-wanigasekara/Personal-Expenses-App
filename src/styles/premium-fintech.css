@@ -1,0 +1,54 @@
+/* Premium fintech visual refresh — presentation only; no financial logic changes. */
+:root {
+  --bg: #080f14;
+  --bg-2: #101b22;
+  --surface: #15232a;
+  --surface-2: #1b2d34;
+  --surface-3: #243940;
+  --border: rgba(174, 224, 207, .10);
+  --border-2: rgba(174, 224, 207, .19);
+  --ink: #f1f8f5;
+  --ink-soft: #a5bab3;
+  --ink-faint: #819a91;
+  --accent: #52d9a0;
+  --accent-2: #8aebc1;
+  --accent-soft: rgba(82,217,160,.13);
+  --accent-ring: rgba(82,217,160,.3);
+  --shadow-accent: 0 8px 30px rgba(38, 182, 125, .19);
+  --radius: 20px;
+  --radius-sm: 13px;
+  --radius-lg: 26px;
+  --sans: "DM Sans", "Source Sans 3", -apple-system, sans-serif;
+  --serif: "DM Sans", "Source Sans 3", sans-serif;
+}
+body {
+  background: radial-gradient(ellipse 90% 42% at 50% -8%, rgba(52, 151, 116, .13), transparent 72%), var(--bg);
+}
+.app-glow {
+  background: radial-gradient(circle, rgba(82, 217, 160, .105), transparent 65%);
+}
+.hero-title, .auth-title, .auth-brand-text, .auth-brand-headline {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -.045em;
+}
+.hero-title { line-height: 1.12; }
+.auth-logo {
+  background: linear-gradient(145deg, #9cf5cc, #2ebd85);
+  color: #082016;
+  box-shadow: 0 8px 28px rgba(46,189,133,.24);
+}
+.auth-brand-panel {
+  background: radial-gradient(circle at 15% 20%, rgba(82,217,160,.18), transparent 58%), var(--bg-2);
+}
+.auth-box, .tx, .catv2, .cat-budget {
+  border-color: var(--border);
+}
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view, .auth-box, .auth-fade { animation: none !important; }
+}
