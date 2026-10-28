@@ -100,7 +100,7 @@ export default function RecurringRemindersModal({
             type="text"
             className="text-input"
             aria-label="Reminder label"
-              value={label}
+            value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. Electricity Bill"
             autoFocus
@@ -111,7 +111,7 @@ export default function RecurringRemindersModal({
             type="number"
             className="text-input"
             aria-label="Estimated amount (optional)"
-              value={amount}
+            value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             min="0"
@@ -122,7 +122,7 @@ export default function RecurringRemindersModal({
             type="number"
             className="text-input"
             aria-label="Due day each month (1–28)"
-              value={dayOfMonth}
+            value={dayOfMonth}
             onChange={(e) => setDayOfMonth(e.target.value)}
             min="1"
             max="28"
@@ -135,7 +135,7 @@ export default function RecurringRemindersModal({
           <select
             className="text-input"
             aria-label="Category for auto-dismiss (optional)"
-              value={category}
+            value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
             <option value="">None — dismiss manually</option>

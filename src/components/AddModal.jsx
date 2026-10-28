@@ -282,7 +282,7 @@ export default function AddModal({
             type="text"
             className="text-input"
             aria-label="Installment description"
-              value={installLabel}
+            value={installLabel}
             onChange={(e) => setInstallLabel(e.target.value)}
             placeholder="e.g. Samsung TV"
             autoFocus
@@ -292,7 +292,7 @@ export default function AddModal({
             type="number"
             className="text-input"
             aria-label="Number of months"
-              value={installMonths}
+            value={installMonths}
             onChange={(e) => setInstallMonths(e.target.value)}
             min="2"
             max="120"
@@ -303,7 +303,7 @@ export default function AddModal({
             type="month"
             className="text-input"
             aria-label="Start month"
-              value={installStartMonth}
+            value={installStartMonth}
             onChange={(e) => setInstallStartMonth(e.target.value)}
           />
           {amount && installMonths && +installMonths > 0 && (

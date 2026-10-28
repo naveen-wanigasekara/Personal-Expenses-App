@@ -288,3 +288,19 @@ html { color-scheme: dark; }
   .cb-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
   .cb-input { width: 100%; box-sizing: border-box; min-height: 44px; }
 }
+
+/* Mint accents need a darker surface behind white investment text. */
+.inv-visual {
+  background: linear-gradient(135deg, #143c35, #1c5a47);
+  color: #f1f8f5;
+}
+.inv-visual .ct-vis-label, .inv-visual .ct-vis-label-sm {
+  color: #b7e4d1;
+  opacity: 1;
+}
+
+/* Each mobile view already reserves navigation space inside its scroll pane.
+   Extra page padding makes focusing a field scroll the fixed header away. */
+@media (max-width: 1023px) {
+  .app { padding-bottom: 0; }
+}

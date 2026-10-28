@@ -76,7 +76,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       title={investment ? "Edit investment" : "New investment"}
       onClose={onClose}
     >
-      <div className="ct-visual preview">
+      <div className="ct-visual preview inv-visual">
         <div className="ct-vis-top">
           <span className="ct-bank">{name || "Investment Name"}</span>
           <LineChart size={18} strokeWidth={1.5} />

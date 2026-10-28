@@ -37,7 +37,7 @@ export default function InvestmentValueModal({
       <label className="field-lbl">Current value</label>
       <div className="big-input">
         <span className="big-cur">{CURRENCY}</span>
-        <AmountInput value={value} onChange={setValue} placeholder="0.00" autoFocus />
+        <AmountInput aria-label="Current value" value={value} onChange={setValue} placeholder="0.00" autoFocus />
       </div>
 
       <label className="field-lbl">Date</label>
@@ -45,7 +45,7 @@ export default function InvestmentValueModal({
         type="date"
         className="text-input"
         aria-label="Recorded date"
-              value={date}
+        value={date}
         onChange={(e) => setDate(e.target.value)}
       />
       <div className="hint">
@@ -58,7 +58,7 @@ export default function InvestmentValueModal({
         type="text"
         className="text-input"
         aria-label="Note (optional)"
-              value={note}
+        value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note"
       />

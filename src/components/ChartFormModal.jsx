@@ -148,6 +148,7 @@ export default function ChartFormModal({
       <input
         type="text"
         className="text-input"
+        aria-label="Chart name"
         value={cfg.name}
         onChange={(e) => set({ name: e.target.value })}
         placeholder="e.g. Groceries over time"
@@ -233,6 +234,8 @@ export default function ChartFormModal({
             {CHART_COLOR_TOKENS.map((token) => (
               <button
                 key={token}
+                aria-label={`${token} color`}
+                aria-pressed={cfg.color === token}
                 type="button"
                 className={`color-opt ${cfg.color === token ? "active" : ""}`}
                 onClick={() => set({ color: token })}
