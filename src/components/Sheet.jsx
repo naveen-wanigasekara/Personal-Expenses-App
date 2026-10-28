@@ -9,6 +9,7 @@ const FOCUSABLE =
 // topmost one — without it, every mounted Sheet's own document-level
 // keydown listener would fire and close all of them at once.
 let openStack = [];
+let previousBodyOverflow = "";
 
 // Shared chrome for all modals: a bottom sheet on mobile/tablet that becomes
 // a centered dialog at desktop widths (see app.css RESPONSIVE section).
@@ -16,6 +17,8 @@ let openStack = [];
 // modal doesn't have to reimplement them.
 export default function Sheet({ title, onClose, children, className }) {
   const sheetRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const idRef = useRef(null);
   if (idRef.current === null) idRef.current = Symbol("sheet");
   const titleId = useId();
@@ -23,21 +26,28 @@ export default function Sheet({ title, onClose, children, className }) {
   useEffect(() => {
     const sheet = sheetRef.current;
     const id = idRef.current;
+    if (!openStack.length) previousBodyOverflow = document.body.style.overflow;
     openStack.push(id);
     const previouslyFocused = document.activeElement;
     const focusable = sheet.querySelectorAll(FOCUSABLE);
     (focusable[0] || sheet).focus();
 
     const handleKeyDown = (e) => {
+      if (openStack[openStack.length - 1] !== id) return;
       if (e.key === "Escape") {
-        if (openStack[openStack.length - 1] === id) onClose();
+        e.preventDefault();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
       const nodes = Array.from(sheet.querySelectorAll(FOCUSABLE)).filter(
-        (el) => !el.disabled && el.offsetParent !== null,
+        (el) => !el.disabled && el.offsetParent !== null && el.closest('[role="dialog"]') === sheet,
       );
-      if (!nodes.length) return;
+      if (!nodes.length) {
+        e.preventDefault();
+        sheet.focus();
+        return;
+      }
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
       if (e.shiftKey && document.activeElement === first) {
@@ -54,10 +64,10 @@ export default function Sheet({ title, onClose, children, className }) {
     return () => {
       openStack = openStack.filter((sid) => sid !== id);
       document.removeEventListener("keydown", handleKeyDown);
-      if (!openStack.length) document.body.style.overflow = "";
-      if (previouslyFocused?.focus) previouslyFocused.focus();
+      if (!openStack.length) document.body.style.overflow = previousBodyOverflow;
+      if (previouslyFocused?.isConnected && previouslyFocused?.focus) previouslyFocused.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="backdrop" onClick={onClose}>

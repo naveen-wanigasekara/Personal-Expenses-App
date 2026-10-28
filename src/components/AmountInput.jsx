@@ -6,6 +6,7 @@ export default function AmountInput({
   placeholder,
   className,
   autoFocus,
+  ...inputProps
 }) {
   const fmtFull = (v) => {
     const n = Number(v);
@@ -28,6 +29,8 @@ export default function AmountInput({
 
   return (
     <input
+      aria-label="Amount"
+      {...inputProps}
       type="text"
       inputMode="decimal"
       className={className}

@@ -160,11 +160,11 @@ export default function BudgetView({
       ) : (
         <>
           <div className="month-pill month-pill-full">
-            <button onClick={() => changeMonth(-1)}>
+            <button onClick={() => changeMonth(-1)} aria-label="Previous budget month">
               <ChevronLeft size={16} />
             </button>
             <span>{monthLabel(viewMonth)}</span>
-            <button onClick={() => changeMonth(1)}>
+            <button onClick={() => changeMonth(1)} aria-label="Next budget month">
               <ChevronRight size={16} />
             </button>
           </div>
@@ -243,6 +243,7 @@ export default function BudgetView({
         <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
           <span className="big-cur">{CURRENCY}</span>
           <AmountInput
+            aria-label={`${isFixed ? "Fixed monthly" : "This month’s"} ${side === "income" ? "income target" : "expense budget"}`}
             value={total}
             onChange={updateTotal}
             placeholder="0.00"
@@ -287,6 +288,7 @@ export default function BudgetView({
                   <div className="cb-input">
                     <span>{CURRENCY}</span>
                     <AmountInput
+                      aria-label={`${c.label} ${side === "income" ? "income target" : "budget"}`}
                       value={cats[c.id] || ""}
                       onChange={(v) => updateCat(c.id, v)}
                       placeholder="0.00"

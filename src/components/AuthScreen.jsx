@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
   Wallet,
   Mail,
@@ -13,6 +13,7 @@ import {
 import { signUp, signIn, resetPassword } from "../lib/supabase.js";
 
 export default function AuthScreen() {
+  const formId = useId();
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,10 +108,11 @@ export default function AuthScreen() {
             </p>
 
             <form onSubmit={handleSubmit} className="auth-form">
-              <label className="field-lbl">Email</label>
+              <label className="field-lbl" htmlFor={`${formId}-email`}>Email</label>
               <div className="auth-input">
                 <Mail size={15} />
                 <input
+                  id={`${formId}-email`}
                   type="email"
                   autoComplete="email"
                   value={email}
@@ -123,7 +125,7 @@ export default function AuthScreen() {
               {mode !== "forgot" && (
                 <>
                   <div className="auth-pw-row">
-                    <label className="field-lbl">Password</label>
+                    <label className="field-lbl" htmlFor={`${formId}-password`}>Password</label>
                     {mode === "signin" && (
                       <button
                         type="button"
@@ -137,6 +139,7 @@ export default function AuthScreen() {
                   <div className="auth-input">
                     <KeyRound size={15} />
                     <input
+                      id={`${formId}-password`}
                       type="password"
                       autoComplete={
                         mode === "signup" ? "new-password" : "current-password"
@@ -152,13 +155,13 @@ export default function AuthScreen() {
               )}
 
               {err && (
-                <div className="auth-err">
+                <div className="auth-err" role="alert">
                   <AlertCircle size={15} />
                   <span>{err}</span>
                 </div>
               )}
               {msg && (
-                <div className="auth-msg">
+                <div className="auth-msg" role="status">
                   <CheckCircle2 size={15} />
                   <span>{msg}</span>
                 </div>

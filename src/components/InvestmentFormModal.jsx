@@ -93,6 +93,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <input
         type="text"
         className="text-input"
+        aria-label="Investment name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="e.g. Vanguard S&P 500, Fixed Deposit — BOC"
@@ -104,6 +105,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           <label className="field-lbl">Type</label>
           <select
             className="text-input"
+            aria-label="Investment type"
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
@@ -119,6 +121,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           <input
             type="date"
             className="text-input"
+            aria-label="Start date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
@@ -131,6 +134,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <div className="big-input">
         <span className="big-cur">{CURRENCY}</span>
         <AmountInput
+          aria-label={investment ? "Initial amount" : "Starting amount"}
           value={initialAmount}
           onChange={setInitialAmount}
           placeholder="0.00"
@@ -152,6 +156,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
                 type="text"
                 inputMode="decimal"
                 className="text-input"
+                aria-label="Interest rate (% per annum)"
                 value={interestRate}
                 onChange={(e) => {
                   if (/^\d*\.?\d*$/.test(e.target.value)) setInterestRate(e.target.value);
@@ -163,6 +168,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
               <label className="field-lbl">Payout frequency</label>
               <select
                 className="text-input"
+                aria-label="Payout frequency"
                 value={payoutFrequency}
                 onChange={(e) => setPayoutFrequency(e.target.value)}
               >
@@ -180,6 +186,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
             type="text"
             inputMode="numeric"
             className="text-input"
+            aria-label="Tenure (months)"
             value={tenureMonths}
             onChange={(e) => {
               if (/^\d*$/.test(e.target.value)) setTenureMonths(e.target.value);
@@ -206,6 +213,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <input
         type="text"
         className="text-input"
+        aria-label="Notes (optional)"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Optional notes"

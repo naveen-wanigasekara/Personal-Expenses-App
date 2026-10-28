@@ -273,3 +273,18 @@ html { color-scheme: dark; }
   .tx-search-bar { min-height: 48px; border-radius: 15px; }
   .fselect { min-height: 43px; font-family: var(--sans); font-size: 12px; border-radius: 14px; }
 }
+
+/* Fixed-frame views own their gutters in their inner scroll panes. */
+@media (max-width: 1023px) {
+  .view.view-dashboard, .view.view-home, .view.view-cards,
+  .view.view-investments, .view.view-budget, .view.view-user {
+    padding: 0;
+  }
+}
+/* Keep the full category name and amount usable on narrow phones. */
+@media (max-width: 600px) {
+  .cb-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .cb-left { align-items: flex-start; }
+  .cb-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+  .cb-input { width: 100%; box-sizing: border-box; min-height: 44px; }
+}
