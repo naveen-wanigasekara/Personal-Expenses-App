@@ -304,3 +304,8 @@ html { color-scheme: dark; }
 @media (max-width: 1023px) {
   .app { padding-bottom: 0; }
 }
+@media (max-width: 1023px) {
+  .view-home > .dash-topbar,
+  .cards-master > .dash-topbar,
+  .investments-master > .dash-topbar { margin: 0; }
+}

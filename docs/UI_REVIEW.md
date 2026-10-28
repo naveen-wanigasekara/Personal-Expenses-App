@@ -8,6 +8,7 @@ Signed into the provided test account on the Vercel branch preview. Checked the 
 
 ## Changes
 
+- Kept mobile Ledger/Cards/Investments topbars inset at 320px after removing the duplicate view gutters.
 - Removed redundant mobile page-bottom padding that made keyboard focus scroll the fixed header out of view.
 - Removed duplicate outer gutters and top padding from mobile fixed-frame views; their inner scroll panes already provide gutters.
 - Stacked budget category labels and inputs on narrow phones so full category names remain readable. At 320px, the previous layout reduced labels to about 16px; the new layout fits the longest default category name without clipping or horizontal page overflow.
