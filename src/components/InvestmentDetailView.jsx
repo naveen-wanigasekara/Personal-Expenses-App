@@ -50,16 +50,17 @@ export default function InvestmentDetailView({
   return (
     <div className="view view-investment-detail">
       <div className="detail-head">
-        <button className="back-btn" onClick={onBack}>
+        <button className="back-btn" onClick={onBack} aria-label="Back to investments">
           <ChevronLeft size={18} />
         </button>
         <div className="detail-head-title">{investment.name}</div>
         <div className="detail-actions">
-          <button className="icon-btn" onClick={onEdit}>
+          <button className="icon-btn" onClick={onEdit} aria-label="Edit investment">
             <Edit2 size={14} />
           </button>
           <button
             className="icon-btn danger"
+            aria-label="Delete investment"
             onClick={() => {
               if (
                 confirm(

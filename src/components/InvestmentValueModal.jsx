@@ -44,7 +44,8 @@ export default function InvestmentValueModal({
       <input
         type="date"
         className="text-input"
-        value={date}
+        aria-label="Recorded date"
+              value={date}
         onChange={(e) => setDate(e.target.value)}
       />
       <div className="hint">
@@ -56,7 +57,8 @@ export default function InvestmentValueModal({
       <input
         type="text"
         className="text-input"
-        value={note}
+        aria-label="Note (optional)"
+              value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note"
       />

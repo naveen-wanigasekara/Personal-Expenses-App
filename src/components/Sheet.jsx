@@ -27,13 +27,27 @@ export default function Sheet({ title, onClose, children, className }) {
     const sheet = sheetRef.current;
     const id = idRef.current;
     if (!openStack.length) previousBodyOverflow = document.body.style.overflow;
-    openStack.push(id);
-    const previouslyFocused = document.activeElement;
-    const focusable = sheet.querySelectorAll(FOCUSABLE);
-    (focusable[0] || sheet).focus();
+    const parent = openStack[openStack.length - 1];
+    // React autoFocus can run before this effect. In that case the active
+    // element is already in the child, so restore the parent's last control.
+    const active = document.activeElement;
+    const previouslyFocused = sheet.contains(active) ? parent?.lastFocused : active;
+    const entry = { id, lastFocused: null };
+    openStack.push(entry);
+    const handleFocus = (e) => {
+      if (e.target.closest?.('[role="dialog"]') === sheet) entry.lastFocused = e.target;
+    };
+    document.addEventListener("focusin", handleFocus);
+    if (sheet.contains(active)) entry.lastFocused = active;
+    else {
+      const focusable = Array.from(sheet.querySelectorAll(FOCUSABLE)).filter(
+        (el) => !el.disabled && el.offsetParent !== null,
+      );
+      (focusable[0] || sheet).focus();
+    }
 
     const handleKeyDown = (e) => {
-      if (openStack[openStack.length - 1] !== id) return;
+      if (openStack[openStack.length - 1]?.id !== id) return;
       if (e.key === "Escape") {
         e.preventDefault();
         onCloseRef.current();
@@ -62,7 +76,8 @@ export default function Sheet({ title, onClose, children, className }) {
     document.addEventListener("keydown", handleKeyDown);
     document.body.style.overflow = "hidden";
     return () => {
-      openStack = openStack.filter((sid) => sid !== id);
+      openStack = openStack.filter((entry) => entry.id !== id);
+      document.removeEventListener("focusin", handleFocus);
       document.removeEventListener("keydown", handleKeyDown);
       if (!openStack.length) document.body.style.overflow = previousBodyOverflow;
       if (previouslyFocused?.isConnected && previouslyFocused?.focus) previouslyFocused.focus();

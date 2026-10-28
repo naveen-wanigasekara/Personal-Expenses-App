@@ -202,6 +202,7 @@ export default function HomeView({
           <input
             className="tx-search-input"
             type="text"
+            aria-label="Search transactions"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by note, amount, or category…"
@@ -220,6 +221,7 @@ export default function HomeView({
         <div className="tx-filters">
           <select
             className="fselect tx-month-select"
+            aria-label="Transaction month"
             value={viewMonth}
             onChange={(e) => setViewMonth(e.target.value)}
           >
@@ -238,6 +240,7 @@ export default function HomeView({
           </select>
           <select
             className="fselect"
+            aria-label="Transaction type"
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value);
@@ -251,6 +254,7 @@ export default function HomeView({
           </select>
           <select
             className="fselect"
+            aria-label="Transaction category"
             value={filterCat}
             onChange={(e) => setFilterCat(e.target.value)}
           >
