@@ -57,7 +57,7 @@ export default function BudgetView({
     setMonthEdit(
       monthPlans[viewMonth] || JSON.parse(JSON.stringify(fixedPlan)),
     );
-  }, [viewMonth, monthPlans]);
+  }, [viewMonth, monthPlans, fixedPlan]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -255,6 +255,7 @@ export default function BudgetView({
         <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
           <span className="big-cur">{CURRENCY}</span>
           <AmountInput
+                  disabled={saving}
             aria-label={`${isFixed ? "Fixed monthly" : "This month’s"} ${side === "income" ? "income target" : "expense budget"}`}
             value={total}
             onChange={updateTotal}
@@ -300,6 +301,7 @@ export default function BudgetView({
                   <div className="cb-input">
                     <span>{CURRENCY}</span>
                     <AmountInput
+                  disabled={saving}
                       aria-label={`${c.label} ${side === "income" ? "income target" : "budget"}`}
                       value={cats[c.id] || ""}
                       onChange={(v) => updateCat(c.id, v)}

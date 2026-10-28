@@ -95,7 +95,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "How do I filter transactions?",
-        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, CC Purchase), or category. The count shown updates to match.",
+        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, Card transactions), or category. The count shown updates to match.",
       },
       {
         q: "How do I edit a transaction?",
@@ -379,6 +379,26 @@ export const HELP_SECTIONS = [
         q: "Number formatting",
         a: "Key amounts — Net this month, Cash in Hand, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
       },
+    ],
+  },
+  {
+    id: "loan-calculator",
+    icon: "🧮",
+    title: "Loan Calculator",
+    items: [
+      { q: "Where is the loan calculator?", a: "Open Menu on a phone or tablet and choose Loan Calculator below Investments. On desktop, use the sidebar." },
+      { q: "How is the installment calculated?", a: "Enter the loan amount, annual interest rate, and repayment period in years or months. The estimate uses fixed-rate, monthly reducing-balance repayments. Total interest is the total repayment amount minus the principal. Fees and insurance are excluded; your lender's terms may differ." },
+      { q: "Does this create a loan or an expense?", a: "No. This is a calculator only and does not change your financial records." },
+    ],
+  },
+  {
+    id: "bank-details",
+    icon: "🏦",
+    title: "Bank Details",
+    items: [
+      { q: "How do I save bank details?", a: "Open Bank Details below Loan Calculator in Menu or the desktop sidebar. Choose Add bank details, enter the bank, branch, account holder name, and account number, then save. You can keep more than one account." },
+      { q: "How do I copy or update an account?", a: "Choose Copy bank details to copy a formatted block, then paste it into your chosen messaging app. The app does not send it for you. Use Edit to update a saved account. If copying is unavailable, select and copy the text shown instead." },
+      { q: "Will leading zeros be preserved?", a: "Yes. Account numbers are saved as text, so leading zeros remain intact. Check all details carefully before sharing them." },
     ],
   },
 ];

@@ -82,7 +82,7 @@ export default function RecurringRemindersModal({
                   </div>
                   <button
                     className="manage-cat-btn danger"
-                    aria-label={`Delete ${r.label} reminder`}
+                    aria-label={`Delete reminder: ${r.label}`}
                     onClick={() => {
                       if (confirm(`Delete the "${r.label}" reminder?`))
                         onDelete(r.id);

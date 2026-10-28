@@ -312,3 +312,11 @@ html { color-scheme: dark; }
 
 .valuation-note { overflow-wrap: anywhere; white-space: pre-wrap; }
 .budget-save-error { color: var(--danger); font-size: 13px; margin: 12px 0; }
+/* These screens scroll inside their frame; avoid a second page scrollbar
+   and the layout shift caused by translating a full-height view on entry. */
+.app:has(.view-loan), .app:has(.view-bank-details) { padding-bottom: 0; }
+.view.view-loan, .view.view-bank-details { animation: financeFrameFade .2s ease; }
+@keyframes financeFrameFade { from { opacity: 0; } to { opacity: 1; } }
+@media (min-width: 1024px) {
+  .view-loan .loan-scroll, .view-bank-details .bank-details-scroll { padding-bottom: 24px; }
+}

@@ -142,8 +142,8 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       </div>
       {!investment && (
         <div className="hint">
-          This also records your first value check-in, dated to the start
-          date below.
+          This also records your first value check-in, dated to the selected
+          start date.
         </div>
       )}
 
