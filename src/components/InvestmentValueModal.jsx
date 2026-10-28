@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import { CurrencyCtx } from "../context.js";
 import Sheet from "./Sheet.jsx";
+import {validDate} from "../utils/dateInput.js";
 import AmountInput from "./AmountInput.jsx";
 
 export default function InvestmentValueModal({
@@ -22,7 +23,7 @@ export default function InvestmentValueModal({
   });
   const [note, setNote] = useState(valuation?.note || "");
 
-  const valid = value && +value >= 0 && date;
+  const valid = value && Number.isFinite(+value) && +value >= 0 && validDate(date);
 
   const handleSave = () => {
     if (!valid) return;

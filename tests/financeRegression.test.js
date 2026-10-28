@@ -35,3 +35,27 @@ test('amount input accepts cents and rejects invisible precision or non-finite v
  for(const value of ['', '.', '0','0.00','0.01','1234567.89'])assert.equal(isValidMoneyDraft(value),true,value);
  for(const value of ['1.234','Infinity','NaN','-1','1e5','1,000','9'.repeat(400)])assert.equal(isValidMoneyDraft(value),false,value);
 });
+
+
+import {elapsedInstallments, validInstallmentMonths} from '../src/utils/installments.js';
+test('future installment plans have zero billed months when edited',()=>{
+ assert.equal(elapsedInstallments({startMonth:'2026-12',totalMonths:3},'2026-10'),0);
+ assert.equal(elapsedInstallments({startMonth:'2026-10',totalMonths:3},'2026-10'),1);
+ assert.equal(elapsedInstallments({startMonth:'2025-10',totalMonths:3},'2026-10'),3);
+});
+test('installment durations enforce UI limits while preserving existing long plans',()=>{
+ for(const n of [0,1,1.5,121,Infinity])assert.equal(validInstallmentMonths(n),false);
+ assert.equal(validInstallmentMonths(120),true);
+ assert.equal(validInstallmentMonths(1,1,3),true);
+ assert.equal(validInstallmentMonths(2,3,4),false);
+ assert.equal(validInstallmentMonths(150,20,150),true);
+ assert.equal(validInstallmentMonths(151,20,150),false);
+});
+
+import {validDate,validMonth} from '../src/utils/dateInput.js';
+test('date and month inputs reject empty or impossible values before recording money',()=>{
+ for(const date of ['', '2026-02-30','2026-13-01','0000-01-01',undefined])assert.equal(validDate(date),false);
+ for(const date of ['2024-02-29','2026-10-29'])assert.equal(validDate(date),true);
+ for(const month of ['', '2026-00','2026-13','0000-01'])assert.equal(validMonth(month),false);
+ assert.equal(validMonth('2026-12'),true);
+});

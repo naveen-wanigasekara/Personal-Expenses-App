@@ -78,6 +78,9 @@ import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
+import {validMonth} from "../utils/dateInput.js";
+import {elapsedInstallments, validInstallmentMonths} from "../utils/installments.js";
+
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
   // sessionStorage is what lets the app land back on the same tab instead
@@ -802,6 +805,10 @@ export default function MainApp({ user }) {
 
   const saveInstallmentPlan = useCallback(
     async (planData) => {
+      if (!validInstallmentMonths(+planData.totalMonths) || !validMonth(planData.startMonth) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
+        showError("Enter a valid installment amount and a period from 2 to 120 months.");
+        return;
+      }
       const planId = `plan_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const newPlan = {
         id: planId,
@@ -939,9 +946,12 @@ export default function MainApp({ user }) {
 
       const currentMk = monthKey(new Date());
       const [sy, sm] = plan.startMonth.split("-").map(Number);
-      const [cy, cm] = currentMk.split("-").map(Number);
-      const paid = Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
-      const newTotalMonths = Math.max(+updates.totalMonths, paid);
+      const paid = elapsedInstallments(plan, currentMk);
+      if (!validInstallmentMonths(+updates.totalMonths, paid, plan.totalMonths) || !Number.isFinite(+updates.monthlyAmount) || +updates.monthlyAmount <= 0) {
+        showError("Enter a valid installment amount and duration.");
+        return;
+      }
+      const newTotalMonths = +updates.totalMonths;
 
       const scheduleChanged =
         +updates.monthlyAmount !== plan.monthlyAmount ||

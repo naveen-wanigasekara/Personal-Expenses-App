@@ -102,7 +102,7 @@ export default function InvestmentDetailView({
             </div>
           </div>
           <div className="ct-vis-right">
-            <div className="ct-vis-label-sm">{isFd ? "Matures" : "Since"}</div>
+            <div className="ct-vis-label-sm">{isFd ? (fdInfo.isMatured ? "Matured on" : "Matures") : "Since"}</div>
             <div className="ct-vis-val-sm">
               {isFd ? fmtDate(fdInfo.maturityDate) : startLabel}
             </div>

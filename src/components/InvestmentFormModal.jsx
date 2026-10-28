@@ -7,6 +7,7 @@ import {
   getPayoutFrequency,
 } from "../utils/investmentCalc.js";
 import Sheet from "./Sheet.jsx";
+import {validDate} from "../utils/dateInput.js";
 import AmountInput from "./AmountInput.jsx";
 
 const INVESTMENT_TYPES = [
@@ -52,7 +53,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
     name.trim() &&
     initialAmount &&
     Number.isFinite(+initialAmount) && +initialAmount > 0 &&
-    startDate &&
+    validDate(startDate) &&
     (!isFd || (Number.isFinite(+interestRate) && +interestRate > 0 && Number.isSafeInteger(+tenureMonths) && +tenureMonths > 0 && Number.isFinite(+initialAmount * +interestRate * +tenureMonths)));
 
   const handleSave = () => {

@@ -14,6 +14,8 @@ import { getCat } from "../constants/categories.js";
 import { fmtCompact } from "../utils/format.js";
 import { loadLastCategory, saveLastCategory } from "../utils/storage.js";
 import Sheet from "./Sheet.jsx";
+import {validDate, validMonth} from "../utils/dateInput.js";
+import {validInstallmentMonths} from "../utils/installments.js";
 import AmountInput from "./AmountInput.jsx";
 
 export default function AddModal({
@@ -121,8 +123,8 @@ export default function AddModal({
         !Number.isFinite(+amount) ||
         +amount <= 0 ||
         !installLabel.trim() ||
-        !Number.isInteger(+installMonths) ||
-        +installMonths < 2 ||
+        !validInstallmentMonths(+installMonths) ||
+        !validMonth(installStartMonth) ||
         !cardId
       )
         return;
@@ -136,7 +138,7 @@ export default function AddModal({
       });
       return;
     }
-    if (!amount || !Number.isFinite(+amount) || +amount <= 0) return;
+    if (!amount || !Number.isFinite(+amount) || +amount <= 0 || !validDate(date)) return;
     if (isCardType && !cardId) return;
     const tx = { type, amount: +amount, note, date };
     if (type === "income") tx.category = category;
@@ -157,10 +159,10 @@ export default function AddModal({
     ? amount &&
       +amount > 0 &&
       installLabel.trim() &&
-      Number.isInteger(+installMonths) &&
-      +installMonths >= 2 &&
+      validInstallmentMonths(+installMonths) &&
+      validMonth(installStartMonth) &&
       cardId
-    : amount && +amount > 0 && (!isCardType || cardId);
+    : amount && +amount > 0 && validDate(date) && (!isCardType || cardId);
 
   // Installment limit warning
   const selectedCard = cards.find((c) => c.id === cardId);
