@@ -19,3 +19,8 @@
 .loan-error { color: var(--danger); font-size: 12px; line-height: 1.5; margin-top: 12px; }
 @media (min-width: 768px) { .loan-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
 @media (min-width: 1024px) { .view.view-loan { height: calc(100dvh - 69px); } .loan-scroll { padding-top: 32px; } }
+
+.loan-totals { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-2); }
+.loan-totals > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.loan-totals dt { color: var(--ink-soft); font-size: 13px; }
+.loan-totals dd { color: var(--ink); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; max-width: 100%; }

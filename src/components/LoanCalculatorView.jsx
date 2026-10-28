@@ -3,7 +3,7 @@ import { Bell, Menu, RefreshCw, Calculator } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import AmountInput from "./AmountInput.jsx";
 import { fmt } from "../utils/format.js";
-import { loanMonths, monthlyInstallment } from "../utils/loanCalc.js";
+import { loanMonths, loanEstimate } from "../utils/loanCalc.js";
 
 export default function LoanCalculatorView({
   onOpenMenu, onOpenNotifications, notifCount, showQuickRefresh, onQuickRefresh,
@@ -15,7 +15,8 @@ export default function LoanCalculatorView({
   const [unit, setUnit] = useState("years");
   const months = loanMonths(Number(period), unit);
   const complete = amount !== "" && interest !== "" && period !== "";
-  const payment = complete ? monthlyInstallment(Number(amount), Number(interest), months) : null;
+  const estimate = complete ? loanEstimate(Number(amount), Number(interest), months) : null;
+  const payment = estimate?.installment ?? null;
   const error = complete && payment === null
     ? "Enter a positive loan amount, a non-negative interest rate, and a period in whole months."
     : null;
@@ -64,6 +65,9 @@ export default function LoanCalculatorView({
             {payment !== null ? <>
               <div className="loan-payment"><span>{currency}</span> {fmt(payment)}</div>
               <p className="loan-result-detail">per month for {months} {months === 1 ? "month" : "months"}</p>
+              <dl className="loan-totals">
+                <div><dt>Total interest</dt><dd>{currency} {fmt(estimate.totalInterest)}</dd></div>
+              </dl>
             </> : <p className="loan-empty">Enter your loan details to see the installment.</p>}
           </div>
         </div>

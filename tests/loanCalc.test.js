@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loanMonths, monthlyInstallment } from "../src/utils/loanCalc.js";
+import { loanMonths, monthlyInstallment, loanEstimate } from "../src/utils/loanCalc.js";
 
 test("known fixed-rate monthly installment", () => {
   assert.ok(Math.abs(monthlyInstallment(100000, 12, 12) - 8884.878867834166) < 1e-7);
@@ -35,4 +35,27 @@ test("converts years and months, including fractional years", () => {
   for (const [period, unit] of [[0, "years"], [-1, "months"], [1.5, "months"], [1, "weeks"], [Infinity, "months"], [1.1, "years"]]) {
     assert.equal(loanMonths(period, unit), null);
   }
+});
+
+test("total interest agrees with the interest accrued across the loan", () => {
+  const principal = 100000;
+  const rate = 12;
+  const months = 12;
+  const estimate = loanEstimate(principal, rate, months);
+  assert.ok(Math.abs(estimate.totalInterest - 6618.546414009993) < 1e-6);
+  let balance = principal;
+  let accruedInterest = 0;
+  for (let month = 0; month < months; month++) {
+    const interest = balance * rate / 1200;
+    accruedInterest += interest;
+    balance += interest - estimate.installment;
+  }
+  assert.ok(Math.abs(accruedInterest - estimate.totalInterest) < 1e-6);
+  // Display rounding must not compound into the total interest calculation.
+  assert.notEqual(estimate.totalInterest, 8884.88 * months - principal);
+});
+test("zero-interest totals are exactly zero and invalid estimates stay hidden", () => {
+  assert.deepEqual(loanEstimate(100000, 0, 3), { installment: 100000 / 3, totalInterest: 0 });
+  assert.equal(loanEstimate(100000, -12, 12), null);
+  assert.equal(loanEstimate(100000, 12, null), null);
 });

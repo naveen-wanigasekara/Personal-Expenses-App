@@ -20,3 +20,11 @@ export function loanMonths(period, unit) {
   return Number.isSafeInteger(rounded) && rounded > 0 && Math.abs(months - rounded) < 1e-8
     ? rounded : null;
 }
+
+/** Totals use the unrounded payment; round only when displaying currency. */
+export function loanEstimate(principal, annualRate, months) {
+  const installment = monthlyInstallment(principal, annualRate, months);
+  if (installment === null) return null;
+  const totalInterest = annualRate === 0 ? 0 : Math.max(0, installment * months - principal);
+  return Number.isFinite(totalInterest) ? { installment, totalInterest } : null;
+}

@@ -376,4 +376,4 @@ Run theme behavior checks with `npm test`.
 
 ### Loan calculator
 
-Open **Loan Calculator**, directly below **Investments** in the mobile menu or desktop sidebar. Enter the loan amount, annual interest rate, and repayment period in years or months to see the estimated monthly installment. Uses fixed-rate reducing-balance repayments at month end, supports zero interest, and excludes lender fees and insurance. Calculations do not create transactions or loan records.
+Open **Loan Calculator**, directly below **Investments** in the mobile menu or desktop sidebar. Enter the loan amount, annual interest rate, and repayment period in years or months to see the estimated monthly installment and total interest over the loan term. Uses fixed-rate reducing-balance repayments at month end, supports zero interest, and excludes lender fees and insurance. Calculations do not create transactions or loan records.
