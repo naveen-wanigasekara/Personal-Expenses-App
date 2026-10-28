@@ -9,3 +9,7 @@ export function validInstallmentMonths(months, billed = 0, existingTotal = 0) {
   const maximum = Math.max(120, existingTotal);
   return Number.isSafeInteger(months) && months >= minimum && months <= maximum;
 }
+// A descriptive edit covers every month unless future rows are being rebuilt.
+export function installmentMetadataTargets(rows, currentMonth, scheduleChanged) {
+  return scheduleChanged ? rows.filter(row => monthKey(row.date) <= currentMonth) : rows;
+}

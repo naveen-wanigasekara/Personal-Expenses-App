@@ -59,3 +59,11 @@ test('date and month inputs reject empty or impossible values before recording m
  for(const month of ['', '2026-00','2026-13','0000-01'])assert.equal(validMonth(month),false);
  assert.equal(validMonth('2026-12'),true);
 });
+
+import {installmentMetadataTargets} from '../src/utils/installments.js';
+test('installment label/category edits persist across future rows without changing billed amounts',()=>{
+ const rows=[{id:'past',date:'2026-10-01',amount:15},{id:'future',date:'2026-11-01',amount:15}];
+ assert.deepEqual(installmentMetadataTargets(rows,'2026-10',false).map(row=>row.id),['past','future']);
+ assert.deepEqual(installmentMetadataTargets(rows,'2026-10',true).map(row=>row.id),['past']);
+ assert.equal(rows[0].amount,15);
+});

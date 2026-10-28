@@ -79,7 +79,7 @@ const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
 import {validMonth} from "../utils/dateInput.js";
-import {elapsedInstallments, validInstallmentMonths} from "../utils/installments.js";
+import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets} from "../utils/installments.js";
 
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
@@ -1024,7 +1024,7 @@ export default function MainApp({ user }) {
         });
         if (metaChanged) {
           await Promise.all(
-            pastTxs.map((t) =>
+            installmentMetadataTargets(planTxs, currentMk, scheduleChanged).map((t) =>
               updateTransaction(t.id, {
                 category: updates.category,
                 note: updates.label,
