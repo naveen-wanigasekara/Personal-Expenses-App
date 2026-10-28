@@ -30,8 +30,8 @@ test("the first-paint script and runtime resolution agree for every preference",
       const env = fixture(saved, systemDark);
       vm.runInNewContext(bootScript, env);
       assert.equal(env.root.dataset.theme, resolveTheme(normalizeTheme(saved), systemDark));
-      assert.equal(env.root.style.colorScheme, env.root.dataset.theme);
-      assert.equal(env.metas['meta[name="color-scheme"]'], env.root.dataset.theme);
+      assert.equal(env.root.style.colorScheme, env.root.dataset.theme === "light" ? "only light" : "dark");
+      assert.equal(env.metas['meta[name="color-scheme"]'], env.root.dataset.theme === "light" ? "only light" : "dark");
       assert.equal(env.metas['meta[name="theme-color"]'], env.root.dataset.theme === "light" ? "#f3f7f5" : "#080f14");
     }
   }
@@ -48,10 +48,13 @@ test("runtime theme changes update native controls and browser chrome together",
   try {
     applyTheme("light");
     assert.equal(env.root.dataset.theme, "light");
-    assert.equal(env.root.style.colorScheme, "light");
+    assert.equal(env.root.style.colorScheme, "only light");
+    assert.equal(env.metas['meta[name="color-scheme"]'], "only light");
     assert.equal(env.metas['meta[name="theme-color"]'], "#f3f7f5");
     applyTheme("dark");
     assert.equal(env.metas['meta[name="theme-color"]'], "#080f14");
+    assert.equal(env.root.style.colorScheme, "dark");
+    assert.equal(env.metas['meta[name="color-scheme"]'], "dark");
   } finally { globalThis.document = previousDocument; }
   assert.equal(THEME_STORAGE_KEY, "ledger-theme-v1");
 });

@@ -18,10 +18,12 @@ export function resolveTheme(preference, systemDark) {
 }
 
 export function applyTheme(theme) {
+  // A plain light scheme still permits Android browser auto-darkening.
+  const colorScheme = theme === "light" ? "only light" : "dark";
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  document.documentElement.style.colorScheme = colorScheme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
     "content", theme === "light" ? "#f3f7f5" : "#080f14",
   );
-  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme);
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", colorScheme);
 }

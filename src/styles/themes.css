@@ -33,7 +33,8 @@
 
 /* Warm white surfaces, deep emerald accents, and readable semantic colors. */
 :root[data-theme="light"] {
-  color-scheme: light;
+  /* Honor the app selection instead of browser-generated auto dark colors. */
+  color-scheme: only light;
   --bg: #f3f7f5;
   --bg-2: #eaf1ed;
   --surface: #ffffff;
