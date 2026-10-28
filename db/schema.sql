@@ -141,8 +141,12 @@ create table if not exists public.user_settings (
   currency text,            -- encrypted: currency symbol string
   insights_layout text,     -- encrypted: [{ id, visible }, ...]
   custom_charts text,       -- encrypted: [chart config, ...]
+  bank_details text,        -- encrypted: saved bank account details
   updated_at timestamptz default now()
 );
+
+-- Keep existing installations compatible when this schema is re-applied.
+alter table public.user_settings add column if not exists bank_details text;
 
 -- ============================================================
 -- ROW-LEVEL SECURITY: users can only see/modify their own data

@@ -377,3 +377,10 @@ Run theme behavior checks with `npm test`.
 ### Loan calculator
 
 Open **Loan Calculator**, directly below **Investments** in the mobile menu or desktop sidebar. Enter the loan amount, annual interest rate, and repayment period in years or months to see the estimated monthly installment and total interest over the loan term. Uses fixed-rate reducing-balance repayments at month end, supports zero interest, and excludes lender fees and insurance. Calculations do not create transactions or loan records.
+
+
+### Saved bank details
+
+**Bank Details** appears directly below **Loan Calculator** in the mobile menu and desktop sidebar. Save one or more accounts using Bank, Branch, Account holder name, and Account number. Account numbers remain text so leading zeros are preserved. Each account has **Copy bank details**, Edit, and Delete controls. Copy produces a four-line text block; if automatic copying is unavailable, a selectable text area is shown. No messages are sent by the app.
+
+Before enabling saving, apply `db/bank_details_migration.sql` to the intended Supabase database. It only adds an encrypted-text `bank_details` column to `user_settings`; existing per-user RLS policies stay in place. The implementation uses the app's existing client-side encryption and its documented limitations. Reads and writes are account-scoped and only touch this column. The migration has been prepared but has not been applied by this change.

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   LineChart,
   Calculator,
+  Building2,
   User,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -60,6 +61,7 @@ import CardsView from "./CardsView.jsx";
 import BudgetView from "./BudgetView.jsx";
 import InvestmentsView from "./InvestmentsView.jsx";
 import LoanCalculatorView from "./LoanCalculatorView.jsx";
+import BankDetailsView from "./BankDetailsView.jsx";
 import UserView from "./UserView.jsx";
 import NavDrawer from "./NavDrawer.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
@@ -73,7 +75,7 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
-const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator"];
+const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
 export default function MainApp({ user }) {
@@ -1442,6 +1444,16 @@ export default function MainApp({ user }) {
               onQuickRefresh={handleQuickRefresh}
             />
           )}
+          {tab === "bank-details" && (
+            <BankDetailsView
+              userId={user.id}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
+            />
+          )}
           {tab === "budget" && (
             <BudgetView
               monthPlans={monthPlans}
@@ -1561,6 +1573,12 @@ export default function MainApp({ user }) {
                 label="Loan Calculator"
                 active={tab === "loan-calculator"}
                 onClick={() => setTab("loan-calculator")}
+              />
+              <NavBtn
+                icon={Building2}
+                label="Bank Details"
+                active={tab === "bank-details"}
+                onClick={() => setTab("bank-details")}
               />
               <NavBtn
                 icon={Target}

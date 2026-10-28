@@ -57,3 +57,12 @@ Added Loan Calculator directly below Investments in the mobile drawer and deskto
 Eleven tests pass, including six loan checks: reference installments, zero interest, amortization to zero, numerical stability, invalid inputs, and years/months conversion. The build and whitespace checks pass. Method reference: https://learn.microsoft.com/en-us/office/vba/api/Excel.WorksheetFunction.Pmt
 
 Live desktop/mobile browser verification remains pending: the agent's temporary Vercel preview access expired. Automatic approval review rejected revoking/regenerating the temporary preview share link because it changes access control without explicit authorization. No protection settings were changed. Temporary review pages have been removed from the final branch. No merge or production deployment was performed.
+
+
+## Bank Details feature
+
+Added the Bank Details tab below Loan Calculator in both navigation menus. It provides four text fields (bank, branch, account holder, account number), multiple saved accounts, edit/delete, formatted copy, copy feedback, and manual-copy fallback. Account numbers preserve leading zeros. Cloud saves use the existing client-side encryption and an account-owned column with existing RLS; read/save failures remain visible and do not clear saved records.
+
+Database activation is pending: `db/bank_details_migration.sql` adds `public.user_settings.bank_details text`. No database migration or permission change has been executed. The Supabase plugin was found and suggested but its connection is not confirmed. Until the migration is applied, the bank-details view displays an unavailable/retry state and does not allow saving. Other app views continue working.
+
+Automated tests cover formatting, leading zeros, required fields, encrypted persistence adapter behavior, per-user query scoping, edits/removal, failure/corruption handling, and clipboard success/denial. These use a mocked database adapter and do not prove live RLS enforcement; live database/browser checks remain pending access. No actual bank details were used, copied, or sent during development.
