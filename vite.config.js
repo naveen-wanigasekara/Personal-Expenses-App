@@ -5,7 +5,7 @@ export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
   plugins: [
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "icons/*"],
       manifest: {
         name: "Personal Expenses Tracker",

@@ -1,0 +1,8 @@
+{
+  "name": "deepmerge",
+  "version": "4.3.1-ledger.1",
+  "private": true,
+  "main": "index.cjs",
+  "license": "MIT",
+  "description": "Locally maintained deepmerge 4.3.1 security patch for build tooling only"
+}

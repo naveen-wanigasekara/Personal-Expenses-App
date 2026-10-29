@@ -1,6 +1,8 @@
 # Desktop UI-only release candidate
 
 Status: HOLD — owner has authorized deployment only after safety is verified.
+Current remaining gate: verified recovery backup and isolated restore; paid
+provider recovery setup requires a PM budget decision.
 Production remains unchanged because the verification gates below are unresolved.
 
 ## Scope
@@ -16,7 +18,8 @@ Phone and tablet styles below 1024px retain the production appearance.
 
 All existing production components, authentication, financial calculations,
 Supabase client, encryption, schema, settings, PWA manifest,
-service worker settings and storage code are unchanged. Build dependencies and
+cache rules and application storage code are unchanged. Worker activation now
+uses the existing refresh prompt instead of automatically interrupting open tabs. Build dependencies and
 the JSX compiler have been updated separately on this branch to address the
 failed audit; this is no longer a stylesheet-only repository diff. No migration,
 reset, new encryption keys, authentication setting changes or database writes
@@ -28,7 +31,7 @@ included. No other branch should be merged as part of this release.
 
 - `npm ci --ignore-scripts --no-fund --no-audit`: passed with the updated lockfile.
 - `npm run build`: passed, including the existing Workbox PWA generation.
-- `node --test tests/desktopRelease.test.js`: nine tests passed. They check all
+- `node --test tests/desktopRelease.test.js`: 12 tests passed. They check all
   existing application/data files byte-for-byte against production (except the
   exact stylesheet import), desktop-only CSS boundaries including root variables,
   Customize stacking, dialog/chart sizing, production client version/integrity
@@ -62,7 +65,8 @@ included. No other branch should be merged as part of this release.
 
 ## Before production
 
-1. Resolve the remaining build-chain dependency audit without bypassing its gate.
+1. DONE: resolve the build-chain audit through a tested local security patch;
+   the unchanged strict audit gate now passes with zero advisories.
 2. Complete real browser checks at phone/tablet widths below 1024px and desktop
    widths 1024/1280/1440/1920px: dashboard, customized/reordered sections,
    charts, ledger, budget, cards/investment master-detail, settings and long
@@ -80,8 +84,8 @@ included. No other branch should be merged as part of this release.
    user writes may change counts; aggregate counts alone cannot prove integrity.
 
 This CSS-only release requires no stored-record conversion, so reverting its
-frontend remains compatible with the existing database. Existing auto-update
-behavior is unchanged; a reload can still interrupt unsaved form input. No
+frontend remains compatible with the existing database. The worker now waits for the existing Refresh action instead of automatically
+reloading active tabs. Users must finish unsaved work before clicking Refresh. No
 zero-risk/no-disruption guarantee is made.
 
 ## Separate security release — mandatory prerequisites
@@ -150,3 +154,99 @@ This does not prove full data integrity or successful create/edit/delete flows.
 No production finance/settings records were written, deleted, migrated or reset.
 No complete mobile/multi-viewport browser test, backup or restore rehearsal has
 been completed. Production deployment remains on hold.
+
+
+## Final preparation follow-up — 2026-10-29
+
+### Dependency blocker resolved
+
+The remaining GHSA-gcqx-w48m-w2h4 build-chain issue has no upstream fixed release.
+A clearly identified local MIT-licensed deepmerge 4.3.1 fork is now pinned under
+`vendor/deepmerge`, with its original source hash and license retained. The patch
+rejects prototype control keys on BOTH source and target copy paths. The original
+null-prototype-input proof reproduces poisoning; the patched version blocks it.
+Tests cover poisoned source/target/nested inputs, normal options, array merges,
+symbols, special values, cloning and custom merge callbacks. This is a real local
+patch, not an advisory suppression or a claimed upstream release. Future upstream
+updates require review so the maintained fork can be removed safely.
+
+Clean install, production/PWA build, all 12 focused tests and the unchanged strict
+`npm audit --audit-level=low` gate pass (zero reported advisories). Browser JS/CSS
+asset hashes remain identical to the previously visually tested contrast build;
+the patched merge is build-only. This does not imply comprehensive security.
+
+### Responsive and synthetic workflow checks
+
+An isolated local fixture rendered the actual baseline application components
+and candidate stylesheet side by side. The entire Supabase module was aliased to
+in-memory synthetic records, with no production URL/key or database connection.
+The fixture is outside the repository and is not part of the release.
+
+- 24 mobile/tablet comparisons: six screens (Insights, Ledger, Cards, Profile,
+  Budget, Investments) at 390, 412, 768 and 1023 CSS pixels. Element geometry and
+  14 computed layout/typography/color properties match the production baseline;
+  no candidate horizontal viewport overflow. Animations/transitions were disabled
+  equally in both fixture frames to compare steady-state layout rather than
+  differing animation timing. The initial card comparison mismatch disappeared
+  after this normalization; no mobile stylesheet change was needed.
+- 20 desktop checks: five screens (Insights, Ledger, Cards, Budget, Investments)
+  at 1024, 1280, 1440 and 1920 CSS pixels. No horizontal viewport overflow. Bar
+  chart height is 210px at laptop widths and 240px at 1920px.
+- Phone workflow at 390px: created a synthetic transaction for 123.45, found it
+  through search, edited it to 199.95, saved and verified the updated display,
+  then deleted it and verified the empty result/count returned to the fixture's
+  two baseline transactions. These operations touched only in-memory fixture data.
+
+These iframe-based browser checks verify responsive CSS and real component
+interactions. They do not emulate a physical mobile keyboard, prove server write
+behavior or replace the previously completed hosted read-only checks.
+
+### Recovery remains a release gate
+
+No production backup, restore, schema change, authentication-setting change or
+financial/settings record mutation has been performed. The complete provider
+backup/export connection is not available through the current connected tools.
+An ad-hoc row export is not being substituted for a complete recovery backup.
+The Free organization contains both expenses-app and dev-expense-app.
+
+Provider-supported options:
+
+- Free: a full logical backup using an existing secure database connection,
+  including provider-supported role/schema/data export and a restore test.
+  That secure connection is not currently provisioned here; do not reset database
+  credentials or ask for passwords in chat to manufacture access.
+- Paid: organization Pro (base $25/month, one Micro project covered); with the
+  two existing projects, the baseline estimate is about $35/month before usage.
+  Daily backups retain seven days. A temporary new project for a restore drill
+  adds hourly compute and must be cost-approved before creating it. Native
+  restore-to-new-project copies database/Auth records and permissions; Storage,
+  Auth configuration/API keys and the app's separate encryption secret still
+  need explicit preservation/reconfiguration checks. PITR is not required for
+  this proposed daily-backup path and is not included in the estimate.
+
+References checked: https://supabase.com/pricing,
+https://supabase.com/docs/guides/platform/backups,
+https://supabase.com/docs/guides/platform/clone-project.
+
+A PM budget decision is needed before incurring paid backup/restore costs.
+Conditional deployment authorization is already granted; no repeat routine
+release approval is needed once the remaining safety conditions are verified.
+Until then: no merge or production deployment, and keep security PR #8 separate.
+
+
+### PWA update activation safeguard
+
+The installed app previously generated a skip-waiting worker, which could trigger
+its existing controller-change reload while a user was filling a form. The new
+build uses `registerType: prompt`. The generated worker listens for the existing
+SKIP_WAITING message, and no longer automatically claims active clients. The
+already-shipped PWABanners/usePWA code displays the existing refresh prompt and
+sends that message only on the user's Refresh action. A worker may also activate
+normally once old clients have closed. No mobile markup, layout, cache rules,
+manifest identity, financial logic or stored-record format changed.
+
+Generated-worker tests assert the message activation path and absence of automatic
+clientsClaim, and the exact configuration diff is checked. JS/CSS application
+asset hashes remain the same as the visually tested contrast build. Full physical
+installed-PWA cutover verification remains required before final rollout; this
+safeguard does not recover a draft if the user explicitly refreshes it.

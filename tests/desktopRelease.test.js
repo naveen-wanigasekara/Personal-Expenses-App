@@ -91,10 +91,11 @@ test('client package versions remain production-identical; only the audited Node
   }
 });
 
-test('PWA settings are identical; Vite changes only the JSX compiler and removes the old React build plugin', () => {
+test('PWA settings preserve identity/cache rules and enable consent-based activation', () => {
   const expected = live('vite.config.js')
     .replace('import react from "@vitejs/plugin-react";\n', '')
     .replace('    react(),\n', '')
+    .replace('registerType: "autoUpdate"', 'registerType: "prompt"')
     .replace('export default defineConfig({', 'export default defineConfig({\n  oxc: { jsx: { runtime: "automatic" } },');
   assert.equal(readFileSync('vite.config.js', 'utf8'), expected);
 });
@@ -129,7 +130,9 @@ test('built PWA retains its exact production install identity and settings', () 
   assert.equal(manifest.icons.length, 4);
   const sw = readFileSync('dist/sw.js', 'utf8');
   assert.match(sw, /skipWaiting/);
-  assert.match(sw, /clientsClaim/);
+  assert.match(sw, /SKIP_WAITING/);
+  assert.match(sw, /addEventListener\("message"/);
+  assert.doesNotMatch(sw, /\.clientsClaim\(\)/, 'new worker must not claim active clients automatically');
   for (const name of ['google-fonts-stylesheets', 'google-fonts-webfonts', 'supabase-api']) assert.ok(sw.includes(name));
 });
 

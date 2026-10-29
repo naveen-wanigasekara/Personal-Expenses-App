@@ -19,5 +19,5 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build
-      - run: node --test tests/desktopRelease.test.js
+      - run: node --test tests/*.test.js
       - run: npm audit --audit-level=low
