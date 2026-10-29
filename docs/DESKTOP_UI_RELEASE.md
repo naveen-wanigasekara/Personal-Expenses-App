@@ -28,16 +28,17 @@ included. No other branch should be merged as part of this release.
 
 - `npm ci --ignore-scripts --no-fund --no-audit`: passed with the updated lockfile.
 - `npm run build`: passed, including the existing Workbox PWA generation.
-- `node --test tests/desktopRelease.test.js`: eight tests passed. They check all
+- `node --test tests/desktopRelease.test.js`: nine tests passed. They check all
   existing application/data files byte-for-byte against production (except the
   exact stylesheet import), desktop-only CSS boundaries including root variables,
   Customize stacking, dialog/chart sizing, production client version/integrity
   compatibility, legacy encryption round trips and built PWA identity/settings.
 - These are source/build checks, not browser rendering or end-to-end tests.
   The previous redesign's browser tests do not validate this different base.
-  Fresh desktop/mobile visual and interaction testing is still required;
-  browser access was previously blocked by automatic approval review because
-  workspace credits were exhausted. No alternate browser path was used.
+  Desktop visual and read-only interaction checks have now resumed after
+  secure Vercel/Google and expense-app authentication. Mobile/multiple desktop
+  viewport checks and write workflows remain pending. The prior credit block
+  did not recur. No protection bypass/share link was created.
 - Build tooling now uses pinned Vite 8.3.5, vite-plugin-pwa 2.0.0 and PostCSS
   8.5.32 on Node 24. The superseded React build plugin was removed; Vite's native
   automatic JSX compiler is used. Production is already configured for Node 24.
@@ -110,3 +111,40 @@ Before that release:
   password-reset email delivery, session/MFA behavior and user workflows.
 - Present the rehearsal evidence and exact rollout/rollback sequence for a
   fresh explicit production approval. No schema reset/replacement is acceptable.
+
+
+## Authenticated browser follow-up — 2026-10-29
+
+Private release preview e0feb234 opened successfully after owner-approved Google
+sign-in and device verification. The expense app separately authenticated through
+its secure login prompt. Existing financial records, card balances, budget values,
+investment history and saved section visibility/order rendered successfully.
+
+Checks performed at the available 1363 x 936 desktop viewport:
+
+- Dashboard loaded with no horizontal viewport overflow.
+- Customize title/close button and complete dialog were visible above the sticky
+  header/sidebar; opening/closing did not change saved layout.
+- Ledger search displayed the empty result and clear restored the 113 visible
+  October transactions. No transaction was changed.
+- Cards and investments opened their existing master/detail views without
+  horizontal overflow; the card activity detail pane was scrollable.
+- Budget loaded the existing plan; Save fixed plan was reachable at the bottom
+  after scrolling/keyboard navigation. No budget input was changed or saved.
+- All five entry modes opened; Record stayed in the viewport. A synthetic amount
+  and note were entered only into an unsaved dialog; Record was never submitted
+  and the draft was discarded.
+- Account/settings opened read-only, displaying existing currency/account state.
+- Captured console errors from the browser extension/Google login were present,
+  but none of the captured errors were attributed to the preview app origin.
+  This is a scoped observation, not proof of error-free operation.
+
+One desktop issue was found: investment-card text was low contrast on a bright
+mint background. The desktop-only stylesheet now uses a darker green gradient
+and opaque light labels; a new test checks >=4.5:1 contrast at both endpoints.
+The fresh preview of that fix must be visually retested before release.
+
+This does not prove full data integrity or successful create/edit/delete flows.
+No production finance/settings records were written, deleted, migrated or reset.
+No complete mobile/multi-viewport browser test, backup or restore rehearsal has
+been completed. Production deployment remains on hold.

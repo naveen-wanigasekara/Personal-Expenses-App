@@ -132,3 +132,17 @@ test('built PWA retains its exact production install identity and settings', () 
   assert.match(sw, /clientsClaim/);
   for (const name of ['google-fonts-stylesheets', 'google-fonts-webfonts', 'supabase-api']) assert.ok(sw.includes(name));
 });
+
+
+test('desktop investment-card text has readable contrast against both gradient endpoints', () => {
+  let background;
+  tree.walkRules('.inv-visual', rule => rule.walkDecls('background', decl => { background = decl.value; }));
+  assert.equal(background, 'linear-gradient(135deg, #143c35, #1c5a47)');
+  const luminance = hex => {
+    const rgb = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255).map(v => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4);
+    return rgb[0]*.2126 + rgb[1]*.7152 + rgb[2]*.0722;
+  };
+  for (const text of ['#f1f8f5', '#b7e4d1']) for (const bg of ['#143c35','#1c5a47']) {
+    assert.ok((luminance(text)+.05)/(luminance(bg)+.05) >= 4.5);
+  }
+});
