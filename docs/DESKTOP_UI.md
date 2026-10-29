@@ -38,3 +38,14 @@ removed before publication; no demo route or authentication bypass is shipped.
 This verifies presentation with synthetic fixtures. It does not replace real
 account/data-flow security tests. Production release still requires the owner's
 separate approval.
+
+## Customize dialog follow-up
+
+The owner's desktop screenshot exposed a stacking-context issue missed by the
+synthetic entry-dialog check: Customize is nested inside `main.content`, unlike
+the app-level entry dialog. Its backdrop was trapped below the sticky header.
+At desktop widths only, content now rises above header/sidebar while it contains
+an open backdrop, then returns to its normal layer on close. Two focused tests
+cover the ancestor stacking contract at 1024/1366/1920px and unchanged mobile/
+tablet stacking at 390/768/1023px. Browser visual retesting remains limited by
+the previously reported workspace-credit approval failure.
