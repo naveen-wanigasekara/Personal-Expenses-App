@@ -171,3 +171,14 @@ in a hosted fixture, physical-device
 PWA/offline/private-cache and keyboard checks, provider password-reauthentication
 policy/rate-limit review, and GitHub branch protection verification. Local mocked
 tests and database role tests do not replace those checks or guarantee security.
+
+### Protected-preview PWA manifest
+
+The owner's Android Chrome screenshot showed installation disabled with a generic
+site icon. Vercel project inspection confirms authentication protects preview
+URLs. The manifest itself returns valid JSON through authenticated access, but
+the HTML link omitted `crossorigin="use-credentials"`, which authenticated
+manifest fetches require even on the same origin. The same-origin link now
+includes it. Deployment protection and application data access are unchanged.
+An Android installation retry is still required; this change does not prove
+WebAPK creation or physical-device installation succeeded.
