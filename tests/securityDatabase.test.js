@@ -34,6 +34,17 @@ const insert=(table,id,data)=>({table,op:'insert',id,data});
 const tx=(id,extra={})=>insert('transactions',id,{type:'income',amount:'enc2:test',date:'enc2:test',note:'enc2:test',...extra});
 const row=async(db,table,id)=>(await db.query(`select to_jsonb(r) as row from public.${table} r where id=$1`,[id])).rows[0]?.row;
 
+test('migration upgrades encrypted investment types while preserving transaction type identity',async(t)=>{
+  const db=await setup();t.after(()=>db.close());
+  await db.query("insert into public.investments(id,user_id,name,type,initial_amount,current_value) values('legacy-investment',$1,'enc2:name','Stocks','enc2:initial','enc2:current')",[A]);
+  await db.query("insert into public.transactions(id,user_id,type,amount,date,note) values('legacy-tx',$1,'income','enc2:amount','enc2:date','enc2:note')",[A]);
+  await as(db);
+  await rpc(db,[{table:'investments',op:'update',id:'legacy-investment',before:await row(db,'investments','legacy-investment'),data:{type:'enc2:stocks'}}],true);
+  assert.equal((await row(db,'investments','legacy-investment')).type,'enc2:stocks');
+  await db.exec('reset role');await db.query('update private.user_security set encryption_version=1 where user_id=$1',[A]);await as(db);
+  await assert.rejects(rpc(db,[{table:'transactions',op:'update',id:'legacy-tx',before:await row(db,'transactions','legacy-tx'),data:{type:'enc2:income'}}],true),/Migration may only change ciphertext/);
+});
+
 test('database security: owner boundaries, rollback, stale data, quotas, MFA and revocation',async(t)=>{
   const db=await setup(); t.after(()=>db.close());
   await as(db);

@@ -175,7 +175,7 @@ begin
       for field in select jsonb_object_keys(payload) loop
         if not (columns_by_table->t) ? field then raise exception 'Unsupported column' using errcode='22023'; end if;
         if operation='update' and field in ('id','user_id','month_key') then raise exception 'Record identity cannot change' using errcode='42501'; end if;
-        if migration and field in ('id','user_id','month_key','card_id','investment_id','installment_id','type','active') then raise exception 'Migration may only change ciphertext' using errcode='42501'; end if;
+        if migration and (field in ('id','user_id','month_key','card_id','investment_id','installment_id','active') or (field='type' and t<>'investments')) then raise exception 'Migration may only change ciphertext' using errcode='42501'; end if;
         if migration and payload->>field is not null and payload->>field not like 'enc2:%' then raise exception 'Invalid upgraded ciphertext' using errcode='22023'; end if;
       end loop;
       if payload ? 'user_id' and payload->>'user_id'<>uid::text then raise exception 'Record ownership cannot change' using errcode='42501'; end if;

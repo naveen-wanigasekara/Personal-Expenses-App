@@ -166,11 +166,10 @@ The enrolled account was also checked using hosted database role assertions:
 AAL1 could access neither records nor keys; AAL2 could read its own test records.
 Those assertions used synthetic claims and persisted no changes.
 
-Remaining before production release: recovery/email delivery, legacy-data upgrade
-in a hosted fixture, physical-device
-PWA/offline/private-cache and keyboard checks, provider password-reauthentication
-policy/rate-limit review, and GitHub branch protection verification. Local mocked
-tests and database role tests do not replace those checks or guarantee security.
+Reset-link delivery remains UNVERIFIED: the owner clarified that the provider's
+email rate limit was reached and asked to defer this test. Earlier statements
+that recovery worked must not be treated as evidence of delivered-link success.
+Do not increase email limits or repeatedly resend links merely to finish QA.
 
 ### Protected-preview PWA manifest
 
@@ -180,5 +179,37 @@ URLs. The manifest itself returns valid JSON through authenticated access, but
 the HTML link omitted `crossorigin="use-credentials"`, which authenticated
 manifest fetches require even on the same origin. The same-origin link now
 includes it. Deployment protection and application data access are unchanged.
-An Android installation retry is still required; this change does not prove
-WebAPK creation or physical-device installation succeeded.
+The owner subsequently confirmed mobile/PWA installation works after the fix.
+This verifies installation, not every offline, private-cache or keyboard scenario.
+
+### Final migration and settings review (2026-10-29)
+
+- The hosted fixture generated legacy AES-GCM and legacy plaintext values with
+  fresh synthetic keys, using the application's real upgrade and crypto code.
+  It covered 108 rows across all eight tables and 439 encrypted fields, split
+  into 100-row and 8-row batches. Local decryption confirmed exact round trips.
+- The first hosted run exposed a migration bug: the identity-field guard also
+  blocked `investments.type`, an encrypted field. The rule now allows that field
+  only for investments; transaction types and ownership/join fields remain
+  protected. A dedicated regression test covers both allowed and rejected cases.
+  The function correction was applied only to the isolated dev database.
+- The rerun passed incomplete-finalization rejection/rollback, actual hosted RPC
+  upgrades, exact ciphertext comparison, finalization, and an idempotent repeat.
+  All synthetic fixtures were rolled back. Cleanup queries found no fixture user
+  or transaction remaining, and no public application table lacks RLS.
+- Full build and test suite passed: 69 Node tests plus 11 mocked UI tests (80).
+- Supabase security advisor reports one warning: leaked-password protection is
+  disabled. The dashboard previously identified this as requiring an eligible
+  paid plan; no plan changes were made.
+- GitHub API reports `main.protected=false` and no repository rulesets. Add a
+  required-PR/review/test-and-audit rule and restrict force pushes/deletions before
+  production release. Existing workflow/CODEOWNERS files do not enforce this.
+- Dashboard sign-in expired. Final Auth password-reauthentication, JWT/session
+  duration, rate-limit and bot-protection settings could not be rechecked without
+  account authentication. Minimum length 12, confirmation and TOTP were verified
+  during setup; this does not establish the remaining settings.
+
+Remaining release checks: delivered recovery link and password update (after the
+email limit resets), Auth settings review, branch protection configuration, and
+remaining physical-device offline/cache/keyboard scenarios. These results do not
+guarantee security or authorize production deployment.
