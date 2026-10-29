@@ -318,6 +318,31 @@ html { color-scheme: dark; }
   .view-user .settings-menu-row > svg,
   .view-user .currency-picker { flex-shrink: 0; }
 }
+/* Safe, reachable headers for mobile card and investment details. */
+@media (max-width: 1023px) {
+  /* Detail pages replace the safe-area-aware list header. Reserve the same
+     status-bar space here so Back/month/Edit stay inside the touchable area
+     of an installed iOS PWA, and retain the controls while content scrolls. */
+  .view.view-card-detail, .view.view-investment-detail {
+    padding-top: 0;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .view-card-detail > .detail-head,
+  .view-investment-detail > .detail-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -18px 16px;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px 12px;
+    gap: 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-head > .back-btn, .detail-head > .detail-actions { flex-shrink: 0; }
+  .detail-head-title { min-width: 0; }
+}
+
 /* Keep the full category name and amount usable on narrow phones. */
 @media (max-width: 600px) {
   .cb-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
