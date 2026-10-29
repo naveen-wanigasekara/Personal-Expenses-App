@@ -50,16 +50,17 @@ export default function InvestmentDetailView({
   return (
     <div className="view view-investment-detail">
       <div className="detail-head">
-        <button className="back-btn" onClick={onBack}>
+        <button className="back-btn" onClick={onBack} aria-label="Back to investments">
           <ChevronLeft size={18} />
         </button>
         <div className="detail-head-title">{investment.name}</div>
         <div className="detail-actions">
-          <button className="icon-btn" onClick={onEdit}>
+          <button className="icon-btn" onClick={onEdit} aria-label="Edit investment">
             <Edit2 size={14} />
           </button>
           <button
             className="icon-btn danger"
+            aria-label="Delete investment"
             onClick={() => {
               if (
                 confirm(
@@ -101,7 +102,7 @@ export default function InvestmentDetailView({
             </div>
           </div>
           <div className="ct-vis-right">
-            <div className="ct-vis-label-sm">{isFd ? "Matures" : "Since"}</div>
+            <div className="ct-vis-label-sm">{isFd ? (fdInfo.isMatured ? "Matured on" : "Matures") : "Since"}</div>
             <div className="ct-vis-val-sm">
               {isFd ? fmtDate(fdInfo.maturityDate) : startLabel}
             </div>
@@ -165,7 +166,7 @@ export default function InvestmentDetailView({
       {isFd && !fdInfo.isMatured && fdInfo.nextPayoutDate && (
         <div className="hint" style={{ marginBottom: 16 }}>
           Next payout: {fmtDate(fdInfo.nextPayoutDate)} — {CURRENCY}{" "}
-          {fmt(fdInfo.payoutPerPeriod)}
+          {fmt(fdInfo.nextPayoutAmount)}
         </div>
       )}
       {isFd && fdInfo.isMatured && (
@@ -240,6 +241,7 @@ export default function InvestmentDetailView({
                   </div>
                   <div className="notif-body">
                     <div className="notif-title">{label}</div>
+                    {v.note && <div className="notif-meta valuation-note">{v.note}</div>}
                     {delta != null && (
                       <div className="notif-meta">
                         <span className={delta >= 0 ? "in-color" : "out-color"}>

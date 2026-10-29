@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { isValidMoneyDraft } from "../utils/moneyInput.js";
 
 export default function AmountInput({
   value,
@@ -6,10 +7,11 @@ export default function AmountInput({
   placeholder,
   className,
   autoFocus,
+  ...inputProps
 }) {
   const fmtFull = (v) => {
     const n = Number(v);
-    if ((!v && v !== 0) || isNaN(n) || n === 0) return "";
+    if ((v === "" || v == null) || !Number.isFinite(n)) return "";
     const [i, d] = n.toFixed(2).split(".");
     return parseInt(i, 10).toLocaleString("en-US") + "." + d;
   };
@@ -28,6 +30,8 @@ export default function AmountInput({
 
   return (
     <input
+      aria-label="Amount"
+      {...inputProps}
       type="text"
       inputMode="decimal"
       className={className}
@@ -36,7 +40,7 @@ export default function AmountInput({
       autoFocus={autoFocus}
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, "");
-        if (!/^\d*\.?\d*$/.test(raw)) return;
+        if (!isValidMoneyDraft(raw)) return;
         setDisplay(fmtLive(raw));
         onChange(raw);
       }}
@@ -47,9 +51,9 @@ export default function AmountInput({
       onBlur={(e) => {
         setFocused(false);
         const n = parseFloat(e.target.value.replace(/,/g, ""));
-        const formatted = !isNaN(n) && n !== 0 ? fmtFull(n) : "";
+        const formatted = Number.isFinite(n) ? fmtFull(n) : "";
         setDisplay(formatted);
-        const next = !isNaN(n) && n !== 0 ? String(n) : "";
+        const next = Number.isFinite(n) ? String(n) : "";
         // Only propagate if the numeric value actually changed. This is
         // purely a reformat-on-blur (e.g. "500" -> "500.00") when nothing
         // was typed, but callers use onChange to detect genuine edits —

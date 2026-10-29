@@ -9,6 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LineChart,
+  Calculator,
+  Building2,
   User,
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -21,6 +23,7 @@ import {
   normalizeUserCats,
 } from "../constants/categories.js";
 import {
+  commitFinanceChanges,
   fetchTransactions,
   insertTransaction,
   updateTransaction,
@@ -31,21 +34,12 @@ import {
   fetchBudgets,
   upsertBudget,
   fetchInstallmentPlans,
-  insertInstallmentPlan,
-  updateInstallmentPlan,
   fetchRecurringReminders,
   insertRecurringReminder,
   updateRecurringReminder,
   deleteRecurringReminder,
   fetchInvestments,
-  insertInvestment,
-  updateInvestment,
-  deleteInvestment,
   fetchInvestmentValuations,
-  insertInvestmentValuation,
-  updateInvestmentValuation,
-  deleteInvestmentValuation,
-  deleteInvestmentValuationsFor,
   fetchUserSettings,
   upsertUserSettings,
 } from "../lib/supabase.js";
@@ -58,6 +52,8 @@ import HomeView from "./HomeView.jsx";
 import CardsView from "./CardsView.jsx";
 import BudgetView from "./BudgetView.jsx";
 import InvestmentsView from "./InvestmentsView.jsx";
+import LoanCalculatorView from "./LoanCalculatorView.jsx";
+import BankDetailsView from "./BankDetailsView.jsx";
 import UserView from "./UserView.jsx";
 import NavDrawer from "./NavDrawer.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
@@ -71,8 +67,11 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
-const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user"];
+const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
+
+import {validMonth} from "../utils/dateInput.js";
+import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets} from "../utils/installments.js";
 
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
@@ -84,6 +83,11 @@ export default function MainApp({ user }) {
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
   const [loaded, setLoaded] = useState(false);
+  const [mustReload, setMustReload] = useState(false);
+  const commitBatch = useCallback(async (changes) => {
+    try { return await commitFinanceChanges(changes); }
+    catch (error) { setMustReload(true); throw error; }
+  }, []);
   const [transactions, setTransactions] = useState([]);
   const [cards, setCards] = useState([]);
   const [monthPlans, setMonthPlans] = useState({});
@@ -129,12 +133,12 @@ export default function MainApp({ user }) {
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
-  const { isStandalone } = usePWA();
+  const { isStandalone, updateApp } = usePWA();
 
   const handleQuickRefresh = useCallback(() => {
     sessionStorage.setItem(LAST_TAB_KEY, tab);
-    window.location.reload();
-  }, [tab]);
+    void updateApp();
+  }, [tab, updateApp]);
 
   // Categories/currency/insights-layout/custom-charts are database-only —
   // every change here is optimistic (updates local state immediately for a
@@ -372,6 +376,7 @@ export default function MainApp({ user }) {
             investmentId: r.investment_id,
             value: +r.value,
             recordedDate: r.recorded_date,
+            note: r.note || "",
           })),
         );
 
@@ -549,9 +554,15 @@ export default function MainApp({ user }) {
         payout_frequency: investment.payoutFrequency,
         tenure_months: investment.tenureMonths,
       };
+      const valuationId = isNew ? crypto.randomUUID() : null;
+      const valuationRow = isNew ? { id: valuationId, user_id: user.id, investment_id: id,
+        value: investment.initialAmount, recorded_date: investment.startDate } : null;
       try {
-        if (isNew) await insertInvestment(dbRow);
-        else await updateInvestment(id, dbRow);
+        const { id: _id, user_id: _userId, ...updates } = dbRow;
+        await commitBatch(isNew ? [
+          { table: 'investments', op: 'insert', id, data: dbRow },
+          { table: 'investment_valuations', op: 'insert', id: valuationId, data: valuationRow },
+        ] : [{ table: 'investments', op: 'update', id, data: updates }]);
 
         setInvestments((prev) => {
           const next = {
@@ -575,15 +586,6 @@ export default function MainApp({ user }) {
         // Auto-create the starting valuation snapshot so the value-over-time
         // chart always has a clean first point.
         if (isNew) {
-          const valuationId = `val_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-          const valuationRow = {
-            id: valuationId,
-            user_id: user.id,
-            investment_id: id,
-            value: investment.initialAmount,
-            recorded_date: investment.startDate,
-          };
-          await insertInvestmentValuation(valuationRow);
           setInvestmentValuations((prev) => [
             ...prev,
             {
@@ -608,9 +610,9 @@ export default function MainApp({ user }) {
       setInvestments((p) => p.filter((i) => i.id !== id));
       setInvestmentValuations((p) => p.filter((v) => v.investmentId !== id));
       try {
-        await Promise.all([
-          deleteInvestment(id),
-          deleteInvestmentValuationsFor(id),
+        await commitBatch([
+          ...investmentValuations.filter((v) => v.investmentId === id).map((v) => ({ table: 'investment_valuations', op: 'delete', id: v.id })),
+          { table: 'investments', op: 'delete', id },
         ]);
       } catch (e) {
         setInvestments(prevInvestments);
@@ -640,13 +642,13 @@ export default function MainApp({ user }) {
 
       const nextForInvestment = [
         ...investmentValuations.filter((v) => v.investmentId === investmentId),
-        { id: valuationId, investmentId, value: +value, recordedDate: date },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
       ];
       const newCurrentValue = latestValuationValue(nextForInvestment);
 
       setInvestmentValuations((p) => [
         ...p,
-        { id: valuationId, investmentId, value: +value, recordedDate: date },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
       ]);
       setInvestments((p) =>
         p.map((i) =>
@@ -655,14 +657,11 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await insertInvestmentValuation({
-          id: valuationId,
-          user_id: user.id,
-          investment_id: investmentId,
-          value,
-          recorded_date: date,
-        });
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'insert', id: valuationId, data: {
+            id: valuationId, user_id: user.id, investment_id: investmentId, value, recorded_date: date, note: note || '' } },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -681,7 +680,7 @@ export default function MainApp({ user }) {
         .filter((v) => v.investmentId === investmentId)
         .map((v) =>
           v.id === valuationId
-            ? { ...v, value: +value, recordedDate: date }
+            ? { ...v, value: +value, recordedDate: date, note: note || "" }
             : v,
         );
       const newCurrentValue = latestValuationValue(nextForInvestment);
@@ -689,7 +688,7 @@ export default function MainApp({ user }) {
       setInvestmentValuations((p) =>
         p.map((v) =>
           v.id === valuationId
-            ? { ...v, value: +value, recordedDate: date }
+            ? { ...v, value: +value, recordedDate: date, note: note || "" }
             : v,
         ),
       );
@@ -700,11 +699,10 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await updateInvestmentValuation(valuationId, {
-          value,
-          recorded_date: date,
-        });
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'update', id: valuationId, data: { value, recorded_date: date, note: note || '' } },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -740,8 +738,10 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await deleteInvestmentValuation(valuationId);
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'delete', id: valuationId },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -753,7 +753,6 @@ export default function MainApp({ user }) {
 
   const setMonthPlan = useCallback(
     async (month, plan) => {
-      setMonthPlans((p) => ({ ...p, [month]: plan }));
       try {
         await upsertBudget({
           user_id: user.id,
@@ -763,8 +762,11 @@ export default function MainApp({ user }) {
           expense_total: plan.expense?.total || 0,
           expense_categories: plan.expense?.categories || {},
         });
+        setMonthPlans((p) => ({ ...p, [month]: plan }));
+        return true;
       } catch (e) {
         showError("Couldn't save budget.");
+        return false;
       }
     },
     [user.id],
@@ -772,7 +774,6 @@ export default function MainApp({ user }) {
 
   const saveFixedPlan = useCallback(
     async (plan) => {
-      setFixedPlan(plan);
       try {
         await upsertBudget({
           user_id: user.id,
@@ -782,8 +783,11 @@ export default function MainApp({ user }) {
           expense_total: plan.expense?.total || 0,
           expense_categories: plan.expense?.categories || {},
         });
+        setFixedPlan(plan);
+        return true;
       } catch (e) {
         showError("Couldn't save fixed plan.");
+        return false;
       }
     },
     [user.id],
@@ -791,6 +795,10 @@ export default function MainApp({ user }) {
 
   const saveInstallmentPlan = useCallback(
     async (planData) => {
+      if (!validInstallmentMonths(+planData.totalMonths) || !validMonth(planData.startMonth) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
+        showError("Enter a valid installment amount and a period from 2 to 120 months.");
+        return;
+      }
       const planId = `plan_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const newPlan = {
         id: planId,
@@ -830,58 +838,20 @@ export default function MainApp({ user }) {
       };
 
       try {
-        await insertInstallmentPlan({
-          id: planId,
-          user_id: user.id,
-          card_id: planData.cardId,
-          label: planData.label,
-          total_amount: newPlan.totalAmount,
-          monthly_amount: planData.monthlyAmount,
-          total_months: planData.totalMonths,
-          start_month: planData.startMonth,
-          category: planData.category,
-        });
-      } catch (e) {
+        await commitBatch([
+          { table: 'installment_plans', op: 'insert', id: planId, data: {
+            id: planId, user_id: user.id, card_id: planData.cardId, label: planData.label,
+            total_amount: newPlan.totalAmount, monthly_amount: planData.monthlyAmount,
+            total_months: planData.totalMonths, start_month: planData.startMonth, category: planData.category,
+          } },
+          ...txs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
+            id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
+            card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
+          } })),
+        ]);
+      } catch {
         rollbackLocal();
-        showError("Couldn't save installment plan. Try again.");
-        return;
-      }
-
-      // Use allSettled (not all) so a partial failure tells us exactly which
-      // transaction rows actually made it to the DB — otherwise a failure
-      // partway through would roll back local state while leaving the
-      // already-inserted rows (and the plan itself) orphaned server-side,
-      // only to silently reappear on the next reload.
-      const results = await Promise.allSettled(
-        txs.map((t) =>
-          insertTransaction({
-            id: t.id,
-            user_id: user.id,
-            type: t.type,
-            amount: t.amount,
-            category: t.category,
-            card_id: t.cardId,
-            note: t.note,
-            date: t.date,
-            installment_id: planId,
-          }),
-        ),
-      );
-
-      if (results.some((r) => r.status === "rejected")) {
-        rollbackLocal();
-        const succeededIds = txs
-          .filter((_, i) => results[i].status === "fulfilled")
-          .map((t) => t.id);
-        await Promise.allSettled(
-          succeededIds.map((id) => deleteTransaction(id)),
-        );
-        // Plans are never hard-deleted elsewhere in the app (see
-        // cancelInstallmentPlan) — mark inactive as best-effort cleanup.
-        await updateInstallmentPlan(planId, { active: false }).catch(
-          () => {},
-        );
-        showError("Couldn't save installment plan. Try again.");
+        showError("Couldn't confirm the installment save. Refresh your records.");
       }
     },
     [user.id],
@@ -903,8 +873,10 @@ export default function MainApp({ user }) {
         prev.map((p) => (p.id === planId ? { ...p, active: false } : p)),
       );
       try {
-        await Promise.all(futureTxIds.map((id) => deleteTransaction(id)));
-        await updateInstallmentPlan(planId, { active: false });
+        await commitBatch([
+          ...futureTxIds.map((id) => ({ table: 'transactions', op: 'delete', id })),
+          { table: 'installment_plans', op: 'update', id: planId, data: { active: false } },
+        ]);
       } catch (e) {
         setTransactions((prev) => [...removedTxs, ...prev]);
         setInstallmentPlans(prevPlans);
@@ -928,9 +900,12 @@ export default function MainApp({ user }) {
 
       const currentMk = monthKey(new Date());
       const [sy, sm] = plan.startMonth.split("-").map(Number);
-      const [cy, cm] = currentMk.split("-").map(Number);
-      const paid = Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
-      const newTotalMonths = Math.max(+updates.totalMonths, paid);
+      const paid = elapsedInstallments(plan, currentMk);
+      if (!validInstallmentMonths(+updates.totalMonths, paid, plan.totalMonths) || !Number.isFinite(+updates.monthlyAmount) || +updates.monthlyAmount <= 0) {
+        showError("Enter a valid installment amount and duration.");
+        return;
+      }
+      const newTotalMonths = +updates.totalMonths;
 
       const scheduleChanged =
         +updates.monthlyAmount !== plan.monthlyAmount ||
@@ -943,7 +918,6 @@ export default function MainApp({ user }) {
       const prevPlans = installmentPlans;
 
       const planTxs = transactions.filter((t) => t.installmentId === planId);
-      const pastTxs = planTxs.filter((t) => monthKey(t.date) <= currentMk);
       const oldFutureTxs = planTxs.filter((t) => monthKey(t.date) > currentMk);
 
       const newFutureTxs = [];
@@ -993,42 +967,21 @@ export default function MainApp({ user }) {
       });
 
       try {
-        await updateInstallmentPlan(planId, {
-          label: updatedPlan.label,
-          category: updatedPlan.category,
-          monthly_amount: updatedPlan.monthlyAmount,
-          total_months: updatedPlan.totalMonths,
-          total_amount: updatedPlan.totalAmount,
-          card_id: updatedPlan.cardId,
-        });
-        if (metaChanged) {
-          await Promise.all(
-            pastTxs.map((t) =>
-              updateTransaction(t.id, {
-                category: updates.category,
-                note: updates.label,
-              }),
-            ),
-          );
-        }
-        if (scheduleChanged) {
-          await Promise.all(oldFutureTxs.map((t) => deleteTransaction(t.id)));
-          await Promise.all(
-            newFutureTxs.map((t) =>
-              insertTransaction({
-                id: t.id,
-                user_id: user.id,
-                type: t.type,
-                amount: t.amount,
-                category: t.category,
-                card_id: t.cardId,
-                note: t.note,
-                date: t.date,
-                installment_id: planId,
-              }),
-            ),
-          );
-        }
+        const changes = [{ table: 'installment_plans', op: 'update', id: planId, data: {
+          label: updatedPlan.label, category: updatedPlan.category, monthly_amount: updatedPlan.monthlyAmount,
+          total_months: updatedPlan.totalMonths, total_amount: updatedPlan.totalAmount, card_id: updatedPlan.cardId,
+        } }];
+        if (metaChanged) changes.push(...installmentMetadataTargets(planTxs, currentMk, scheduleChanged).map((t) => ({
+          table: 'transactions', op: 'update', id: t.id, data: { category: updates.category, note: updates.label },
+        })));
+        if (scheduleChanged) changes.push(
+          ...oldFutureTxs.map((t) => ({ table: 'transactions', op: 'delete', id: t.id })),
+          ...newFutureTxs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
+            id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
+            card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
+          } })),
+        );
+        await commitBatch(changes);
       } catch (e) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
@@ -1237,6 +1190,8 @@ export default function MainApp({ user }) {
     };
   }, [transactions, viewMonth, allExpCats, allIncCats]);
 
+  if (mustReload) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
+
   if (!loaded) {
     return (
       <div className="app">
@@ -1431,6 +1386,25 @@ export default function MainApp({ user }) {
               onQuickRefresh={handleQuickRefresh}
             />
           )}
+          {tab === "loan-calculator" && (
+            <LoanCalculatorView
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
+            />
+          )}
+          {tab === "bank-details" && (
+            <BankDetailsView
+              userId={user.id}
+              onOpenMenu={() => setShowDrawer(true)}
+              onOpenNotifications={() => setShowNotifs(true)}
+              notifCount={notifCount}
+              showQuickRefresh={isStandalone}
+              onQuickRefresh={handleQuickRefresh}
+            />
+          )}
           {tab === "budget" && (
             <BudgetView
               monthPlans={monthPlans}
@@ -1544,6 +1518,18 @@ export default function MainApp({ user }) {
                 label="Investments"
                 active={tab === "investments"}
                 onClick={() => setTab("investments")}
+              />
+              <NavBtn
+                icon={Calculator}
+                label="Loan Calculator"
+                active={tab === "loan-calculator"}
+                onClick={() => setTab("loan-calculator")}
+              />
+              <NavBtn
+                icon={Building2}
+                label="Bank Details"
+                active={tab === "bank-details"}
+                onClick={() => setTab("bank-details")}
               />
               <NavBtn
                 icon={Target}

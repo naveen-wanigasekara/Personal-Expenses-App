@@ -1,3 +1,4 @@
+import SecuritySettings from "./SecuritySettings.jsx";
 import { useState } from "react";
 import {
   HelpCircle,
@@ -11,6 +12,7 @@ import {
   ChevronDown,
   CalendarClock,
 } from "lucide-react";
+import ThemePicker from "./ThemePicker.jsx";
 import { signOut } from "../lib/supabase.js";
 import { CURRENCIES } from "../constants/currencies.js";
 import Sheet from "./Sheet.jsx";
@@ -24,6 +26,7 @@ export default function SettingsModal({
   currency,
   onChangeCurrency,
 }) {
+  const [showSecurity, setShowSecurity] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const activeCurrency =
@@ -105,16 +108,20 @@ export default function SettingsModal({
         </div>
       </div>
 
+      <p className="hint">Display currency only. Existing amounts are not converted.</p>
+      <ThemePicker />
+
+      <button className="settings-menu-row" onClick={() => setShowSecurity(true)}><Lock size={16} /><span>Account security</span><ChevronRight size={15} /></button>
+      {showSecurity && <SecuritySettings onClose={() => setShowSecurity(false)} />}
       <div className="privacy-card">
         <div className="privacy-card-header">
           <Lock size={15} />
           <span>Privacy &amp; Security</span>
         </div>
         <p className="privacy-card-body">
-          Your financial data is end-to-end encrypted and securely stored in
-          the cloud, and only you can access it—we never share, sell, or read
-          your personal information, ensuring it remains 100% private with
-          secure cloud sync.
+          Financial details are encrypted in the app before cloud storage.
+          Account access rules keep each user's records separate. Use a
+          strong password and keep your devices secure.
         </p>
       </div>
 

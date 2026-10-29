@@ -4,7 +4,7 @@ Step-by-step instructions to get the app running locally and deployed to product
 
 ## What you'll need
 
-- Node.js 18+ ([download](https://nodejs.org))
+- Node.js 24.15+ ([download](https://nodejs.org))
 - A free Supabase account ([signup](https://supabase.com))
 - A text editor (VS Code recommended)
 
@@ -56,62 +56,25 @@ This creates three tables (`transactions`, `cards`, `budgets`) with Row-Level Se
 
 ---
 
-## Step 5 — Generate an encryption secret
+## Step 5 — Secure backend and server setup
 
-All financial data is encrypted in the browser with AES-GCM-256 before it is stored. The encryption key is derived from your user ID combined with this secret.
+Follow [the security rollout checklist](docs/SECURITY_HARDENING.md) before running
+this branch. It requires an isolated Supabase project, the transactional database
+security script, server-only encryption keys, Auth settings and a Node endpoint.
+Do not connect previews to the production database.
 
-Generate a strong random secret:
+Copy `.env.example` to `.env.local` and supply the isolated project's values.
+Use a Vercel development environment to run both Vite and `/api/crypto-key`;
+`npm run dev` alone serves the frontend and cannot unlock financial data.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
-
-Copy the output — you'll need it in the next step and again when you deploy.
-
-> **Important:** this secret must stay the same for the lifetime of the database. If you change it, all existing encrypted rows become unreadable. Never commit it to source control.
-
----
-
-## Step 6 — Configure the environment
-
-1. Clone the repo and install dependencies:
-
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/personal-expenses-tracker.git
-   cd personal-expenses-tracker
-   npm install
-   ```
-
-2. Create your local environment file:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Open `.env.local` and fill in the three values:
-
-   ```
-   VITE_SUPABASE_URL=https://abcdefgh.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGci...
-   VITE_ENCRYPTION_SECRET=your-generated-secret-here
-   ```
-
----
-
-## Step 7 — Run locally
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173). You should see the sign-in screen.
+Run `npm ci --ignore-scripts` and `npm test` to build and run local tests.
 
 ---
 
 ## Step 8 — Create your first account
 
 1. Click **Sign up**
-2. Enter an email and password (minimum 6 characters)
+2. Enter an email and password (minimum 12 characters)
 3. If email confirmation is off, you're logged in immediately
 4. If email confirmation is on, check your inbox and click the confirmation link
 
@@ -119,28 +82,12 @@ Open [http://localhost:5173](http://localhost:5173). You should see the sign-in 
 
 ## Step 9 — Deploy
 
-### Option A: Vercel (recommended, free)
+Use Vercel with its Node function support. Configure every value from
+`.env.example` for the isolated QA project, apply the SQL and Auth configuration,
+and follow [the rollout checklist](docs/SECURITY_HARDENING.md). A static-only
+upload of `dist/` cannot serve the authenticated key endpoint.
 
-1. Push your code to a GitHub repository
-2. Go to [vercel.com](https://vercel.com) and sign in
-3. Click **Add New → Project** and import your repo
-4. In **Environment Variables**, add all three:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_ENCRYPTION_SECRET` ← use the same value as in your `.env.local`
-5. Click **Deploy** — you'll get a URL like `your-app.vercel.app`
-
-### Option B: Netlify
-
-Same workflow — connect GitHub, add the three env variables under **Site settings → Environment variables**, deploy.
-
-### Option C: Build and host anywhere
-
-```bash
-npm run build
-```
-
-The `dist/` folder is a self-contained static site. Upload it to any web host (Cloudflare Pages, S3 + CloudFront, GitHub Pages with a custom domain, etc.).
+Production release and database migration need separate approval after hosted QA.
 
 ---
 
@@ -151,7 +98,7 @@ The `dist/` folder is a self-contained static site. Upload it to any web host (C
 | Anon key           | Safe to expose in the frontend — that's what it's designed for. It only grants access to rows RLS permits.                       |
 | Service role key   | **Never** put this in frontend code. It bypasses RLS.                                                                            |
 | Encryption secret  | Must be kept secret and never committed. Rotate only if you are prepared to re-encrypt all existing data.                        |
-| RLS                | Row-Level Security in `db/schema.sql` ensures users can never access each other's rows, even if someone probes the API directly. |
+| RLS                | Row-Level Security in `db/schema.sql` restricts ordinary API access to the owner; privileged administrators and service-role credentials bypass RLS. |
 | Email confirmation | Turn it on in Supabase before going public to prevent abuse.                                                                     |
 
 ---
@@ -196,7 +143,7 @@ personal-expenses-tracker/
 
 **Sign in succeeds but data looks wrong / garbled**
 
-- The `VITE_ENCRYPTION_SECRET` in your environment does not match the one used when the data was originally written
+- The `LEGACY_ENCRYPTION_SECRET` in your environment does not match the one used when the data was originally written
 - Make sure it's exactly the same string as when you first set up the database
 
 **Can't sign up**

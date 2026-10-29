@@ -1,0 +1,322 @@
+/* Premium fintech visual refresh — presentation only; no financial logic changes. */
+:root {
+  --bg: #080f14;
+  --bg-2: #101b22;
+  --surface: #15232a;
+  --surface-2: #1b2d34;
+  --surface-3: #243940;
+  --border: rgba(174, 224, 207, .10);
+  --border-2: rgba(174, 224, 207, .19);
+  --ink: #f1f8f5;
+  --ink-soft: #a5bab3;
+  --ink-faint: #819a91;
+  --accent: #52d9a0;
+  --accent-2: #8aebc1;
+  --accent-soft: rgba(82,217,160,.13);
+  --accent-ring: rgba(82,217,160,.3);
+  --shadow-accent: 0 8px 30px rgba(38, 182, 125, .19);
+  --radius: 20px;
+  --radius-sm: 13px;
+  --radius-lg: 26px;
+  --sans: "DM Sans", "Source Sans 3", -apple-system, sans-serif;
+  --serif: "DM Sans", "Source Sans 3", sans-serif;
+}
+body {
+  background: radial-gradient(ellipse 90% 42% at 50% -8%, rgba(52, 151, 116, .13), transparent 72%), var(--bg);
+}
+.app-glow {
+  background: radial-gradient(circle, rgba(82, 217, 160, .105), transparent 65%);
+}
+.hero-title, .auth-title, .auth-brand-text, .auth-brand-headline {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: -.045em;
+}
+.hero-title { line-height: 1.12; }
+.auth-logo {
+  background: linear-gradient(145deg, #9cf5cc, #2ebd85);
+  color: #082016;
+  box-shadow: 0 8px 28px rgba(46,189,133,.24);
+}
+.auth-brand-panel {
+  background: radial-gradient(circle at 15% 20%, rgba(82,217,160,.18), transparent 58%), var(--bg-2);
+}
+.auth-box, .tx, .catv2, .cat-budget {
+  border-color: var(--border);
+}
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view, .auth-box, .auth-fade { animation: none !important; }
+}
+
+
+/* Design system v2 — responsive fintech surfaces and interaction polish. */
+:root {
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.15);
+  --shadow-md: 0 14px 40px rgba(0,0,0,.22), 0 1px 0 rgba(177,237,208,.04) inset;
+  --shadow-lg: 0 28px 76px rgba(0,0,0,.38);
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
+::selection { background: rgba(82,217,160,.32); color: var(--ink); }
+html { color-scheme: dark; }
+.app { background: transparent; }
+.view { padding-top: 24px; }
+.hero-title { font-size: clamp(24px, 3.2vw, 36px); }
+.hero-meta, .balance-label, .metric-label, .summary-label { letter-spacing: .025em; }
+.balance-amt, .metric-val, .summary-val {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.035em;
+}
+.balance-num { letter-spacing: -.055em; }
+.card, .metric, .summary-card, .plan-card, .debt-card, .card-tile,
+.privacy-card, .auth-box {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.card, .metric, .summary-card, .plan-card, .debt-card, .privacy-card {
+  background: linear-gradient(160deg, rgba(33,54,59,.64), rgba(17,31,37,.86));
+  border-radius: var(--radius);
+}
+.card, .metric, .summary-card, .plan-card, .debt-card,
+.tx, .catv2, .cat-budget, .section-row {
+  transition: border-color .2s var(--ease), background-color .2s var(--ease),
+              box-shadow .2s var(--ease), transform .2s var(--ease);
+}
+.section-hd { letter-spacing: -.025em; }
+.section-hd, .mheader-title { font-family: var(--sans); font-weight: 700; }
+.metric-chip { border-radius: 999px; }
+.nav {
+  border: 1px solid var(--border-2);
+  background: rgba(18,32,38,.94);
+  box-shadow: 0 12px 48px rgba(0,0,0,.32);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.nav-btn {
+  border-radius: 14px;
+  font-size: 10px;
+  gap: 5px;
+  min-height: 48px;
+}
+.nav-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent-2);
+}
+.nav-add {
+  background: linear-gradient(145deg,#95f4c6,#39c68e);
+  color: #08251a;
+  box-shadow: 0 8px 26px rgba(53,206,145,.26);
+}
+.nav-add:active { transform: scale(.96); }
+.dash-topbar, .mheader {
+  background: rgba(8,15,20,.88);
+  border-bottom-color: var(--border);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+.auth-input, .tx-search-bar {
+  border-color: var(--border-2);
+  background: rgba(22,39,45,.8);
+}
+.auth-input:focus-within, .tx-search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.sheet {
+  background: #14232a;
+  border-color: var(--border-2);
+  box-shadow: 0 -18px 70px rgba(0,0,0,.45);
+}
+.save-btn {
+  background: linear-gradient(135deg, #76eeb7, #38c58d);
+  color: #08251a;
+  font-weight: 700;
+  box-shadow: var(--shadow-accent);
+}
+.save-btn:active { transform: translateY(1px); }
+.tx-icon, .cat-icon, .cb-icon { border-radius: 13px; }
+@media (hover:hover) and (pointer:fine) {
+  .card:hover, .metric:hover, .summary-card:hover {
+    border-color: var(--border-2);
+    box-shadow: var(--shadow-md);
+  }
+  .tx:hover, .catv2:hover, .cat-budget:hover, .section-row:hover {
+    border-color: rgba(120,215,173,.25);
+  }
+  .nav-btn:hover:not(.active) {
+    background: rgba(153,224,195,.07);
+    color: var(--ink);
+  }
+}
+@media (max-width: 1023px) {
+  .app { padding-bottom: max(116px, calc(env(safe-area-inset-bottom) + 92px)); }
+  .view { padding-left: 18px; padding-right: 18px; }
+  .tx, .catv2, .cat-budget {
+    border: 1px solid var(--border);
+    background: rgba(22,39,45,.88);
+  }
+  .nav { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+}
+@media (min-width: 1024px) {
+  .view { padding-top: 32px; }
+  .nav-rail {
+    background: linear-gradient(180deg,#111f26 0%,#0d181e 100%);
+    border-right: 1px solid var(--border);
+  }
+  .app-topbar {
+    background: rgba(8,15,20,.86);
+    border-bottom-color: var(--border);
+    backdrop-filter: blur(18px);
+  }
+  .dash-sections { gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .metric, .summary-card, .plan-card, .debt-card,
+  .tx, .catv2, .cat-budget, .section-row, .nav-add {
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* Iteration 3: Galaxy S24 Ultra / installed-PWA usability refinements. */
+@media (max-width: 1023px) {
+  .hero { padding-top: 8px; margin-bottom: 12px; }
+  .hero-title { margin-bottom: 15px; font-size: clamp(27px, 7vw, 34px); }
+  .balance-amt {
+    font-family: var(--sans);
+    font-size: clamp(34px, 8vw, 48px);
+    line-height: 1.12;
+    margin-bottom: 16px;
+    gap: 3px;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+  .balance-sign { font-size: .72em; }
+  .balance-cur { font-size: .34em; }
+  .balance-num { font-size: 1em; letter-spacing: -.055em; }
+  .nav {
+    width: calc(100% - 28px);
+    max-width: 420px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 6px 7px;
+    border-radius: 26px;
+  }
+  .nav-btn { min-height: 48px; padding: 7px 3px; }
+  .nav-add {
+    width: 50px;
+    height: 50px;
+    margin-top: -10px;
+    border-width: 2px;
+  }
+  .app { padding-bottom: max(135px, calc(env(safe-area-inset-bottom) + 112px)); }
+  .catv2-head { align-items: flex-start; gap: 8px; }
+  .catv2-left { min-width: 0; }
+  .catv2-name { font-size: 13px; line-height: 1.4; }
+  .catv2-sub { font-family: var(--sans); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+  .catv2-head > :last-child { min-width: 0; max-width: 48%; overflow-wrap: anywhere; }
+  .catv2 { padding: 14px; }
+  .sheet {
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 8px));
+    overscroll-behavior: contain;
+    scroll-padding-bottom: 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sheet input, .sheet select, .sheet textarea { font-size: max(16px, 1em); }
+  .sheet button { touch-action: manipulation; }
+}
+@media (max-width: 360px) {
+  .balance-amt { font-size: 33px; }
+  .nav-btn { font-size: 9px; }
+  .catv2-head { flex-wrap: wrap; }
+  .catv2-head > :last-child { max-width: 100%; margin-left: 48px; }
+}
+
+
+/* Ledger: compact two-row anatomy prevents long notes from colliding with money. */
+@media (max-width: 1023px) {
+  .tx-main {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 6px;
+    padding: 12px 14px;
+    align-items: center;
+  }
+  .tx-main .tx-icon { grid-column: 1; grid-row: 1 / span 2; width: 40px; height: 40px; }
+  .tx-main .tx-body { grid-column: 2; grid-row: 1; min-width: 0; }
+  .tx-main .tx-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+  .tx-main .tx-amt {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .tx-main .tx-chevron { grid-column: 3; grid-row: 1 / span 2; margin: 0; }
+  .tx { border-radius: 16px; }
+  .tx-stack { gap: 8px; }
+  .tx-search-bar { min-height: 48px; border-radius: 15px; }
+  .fselect { min-height: 43px; font-family: var(--sans); font-size: 12px; border-radius: 14px; }
+}
+
+/* Fixed-frame views own their gutters in their inner scroll panes. */
+@media (max-width: 1023px) {
+  .view.view-dashboard, .view.view-home, .view.view-cards,
+  .view.view-investments, .view.view-budget, .view.view-user {
+    padding: 0;
+  }
+}
+/* Keep the full category name and amount usable on narrow phones. */
+@media (max-width: 600px) {
+  .cb-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .cb-left { align-items: flex-start; }
+  .cb-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+  .cb-input { width: 100%; box-sizing: border-box; min-height: 44px; }
+}
+
+/* Mint accents need a darker surface behind white investment text. */
+.inv-visual {
+  background: linear-gradient(135deg, #143c35, #1c5a47);
+  color: #f1f8f5;
+}
+.inv-visual .ct-vis-label, .inv-visual .ct-vis-label-sm {
+  color: #b7e4d1;
+  opacity: 1;
+}
+
+/* Each mobile view already reserves navigation space inside its scroll pane.
+   Extra page padding makes focusing a field scroll the fixed header away. */
+@media (max-width: 1023px) {
+  .app { padding-bottom: 0; }
+}
+@media (max-width: 1023px) {
+  .view-home > .dash-topbar,
+  .cards-master > .dash-topbar,
+  .investments-master > .dash-topbar { margin: 0; }
+}
+
+.valuation-note { overflow-wrap: anywhere; white-space: pre-wrap; }
+.budget-save-error { color: var(--danger); font-size: 13px; margin: 12px 0; }
+/* These screens scroll inside their frame; avoid a second page scrollbar
+   and the layout shift caused by translating a full-height view on entry. */
+.app:has(.view-loan), .app:has(.view-bank-details) { padding-bottom: 0; }
+.view.view-loan, .view.view-bank-details { animation: financeFrameFade .2s ease; }
+@keyframes financeFrameFade { from { opacity: 0; } to { opacity: 1; } }
+@media (min-width: 1024px) {
+  .view-loan .loan-scroll, .view-bank-details .bank-details-scroll { padding-bottom: 24px; }
+}

@@ -1,0 +1,26 @@
+.view.view-loan { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; padding: 0; }
+.view-loan > .dash-topbar { margin: 0; }
+.loan-scroll { flex: 1; min-height: 0; overflow-y: auto; width: 100%; max-width: 900px; margin: 0 auto; padding: 24px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px)); }
+.loan-intro { color: var(--ink-soft); font-size: 14px; line-height: 1.5; margin-top: 8px; }
+.loan-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.loan-form { min-width: 0; margin-bottom: 0; }
+.loan-form .big-input { margin-bottom: 20px; }
+.loan-form .text-input { min-width: 0; width: 100%; font-size: 16px; }
+.loan-period { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, .8fr); gap: 10px; }
+.loan-period .text-input { margin-bottom: 0; }
+.card.loan-result { background: var(--accent-soft); border-color: var(--accent-ring); margin-bottom: 0; min-width: 0; align-self: start; padding: 24px; }
+.loan-result-icon { display: inline-flex; padding: 10px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-2); margin-bottom: 16px; }
+.loan-result h2 { color: var(--ink-soft); font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+.loan-payment { font-size: clamp(27px, 4vw, 36px); font-weight: 700; line-height: 1.25; letter-spacing: -.035em; color: var(--ink); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.loan-payment > span { font-size: 16px; font-weight: 500; letter-spacing: 0; color: var(--ink-soft); }
+.loan-result-detail, .loan-empty { color: var(--ink-soft); font-size: 13px; line-height: 1.6; }
+.loan-result-detail { margin-top: 8px; }
+.loan-assumption { color: var(--ink-faint); font-size: 12px; line-height: 1.6; margin-top: 18px; }
+.loan-error { color: var(--danger); font-size: 12px; line-height: 1.5; margin-top: 12px; }
+@media (min-width: 768px) { .loan-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+@media (min-width: 1024px) { .view.view-loan { height: calc(100dvh - 69px); } .loan-scroll { padding-top: 32px; } }
+
+.loan-totals { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-2); }
+.loan-totals > div { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.loan-totals dt { color: var(--ink-soft); font-size: 13px; }
+.loan-totals dd { color: var(--ink); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; max-width: 100%; }

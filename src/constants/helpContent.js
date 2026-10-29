@@ -95,7 +95,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "How do I filter transactions?",
-        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, CC Purchase), or category. The count shown updates to match.",
+        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, Card transactions), or category. The count shown updates to match.",
       },
       {
         q: "How do I edit a transaction?",
@@ -214,7 +214,7 @@ export const HELP_SECTIONS = [
     items: [
       {
         q: "What does the Insights tab show?",
-        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash in Hand, Total Savings, Card Debt, Total Investments, Net Worth Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
+        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash in Hand, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
       },
       {
         q: "What is the notification bell?",
@@ -225,7 +225,7 @@ export const HELP_SECTIONS = [
         a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank.",
       },
       {
-        q: "What is the Net Worth Trend?",
+        q: "What is the Cash Balance Trend?",
         a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash in Hand — plotted month by month so you can see whether it's trending up or down.",
       },
       {
@@ -365,7 +365,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Backfill investment values instead of guessing",
-        a: "If you're setting up an investment you've held for a while, record a few historical value check-ins with their real dates rather than just today's value. The Value Over Time chart and your Net Worth Trend will both be more useful with real history behind them.",
+        a: "If you're setting up an investment you've held for a while, record a few historical value check-ins with their real dates rather than just today's value. The Value Over Time chart will be more useful with real history behind it.",
       },
       {
         q: "Build a chart before you need it",
@@ -373,12 +373,32 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Changing your currency",
-        a: "Open Profile (phone/tablet) or Account (desktop) and tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app.",
+        a: "Open Profile (phone/tablet) or Account (desktop) and tap the Currency row to pick from 12 supported currencies (LKR, USD, AUD, EUR, GBP, and more). Your choice is saved per account and applies instantly across the entire app. This changes the display currency only; existing amounts are not converted.",
       },
       {
         q: "Number formatting",
         a: "Key amounts — Net this month, Cash in Hand, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
       },
+    ],
+  },
+  {
+    id: "loan-calculator",
+    icon: "🧮",
+    title: "Loan Calculator",
+    items: [
+      { q: "Where is the loan calculator?", a: "Open Menu on a phone or tablet and choose Loan Calculator below Investments. On desktop, use the sidebar." },
+      { q: "How is the installment calculated?", a: "Enter the loan amount, annual interest rate, and repayment period in years or months. The estimate uses fixed-rate, monthly reducing-balance repayments. Total interest is the total repayment amount minus the principal. Fees and insurance are excluded; your lender's terms may differ." },
+      { q: "Does this create a loan or an expense?", a: "No. This is a calculator only and does not change your financial records." },
+    ],
+  },
+  {
+    id: "bank-details",
+    icon: "🏦",
+    title: "Bank Details",
+    items: [
+      { q: "How do I save bank details?", a: "Open Bank Details below Loan Calculator in Menu or the desktop sidebar. Choose Add bank details, enter the bank, branch, account holder name, and account number, then save. You can keep more than one account." },
+      { q: "How do I copy or update an account?", a: "Choose Copy bank details to copy a formatted block, then paste it into your chosen messaging app. The app does not send it for you. Use Edit to update a saved account. If copying is unavailable, select and copy the text shown instead." },
+      { q: "Will leading zeros be preserved?", a: "Yes. Account numbers are saved as text, so leading zeros remain intact. Check all details carefully before sharing them." },
     ],
   },
 ];

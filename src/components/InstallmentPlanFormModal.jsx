@@ -2,20 +2,15 @@ import { useContext, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
-import { fmtCompact, monthKey, monthLabel } from "../utils/format.js";
+import { fmtCompact, monthLabel } from "../utils/format.js";
 import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
+import {elapsedInstallments, validInstallmentMonths} from "../utils/installments.js";
 
 // How many of the plan's months are already billed (this month included) —
 // mirrors CardDetailView's planElapsed. Total months can never be edited
 // below this, and the start month can't be edited at all, since those
 // months' transactions already exist with real, immutable dates.
-function planElapsed(plan) {
-  const currentMk = monthKey(new Date());
-  const [sy, sm] = plan.startMonth.split("-").map(Number);
-  const [cy, cm] = currentMk.split("-").map(Number);
-  return Math.min((cy - sy) * 12 + (cm - sm) + 1, plan.totalMonths);
-}
 
 export default function InstallmentPlanFormModal({
   plan,
@@ -25,7 +20,7 @@ export default function InstallmentPlanFormModal({
   onSave,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
-  const paid = planElapsed(plan);
+  const paid = elapsedInstallments(plan);
 
   const [label, setLabel] = useState(plan.label);
   const [amount, setAmount] = useState(String(plan.monthlyAmount));
@@ -37,8 +32,7 @@ export default function InstallmentPlanFormModal({
     label.trim() &&
     amount &&
     +amount > 0 &&
-    Number.isInteger(+totalMonths) &&
-    +totalMonths >= paid &&
+    validInstallmentMonths(+totalMonths, paid, plan.totalMonths) &&
     cardId;
 
   const planTotal =
@@ -60,6 +54,7 @@ export default function InstallmentPlanFormModal({
       <label className="field-lbl">What is this for?</label>
       <input
         type="text"
+        aria-label="Installment description"
         className="text-input"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
@@ -70,7 +65,7 @@ export default function InstallmentPlanFormModal({
       <label className="field-lbl">Monthly amount</label>
       <div className="amount-input">
         <span className="amt-cur">{CURRENCY}</span>
-        <AmountInput value={amount} onChange={setAmount} placeholder="0.00" />
+        <AmountInput aria-label="Monthly amount" value={amount} onChange={setAmount} placeholder="0.00" />
       </div>
 
       <div className="field-row">
@@ -78,17 +73,19 @@ export default function InstallmentPlanFormModal({
           <label className="field-lbl">Number of months</label>
           <input
             type="number"
+            aria-label="Number of months"
             className="text-input"
             value={totalMonths}
             onChange={(e) => setTotalMonths(e.target.value)}
-            min={paid}
-            max="120"
+            min={Math.max(1, paid)}
+            max={Math.max(120, plan.totalMonths)}
           />
         </div>
         <div className="field-group">
           <label className="field-lbl">Start month</label>
           <input
             type="text"
+            aria-label="Start month"
             className="text-input"
             value={monthLabel(plan.startMonth)}
             disabled
@@ -115,6 +112,7 @@ export default function InstallmentPlanFormModal({
             <button
               key={c.id}
               className={`cp-btn ${cardId === c.id ? "active" : ""}`}
+              aria-pressed={cardId === c.id}
               onClick={() => setCardId(c.id)}
               style={{ borderColor: cardId === c.id ? to : "transparent" }}
             >
@@ -142,6 +140,7 @@ export default function InstallmentPlanFormModal({
             <button
               key={c.id}
               className={`cat-btn ${active ? "active" : ""}`}
+              aria-pressed={active}
               onClick={() => setCategory(c.id)}
               style={active ? { borderColor: c.color, background: `${c.color}14` } : {}}
             >
