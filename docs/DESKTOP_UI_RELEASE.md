@@ -142,7 +142,9 @@ Checks performed at the available 1363 x 936 desktop viewport:
 One desktop issue was found: investment-card text was low contrast on a bright
 mint background. The desktop-only stylesheet now uses a darker green gradient
 and opaque light labels; a new test checks >=4.5:1 contrast at both endpoints.
-The fresh preview of that fix must be visually retested before release.
+Preview commit 0ca1ac0 was visually retested after refresh: both investment
+card/detail surfaces use the intended dark gradient and readable labels, with no
+horizontal viewport overflow. The authenticated session survived refresh.
 
 This does not prove full data integrity or successful create/edit/delete flows.
 No production finance/settings records were written, deleted, migrated or reset.
