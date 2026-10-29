@@ -253,9 +253,11 @@ export default function AddModal({
         </button>
       )}
 
+      {isInstallment && <label className="field-lbl">Monthly installment amount</label>}
       <div className="amount-input">
         <span className="amt-cur">{CURRENCY}</span>
         <AmountInput
+          aria-label={isInstallment ? "Monthly installment amount" : "Amount"}
           value={amount}
           onChange={(v) => {
             amountUserEdited.current = true;

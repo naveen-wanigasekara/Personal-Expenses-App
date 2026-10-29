@@ -51,11 +51,12 @@ not been changed. The approved design preview must remain usable during setup.
   checkout credentials. It runs build/tests and rejects any npm audit advisory.
   Dependabot updates application dependencies and Actions weekly.
 
-## Required isolated setup (not yet applied)
+## Isolated setup and remaining release checks
 
-Supabase returned `PaymentRequiredException`: branching is available only on Pro
-or above. No paid plan or resource was purchased. Supply a separately provisioned
-QA project, or enable an eligible branch; do not point this branch at the live DB.
+Supabase branching required a paid plan. The owner instead supplied a separate
+`dev-expense-app` project. Its schema and security rollout are now applied, with
+branch-specific Vercel preview configuration and fresh dev-only encryption keys.
+No production records or secrets were copied, and production remains unchanged.
 
 1. In the isolated project, apply `db/schema.sql`, `db/schema_migration.sql`, then
    `db/security_hardening.sql`, and verify its advisor notices. The last file is a
@@ -126,5 +127,30 @@ Run `npm ci --ignore-scripts`, `npm test` (includes the production build),
 - Live Auth schema column compatibility was checked read-only. No production
   database, Auth setting, key configuration or deployment was modified.
 
-Hosted verification and provider settings remain blocked/pending as described
-above; these local results do not mark the live application's findings closed.
+### Hosted dev verification (2026-10-29)
+
+- The isolated security preview built successfully and reached READY. Auth site
+  URL and exact preview/recovery redirects were saved. Minimum password length
+  is 12; email confirmation stays enabled and TOTP is enabled by the provider.
+- Owner-created test-account sign-in, key unlock, saved-record reload, income,
+  cash/card purchases, card setup, installment creation/editing, ledger search
+  and transaction editing, recurring reminders, fixed budget, bank detail saving
+  and copy feedback, investment creation and valuation updates passed in-browser.
+- Loan calculations returned 10,000/month at 0% and 10,661.85/month with
+  7,942.26 total interest at 12% for a 120,000 loan repaid over 12 months.
+- All eight public tables contain synthetic test records. Sample sensitive
+  fields in each were checked server-side and use `enc2:` ciphertext. Reload
+  correctly restored decrypted values and balances in the browser.
+- Hosted PostgreSQL assertions passed for owner writes, cross-user read/delete
+  denial, anonymous denial, failed-batch atomic rollback, stale-snapshot rejection,
+  plaintext-write rejection, write/key quotas, and revoked-session read/key denial.
+  These tests set synthetic claims under database roles rather than forging real
+  JWTs. Synthetic auth/session fixtures and mutations were fully rolled back.
+- In-browser installment testing found an ambiguous amount input. It now explicitly
+  labels the field "Monthly installment amount"; financial calculations are unchanged.
+
+Remaining before production release: real authenticator enrollment/challenge and
+recovery/email delivery, legacy-data upgrade in a hosted fixture, physical-device
+PWA/offline/private-cache and keyboard checks, provider password-reauthentication
+policy/rate-limit review, and GitHub branch protection verification. Local mocked
+tests and database role tests do not replace those checks or guarantee security.
