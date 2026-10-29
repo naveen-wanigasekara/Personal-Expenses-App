@@ -149,7 +149,15 @@ Run `npm ci --ignore-scripts`, `npm test` (includes the production build),
 - In-browser installment testing found an ambiguous amount input. It now explicitly
   labels the field "Monthly installment amount"; financial calculations are unchanged.
 
-Remaining before production release: real authenticator enrollment/challenge and
+The owner enrolled a TOTP authenticator; the dev Auth database confirms one
+verified factor. A pre-enrollment browser session then correctly failed closed,
+but displayed a generic lock error because the default assurance lookup used
+cached factors. Bootstrap now supplies the access token to the provider's
+assurance API, which validates it and fetches current factors. Two regression
+cases cover newly enrolled factors and a failed live verification. The local
+suite now contains 79 tests (68 Node and 11 React/provider-mocked UI tests).
+
+Remaining before production release: hosted authenticator challenge completion and
 recovery/email delivery, legacy-data upgrade in a hosted fixture, physical-device
 PWA/offline/private-cache and keyboard checks, provider password-reauthentication
 policy/rate-limit review, and GitHub branch protection verification. Local mocked

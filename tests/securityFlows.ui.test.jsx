@@ -65,6 +65,21 @@ describe('security flows with mocked provider boundaries',()=>{
   mocks.auth.getSession.mockResolvedValue({data:{session}});mocks.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({data:{currentLevel:'aal1',nextLevel:'aal2'}});mocks.auth.mfa.listFactors.mockResolvedValue({data:{totp:[{id:'f',status:'verified'}]}});render(<App/>);
   await screen.findByRole('heading',{name:'Verify your sign-in'});expect(mocks.initCrypto).not.toHaveBeenCalled();expect(mocks.upgradeEncryption).not.toHaveBeenCalled();expect(screen.queryByText('Financial workspace')).toBeNull();
  });
+ it('uses live factor status when MFA was enrolled after the cached session was issued',async()=>{
+  mocks.auth.getSession.mockResolvedValue({data:{session}});
+  mocks.auth.mfa.getAuthenticatorAssuranceLevel.mockImplementation(async jwt=>({data:{currentLevel:'aal1',nextLevel:jwt===session.access_token?'aal2':'aal1'},error:null}));
+  mocks.auth.mfa.listFactors.mockResolvedValue({data:{totp:[{id:'new-factor',status:'verified'}]},error:null});
+  render(<App/>);
+  await screen.findByRole('heading',{name:'Verify your sign-in'});
+  expect(mocks.auth.mfa.getAuthenticatorAssuranceLevel).toHaveBeenCalledWith(session.access_token);
+  expect(mocks.initCrypto).not.toHaveBeenCalled();expect(mocks.upgradeEncryption).not.toHaveBeenCalled();
+ });
+ it('fails closed when live assurance verification fails',async()=>{
+  mocks.auth.getSession.mockResolvedValue({data:{session}});
+  mocks.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({data:null,error:{message:'unavailable'}});
+  render(<App/>);await screen.findByRole('heading',{name:'Your data is locked'});
+  expect(mocks.initCrypto).not.toHaveBeenCalled();expect(mocks.upgradeEncryption).not.toHaveBeenCalled();
+ });
  it('keeps records locked on migration failure and permits a safe retry',async()=>{
   mocks.auth.getSession.mockResolvedValue({data:{session}});mocks.upgradeEncryption.mockRejectedValueOnce(Error('stale record'));render(<App/>);await screen.findByRole('heading',{name:'Your data is locked'});expect(screen.queryByText('Financial workspace')).toBeNull();
   fireEvent.click(screen.getByRole('button',{name:'Try again'}));await screen.findByText('Financial workspace');expect(mocks.upgradeEncryption).toHaveBeenCalledTimes(2);

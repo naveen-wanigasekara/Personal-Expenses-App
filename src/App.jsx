@@ -17,7 +17,9 @@ function SessionWorkspace({ session, currentUserRef }) {
     let active = true;
     (async () => {
       try {
-        const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        // Validate this token and fetch current factors: another device may have
+        // enabled MFA since the locally cached session user was last refreshed.
+        const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel(session.access_token);
         if (assuranceError) throw assuranceError;
         if (!active || currentUserRef.current !== session.user.id) return;
         if (assurance.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
