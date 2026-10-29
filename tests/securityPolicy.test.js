@@ -1,0 +1,14 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import {purgePrivateCaches,clearAccountStorage} from '../src/utils/securityStorage.js';
+import {validateNewPassword} from '../src/utils/securityPolicy.js';import {initialRecoveryLocation} from '../src/utils/authFlow.js';
+test('private caches are purged without deleting public offline assets',async()=>{const deleted=[];await purgePrivateCaches({keys:async()=>['supabase-api','supabase-api-old','workbox-precache','google-fonts-webfonts'],delete:async(name)=>deleted.push(name)});assert.deepEqual(deleted,['supabase-api','supabase-api-old']);});
+test('logout cleanup only removes the departing account local data',()=>{const map=new Map([['last_cat_a_expense','x'],['completed_notifs_a_2026-10','x'],['last_cat_b_expense','x'],['ledger-theme-v1','light']]);const storage={get length(){return map.size},key(i){return [...map.keys()][i]},removeItem(k){map.delete(k)}};clearAccountStorage('a',storage);assert.deepEqual([...map.keys()],['last_cat_b_expense','ledger-theme-v1']);});
+test('password policy preserves legacy sign-in while enforcing new-password length and confirmation',()=>{assert.ok(validateNewPassword('short'));assert.ok(validateNewPassword('a'.repeat(129)));assert.ok(validateNewPassword('long safe password','different'));assert.equal(validateNewPassword('long safe password','long safe password'),null);assert.ok(initialRecoveryLocation({hash:'#type=recovery',search:''}));assert.ok(initialRecoveryLocation({hash:'',search:'?flow=recovery'}));assert.equal(initialRecoveryLocation({hash:'',search:''}),false);});
+test('deployed worker and headers do not permit private runtime caching, framing or inline scripts',()=>{const config=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url)));const headers=config.headers[0].headers;const csp=headers.find(h=>h.key==='Content-Security-Policy').value;assert.match(csp,/frame-ancestors 'none'/);assert.match(csp,/script-src 'self';/);const sw=readFileSync(new URL('../dist/sw.js',import.meta.url),'utf8');assert.ok(!sw.includes('NetworkFirst'));assert.match(sw,/cache: 'no-store'/);assert.match(sw,/PUBLIC_PATHS/);});
+
+import {assertPreviewIsolation} from '../build/preview-isolation.js';
+test('preview build refuses production or mismatched client backends before any sign-in is possible',()=>{
+ assert.throws(()=>assertPreviewIsolation({VERCEL_ENV:'preview',VITE_SUPABASE_URL:'https://live.supabase.co'}),/blocked/);
+ assert.throws(()=>assertPreviewIsolation({VERCEL_ENV:'preview',VITE_SUPABASE_URL:'https://live.supabase.co',PREVIEW_SUPABASE_PROJECT_REF:'live',PRODUCTION_SUPABASE_PROJECT_REF:'live'}),/blocked/);
+ assert.doesNotThrow(()=>assertPreviewIsolation({VERCEL_ENV:'preview',VITE_SUPABASE_URL:'https://qa.supabase.co',PREVIEW_SUPABASE_PROJECT_REF:'qa',PRODUCTION_SUPABASE_PROJECT_REF:'live'}));
+});

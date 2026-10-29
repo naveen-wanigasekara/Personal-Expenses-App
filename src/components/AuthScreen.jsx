@@ -10,6 +10,7 @@ import {
   TrendingUp,
   PieChart,
 } from "lucide-react";
+import { MIN_PASSWORD_LENGTH, validateNewPassword } from "../utils/securityPolicy.js";
 import { signUp, signIn, resetPassword } from "../lib/supabase.js";
 
 export default function AuthScreen() {
@@ -34,6 +35,8 @@ export default function AuthScreen() {
     setMsg(null);
     try {
       if (mode === "signup") {
+        const invalid = validateNewPassword(password);
+        if (invalid) throw new Error(invalid);
         const { error } = await signUp(email, password);
         if (error) throw error;
         setMsg("Check your email for a confirmation link to complete signup.");
@@ -148,7 +151,8 @@ export default function AuthScreen() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      minLength={6}
+                      minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : 1}
+                      maxLength={mode === "signup" ? 128 : undefined}
                     />
                   </div>
                 </>

@@ -23,6 +23,7 @@ import {
   normalizeUserCats,
 } from "../constants/categories.js";
 import {
+  commitFinanceChanges,
   fetchTransactions,
   insertTransaction,
   updateTransaction,
@@ -33,21 +34,12 @@ import {
   fetchBudgets,
   upsertBudget,
   fetchInstallmentPlans,
-  insertInstallmentPlan,
-  updateInstallmentPlan,
   fetchRecurringReminders,
   insertRecurringReminder,
   updateRecurringReminder,
   deleteRecurringReminder,
   fetchInvestments,
-  insertInvestment,
-  updateInvestment,
-  deleteInvestment,
   fetchInvestmentValuations,
-  insertInvestmentValuation,
-  updateInvestmentValuation,
-  deleteInvestmentValuation,
-  deleteInvestmentValuationsFor,
   fetchUserSettings,
   upsertUserSettings,
 } from "../lib/supabase.js";
@@ -91,6 +83,11 @@ export default function MainApp({ user }) {
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
   const [loaded, setLoaded] = useState(false);
+  const [mustReload, setMustReload] = useState(false);
+  const commitBatch = useCallback(async (changes) => {
+    try { return await commitFinanceChanges(changes); }
+    catch (error) { setMustReload(true); throw error; }
+  }, []);
   const [transactions, setTransactions] = useState([]);
   const [cards, setCards] = useState([]);
   const [monthPlans, setMonthPlans] = useState({});
@@ -557,9 +554,15 @@ export default function MainApp({ user }) {
         payout_frequency: investment.payoutFrequency,
         tenure_months: investment.tenureMonths,
       };
+      const valuationId = isNew ? crypto.randomUUID() : null;
+      const valuationRow = isNew ? { id: valuationId, user_id: user.id, investment_id: id,
+        value: investment.initialAmount, recorded_date: investment.startDate } : null;
       try {
-        if (isNew) await insertInvestment(dbRow);
-        else await updateInvestment(id, dbRow);
+        const { id: _id, user_id: _userId, ...updates } = dbRow;
+        await commitBatch(isNew ? [
+          { table: 'investments', op: 'insert', id, data: dbRow },
+          { table: 'investment_valuations', op: 'insert', id: valuationId, data: valuationRow },
+        ] : [{ table: 'investments', op: 'update', id, data: updates }]);
 
         setInvestments((prev) => {
           const next = {
@@ -583,15 +586,6 @@ export default function MainApp({ user }) {
         // Auto-create the starting valuation snapshot so the value-over-time
         // chart always has a clean first point.
         if (isNew) {
-          const valuationId = `val_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-          const valuationRow = {
-            id: valuationId,
-            user_id: user.id,
-            investment_id: id,
-            value: investment.initialAmount,
-            recorded_date: investment.startDate,
-          };
-          await insertInvestmentValuation(valuationRow);
           setInvestmentValuations((prev) => [
             ...prev,
             {
@@ -616,9 +610,9 @@ export default function MainApp({ user }) {
       setInvestments((p) => p.filter((i) => i.id !== id));
       setInvestmentValuations((p) => p.filter((v) => v.investmentId !== id));
       try {
-        await Promise.all([
-          deleteInvestment(id),
-          deleteInvestmentValuationsFor(id),
+        await commitBatch([
+          ...investmentValuations.filter((v) => v.investmentId === id).map((v) => ({ table: 'investment_valuations', op: 'delete', id: v.id })),
+          { table: 'investments', op: 'delete', id },
         ]);
       } catch (e) {
         setInvestments(prevInvestments);
@@ -663,15 +657,11 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await insertInvestmentValuation({
-          id: valuationId,
-          user_id: user.id,
-          investment_id: investmentId,
-          value,
-          recorded_date: date,
-          note: note || "",
-        });
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'insert', id: valuationId, data: {
+            id: valuationId, user_id: user.id, investment_id: investmentId, value, recorded_date: date, note: note || '' } },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -709,12 +699,10 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await updateInvestmentValuation(valuationId, {
-          value,
-          recorded_date: date,
-          note: note || "",
-        });
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'update', id: valuationId, data: { value, recorded_date: date, note: note || '' } },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -750,8 +738,10 @@ export default function MainApp({ user }) {
       );
 
       try {
-        await deleteInvestmentValuation(valuationId);
-        await updateInvestment(investmentId, { current_value: newCurrentValue });
+        await commitBatch([
+          { table: 'investment_valuations', op: 'delete', id: valuationId },
+          { table: 'investments', op: 'update', id: investmentId, data: { current_value: newCurrentValue } },
+        ]);
       } catch (e) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
@@ -848,58 +838,20 @@ export default function MainApp({ user }) {
       };
 
       try {
-        await insertInstallmentPlan({
-          id: planId,
-          user_id: user.id,
-          card_id: planData.cardId,
-          label: planData.label,
-          total_amount: newPlan.totalAmount,
-          monthly_amount: planData.monthlyAmount,
-          total_months: planData.totalMonths,
-          start_month: planData.startMonth,
-          category: planData.category,
-        });
-      } catch (e) {
+        await commitBatch([
+          { table: 'installment_plans', op: 'insert', id: planId, data: {
+            id: planId, user_id: user.id, card_id: planData.cardId, label: planData.label,
+            total_amount: newPlan.totalAmount, monthly_amount: planData.monthlyAmount,
+            total_months: planData.totalMonths, start_month: planData.startMonth, category: planData.category,
+          } },
+          ...txs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
+            id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
+            card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
+          } })),
+        ]);
+      } catch {
         rollbackLocal();
-        showError("Couldn't save installment plan. Try again.");
-        return;
-      }
-
-      // Use allSettled (not all) so a partial failure tells us exactly which
-      // transaction rows actually made it to the DB — otherwise a failure
-      // partway through would roll back local state while leaving the
-      // already-inserted rows (and the plan itself) orphaned server-side,
-      // only to silently reappear on the next reload.
-      const results = await Promise.allSettled(
-        txs.map((t) =>
-          insertTransaction({
-            id: t.id,
-            user_id: user.id,
-            type: t.type,
-            amount: t.amount,
-            category: t.category,
-            card_id: t.cardId,
-            note: t.note,
-            date: t.date,
-            installment_id: planId,
-          }),
-        ),
-      );
-
-      if (results.some((r) => r.status === "rejected")) {
-        rollbackLocal();
-        const succeededIds = txs
-          .filter((_, i) => results[i].status === "fulfilled")
-          .map((t) => t.id);
-        await Promise.allSettled(
-          succeededIds.map((id) => deleteTransaction(id)),
-        );
-        // Plans are never hard-deleted elsewhere in the app (see
-        // cancelInstallmentPlan) — mark inactive as best-effort cleanup.
-        await updateInstallmentPlan(planId, { active: false }).catch(
-          () => {},
-        );
-        showError("Couldn't save installment plan. Try again.");
+        showError("Couldn't confirm the installment save. Refresh your records.");
       }
     },
     [user.id],
@@ -921,8 +873,10 @@ export default function MainApp({ user }) {
         prev.map((p) => (p.id === planId ? { ...p, active: false } : p)),
       );
       try {
-        await Promise.all(futureTxIds.map((id) => deleteTransaction(id)));
-        await updateInstallmentPlan(planId, { active: false });
+        await commitBatch([
+          ...futureTxIds.map((id) => ({ table: 'transactions', op: 'delete', id })),
+          { table: 'installment_plans', op: 'update', id: planId, data: { active: false } },
+        ]);
       } catch (e) {
         setTransactions((prev) => [...removedTxs, ...prev]);
         setInstallmentPlans(prevPlans);
@@ -1013,42 +967,21 @@ export default function MainApp({ user }) {
       });
 
       try {
-        await updateInstallmentPlan(planId, {
-          label: updatedPlan.label,
-          category: updatedPlan.category,
-          monthly_amount: updatedPlan.monthlyAmount,
-          total_months: updatedPlan.totalMonths,
-          total_amount: updatedPlan.totalAmount,
-          card_id: updatedPlan.cardId,
-        });
-        if (metaChanged) {
-          await Promise.all(
-            installmentMetadataTargets(planTxs, currentMk, scheduleChanged).map((t) =>
-              updateTransaction(t.id, {
-                category: updates.category,
-                note: updates.label,
-              }),
-            ),
-          );
-        }
-        if (scheduleChanged) {
-          await Promise.all(oldFutureTxs.map((t) => deleteTransaction(t.id)));
-          await Promise.all(
-            newFutureTxs.map((t) =>
-              insertTransaction({
-                id: t.id,
-                user_id: user.id,
-                type: t.type,
-                amount: t.amount,
-                category: t.category,
-                card_id: t.cardId,
-                note: t.note,
-                date: t.date,
-                installment_id: planId,
-              }),
-            ),
-          );
-        }
+        const changes = [{ table: 'installment_plans', op: 'update', id: planId, data: {
+          label: updatedPlan.label, category: updatedPlan.category, monthly_amount: updatedPlan.monthlyAmount,
+          total_months: updatedPlan.totalMonths, total_amount: updatedPlan.totalAmount, card_id: updatedPlan.cardId,
+        } }];
+        if (metaChanged) changes.push(...installmentMetadataTargets(planTxs, currentMk, scheduleChanged).map((t) => ({
+          table: 'transactions', op: 'update', id: t.id, data: { category: updates.category, note: updates.label },
+        })));
+        if (scheduleChanged) changes.push(
+          ...oldFutureTxs.map((t) => ({ table: 'transactions', op: 'delete', id: t.id })),
+          ...newFutureTxs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
+            id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
+            card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
+          } })),
+        );
+        await commitBatch(changes);
       } catch (e) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
@@ -1256,6 +1189,8 @@ export default function MainApp({ user }) {
       list: inMonth,
     };
   }, [transactions, viewMonth, allExpCats, allIncCats]);
+
+  if (mustReload) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
 
   if (!loaded) {
     return (

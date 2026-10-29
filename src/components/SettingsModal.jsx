@@ -1,3 +1,4 @@
+import SecuritySettings from "./SecuritySettings.jsx";
 import { useState } from "react";
 import {
   HelpCircle,
@@ -25,6 +26,7 @@ export default function SettingsModal({
   currency,
   onChangeCurrency,
 }) {
+  const [showSecurity, setShowSecurity] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const activeCurrency =
@@ -109,6 +111,8 @@ export default function SettingsModal({
       <p className="hint">Display currency only. Existing amounts are not converted.</p>
       <ThemePicker />
 
+      <button className="settings-menu-row" onClick={() => setShowSecurity(true)}><Lock size={16} /><span>Account security</span><ChevronRight size={15} /></button>
+      {showSecurity && <SecuritySettings onClose={() => setShowSecurity(false)} />}
       <div className="privacy-card">
         <div className="privacy-card-header">
           <Lock size={15} />

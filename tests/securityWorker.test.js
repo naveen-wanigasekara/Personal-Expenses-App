@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';
+import {serviceWorkerSource} from '../build/secure-pwa.js';
+function worker(network=async()=>new Response('network')) {
+ const listeners={},deleted=[],writes=[];const cache={addAll:async files=>writes.push(files),match:async()=>new Response('public shell')};
+ const context={URL,Request,Response,Set,Promise,fetch:network,caches:{keys:async()=>['supabase-api','supabase-api-v1','ledger-shell-old','ledger-shell-current','workbox-precache-v1','google-fonts-webfonts'],delete:async n=>deleted.push(n),open:async()=>cache},self:{location:{origin:'https://app.example'},addEventListener:(name,fn)=>listeners[name]=fn,skipWaiting:async()=>{},clients:{claim:async()=>{}}}};
+ vm.runInNewContext(serviceWorkerSource('current',['/index.html','/assets/app.js']),context);return {listeners,deleted,writes};
+}
+async function fetchEvent(w,url,options){let response;w.listeners.fetch({request:new Request(url,options),respondWith:r=>{response=r}});return response;}
+test('worker activation deletes every sensitive legacy cache and stale public worker cache',async()=>{const w=worker();let done;w.listeners.activate({waitUntil:p=>{done=p}});await done;assert.deepEqual(w.deleted,['supabase-api','supabase-api-v1','ledger-shell-old','workbox-precache-v1']);});
+test('private GET and POST requests always use a noncached network request and never offline financial data',async()=>{const observed=[];const w=worker(async req=>{observed.push({url:req.url,cache:req.cache,method:req.method});throw Error('offline')});for(const [url,method] of [['https://db.supabase.co/rest/v1/transactions','GET'],['https://db.supabase.co/auth/v1/user','GET'],['https://app.example/api/crypto-key','POST']]) await assert.rejects(fetchEvent(w,url,{method}),/offline/);assert.ok(observed.every(r=>r.cache==='no-store'));assert.equal(w.writes.length,0);});
+test('only known public assets use the offline cache; unknown URLs and third parties do not',async()=>{const w=worker();assert.equal(await (await fetchEvent(w,'https://app.example/assets/app.js')).text(),'public shell');assert.equal(await fetchEvent(w,'https://app.example/unknown.json'),undefined);assert.equal(await fetchEvent(w,'https://evil.example/assets/app.js'),undefined);});

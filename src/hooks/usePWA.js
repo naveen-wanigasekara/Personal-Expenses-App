@@ -44,7 +44,7 @@ export function usePWA() {
     // Listen for service worker updates. `serviceWorker.ready` (rather than
     // a one-shot getRegistration()) waits until a registration actually
     // exists, so this doesn't silently no-op if this effect runs before
-    // vite-plugin-pwa's registration call has resolved.
+    // the public-shell worker registration has resolved.
     let refreshing = false;
     const onControllerChange = () => {
       if (refreshing) return;

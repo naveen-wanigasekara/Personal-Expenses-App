@@ -15,3 +15,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ThemeProvider>
   </React.StrictMode>,
 );
+
+// The worker caches only the public app shell, never financial/API data.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
+}
