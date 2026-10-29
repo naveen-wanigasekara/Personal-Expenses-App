@@ -72,7 +72,7 @@ export default function AuthScreen() {
           </p>
           <ul className="auth-brand-points">
             <li>
-              <TrendingUp size={16} /> Real-time cashflow &amp; net worth
+              <TrendingUp size={16} /> Income, spending &amp; cash balance
             </li>
             <li>
               <PieChart size={16} /> Budgets that compare plan vs. actual

@@ -17,7 +17,7 @@ The local test suite has 35 passing tests. The build and whitespace checks pass.
 | Navigation | Desktop rail, mobile drawer, bottom navigation, account/profile, previous/next month, and all eight main screens work. |
 | Ledger | Created synthetic income, cash expense, card purchase, card payment, and card interest. Edited amount/note, searched no-match/cleared search, filtered card transactions, expanded rows, deleted and immediately undid deletion. Records survive reload. |
 | Credit cards | Created and renamed a synthetic card; checked opening balance, debt, utilization, available credit, detail/master layouts, and activity. Canceled deletion confirmation without deleting. |
-| Installments | Created a three-month plan, verified current/future commitments and notification completion. Boundary editing and validation retests are recorded below. |
+| Installments | Created a three-month plan, verified current/future commitments and notification completion. Live editing rejects 121 months, preserves valid three-month edits, and retains the renamed future entry after reload. |
 | Budgets | Saved fixed total/category amounts, monthly expense and income overrides, checked a new month inherits a newly saved fixed plan. A controlled failure adapter renders the actual BudgetView and verifies an error with retained input, no false Saved state. Restored QA budget totals/categories to zero and display currency to LKR. |
 | Investments | Created and edited a fixed deposit, updated a stock valuation, checked gain/history, note display, and edit/reload persistence. Jan 31 + one month displays Feb 28 and interest 10 for synthetic principal 1000 at 12%; five months with quarterly payments displays total interest 50. Canceled investment deletion. |
 | Loan calculator | Principal 100000, 12%, one year displays installment 8884.88 and interest 6618.55. Zero interest over 12 months displays 8333.33 and zero interest. Fractional months are rejected. No financial records are created. |
@@ -51,7 +51,7 @@ The local test suite has 35 passing tests. The build and whitespace checks pass.
 | Cleared or impossible dates could be recorded | Validate real calendar dates and installment start months; live cleared-date Record rejection and calendar-boundary regression tests. |
 
 | Descriptive installment edits were not written to unchanged future rows | Update every affected row when only metadata changes; renamed November entry verified after reload, with billed amounts preserved. |
-| Desktop month picker disagreed with the header outside the recent-year range | Include the selected month in its choices; final preview retest records the November selection. |
+| Desktop month picker disagreed with the header outside the recent-year range | Include the selected month in its choices; header and picker both show November 2026 in the final live check. |
 
 ## Data retained
 
@@ -63,4 +63,11 @@ This is a comprehensive browser review, not a proof that every possible input, f
 
 The Supabase advisor reports an existing Auth warning: leaked-password protection is disabled. Auth policy was not changed. Reference: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
 
-Fresh sign-out/sign-in coverage and final build smoke checks are recorded after execution.
+## Final authentication and release checks
+
+Fresh test-account sign-in succeeded through the secure browser credential form. The current branch app displayed the saved QA records, then sign-out returned to the unauthenticated screen and removed account-data access. Signup and password-recovery navigation and empty-input disabled states were checked without submitting account creation or sending recovery emails. No application console errors were observed in the final smoke path.
+
+The normal branch preview was verified after removal of temporary review pages. The final ledger check shows November 2026 in both the shared header and month picker, with the renamed second installment still present after reload. The final build has no temporary auth/review entries. All 35 tests pass; the production build and whitespace checks pass. The existing bundle-size and Browserslist-age notices remain build warnings, not failed checks.
+
+Preview: https://personal-expenses-app-git-design-6b75f3-naveen-vercel-projects.vercel.app/
+
