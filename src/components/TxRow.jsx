@@ -117,7 +117,7 @@ function TxRow({
         </div>
         <div className="tx-body">
           <div className="tx-title">
-            {tx.note || cat.label}
+            <span className="tx-description">{tx.note || cat.label}</span>
             {cardName && tx.type !== "card-payment" && (
               <span className="tx-card-chip">
                 <CreditCard size={9} /> {cardName}

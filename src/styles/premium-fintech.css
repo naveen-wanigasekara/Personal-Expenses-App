@@ -261,6 +261,17 @@ html { color-scheme: dark; }
   .tx-main .tx-icon { grid-column: 1; grid-row: 1 / span 2; width: 40px; height: 40px; }
   .tx-main .tx-body { grid-column: 2; grid-row: 1; min-width: 0; }
   .tx-main .tx-title {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 8px;
+    row-gap: 4px;
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.3;
+  }
+  .tx-main .tx-description {
+    min-width: 0;
+    max-width: 100%;
     white-space: normal;
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -292,6 +303,20 @@ html { color-scheme: dark; }
   .view.view-investments, .view.view-budget, .view.view-user {
     padding: 0;
   }
+  /* Keep Profile's inner scroller at screen width. In WebKit an auto-sized
+     flex child can retain wide content and let the entire page pan sideways. */
+  .view-user .user-scroll {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+  .view-user .account-meta { flex: 1; min-width: 0; }
+  .view-user .account-email { overflow-wrap: anywhere; }
+  .view-user .settings-menu-row { min-width: 0; text-align: left; }
+  .view-user .settings-menu-row > span { min-width: 0; overflow-wrap: anywhere; }
+  .view-user .settings-menu-row > svg,
+  .view-user .currency-picker { flex-shrink: 0; }
 }
 /* Keep the full category name and amount usable on narrow phones. */
 @media (max-width: 600px) {
