@@ -35,7 +35,7 @@ export function BankDetailsForm({ account, onClose, onSave, saving, error }) {
   const [details, setDetails] = useState(() => normalizeBankDetails(account));
   return createPortal(
     <div className="bank-form-layer" ref={layerRef}>
-      <Sheet className="bank-form-sheet" title={account ? "Edit bank details" : "Add bank details"} onClose={onClose}>
+      <Sheet portal={false} className="bank-form-sheet" title={account ? "Edit bank details" : "Add bank details"} onClose={onClose}>
         <form className="bank-form" onSubmit={(event) => { event.preventDefault(); if (validBankDetails(details) && !saving) onSave(details); }}>
           <div className="bank-form-fields">
           {FIELDS.map(([key, label, placeholder], index) => (

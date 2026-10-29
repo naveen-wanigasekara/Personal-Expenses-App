@@ -1,4 +1,5 @@
 import { useEffect, useRef, useId } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 const FOCUSABLE =
@@ -15,13 +16,37 @@ let previousBodyOverflow = "";
 // a centered dialog at desktop widths (see app.css RESPONSIVE section).
 // Owns body-scroll-lock, Escape-to-close, and a basic focus trap so each
 // modal doesn't have to reimplement them.
-export default function Sheet({ title, onClose, children, className }) {
+export default function Sheet({ title, onClose, children, className, portal = true }) {
   const sheetRef = useRef(null);
+  const backdropRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const idRef = useRef(null);
   if (idRef.current === null) idRef.current = Symbol("sheet");
   const titleId = useId();
+
+  useEffect(() => {
+    // iOS keeps the layout viewport tall while its keyboard covers part of
+    // the screen. Use the visible viewport for ordinary sheets. The bank
+    // form already owns a viewport-aware portal and opts out below.
+    const viewport = window.visualViewport;
+    if (!portal || !viewport) return;
+    const fit = () => {
+      const layer = backdropRef.current;
+      if (!layer || viewport.scale !== 1) return;
+      layer.style.top = `${viewport.offsetTop}px`;
+      layer.style.height = `${viewport.height}px`;
+      layer.style.bottom = "auto";
+      layer.style.setProperty("--sheet-viewport-height", `${viewport.height}px`);
+    };
+    fit();
+    viewport.addEventListener("resize", fit);
+    viewport.addEventListener("scroll", fit);
+    return () => {
+      viewport.removeEventListener("resize", fit);
+      viewport.removeEventListener("scroll", fit);
+    };
+  }, [portal]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
@@ -84,8 +109,8 @@ export default function Sheet({ title, onClose, children, className }) {
     };
   }, []);
 
-  return (
-    <div className="backdrop" onClick={onClose}>
+  const dialog = (
+    <div className="backdrop" onClick={onClose} ref={backdropRef}>
       <div
         className={`sheet ${className || ""}`}
         onClick={(e) => e.stopPropagation()}
@@ -106,4 +131,7 @@ export default function Sheet({ title, onClose, children, className }) {
       </div>
     </div>
   );
+  // Escape animated/transformed views and their stacking contexts. This
+  // keeps every sheet above the mobile nav and fixed to the actual screen.
+  return portal ? createPortal(dialog, document.body) : dialog;
 }
