@@ -964,7 +964,6 @@ export default function MainApp({ user }) {
       const prevPlans = installmentPlans;
 
       const planTxs = transactions.filter((t) => t.installmentId === planId);
-      const pastTxs = planTxs.filter((t) => monthKey(t.date) <= currentMk);
       const oldFutureTxs = planTxs.filter((t) => monthKey(t.date) > currentMk);
 
       const newFutureTxs = [];

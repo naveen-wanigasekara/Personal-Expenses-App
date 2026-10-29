@@ -63,7 +63,10 @@ export default function HomeView({
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       out.push(monthKey(d));
     }
-    return out;
+    // The header can navigate beyond the recent year, including future
+    // installment months. Keep the selected month representable here.
+    if (!out.includes(viewMonth)) out.push(viewMonth);
+    return out.sort();
   })();
 
   // Resolve a transaction's effective category via getCat (same logic as TxRow)

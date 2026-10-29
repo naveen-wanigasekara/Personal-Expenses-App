@@ -75,3 +75,8 @@ The post-migration Supabase security advisor reported no table/RLS findings. Its
 The supplied phone recording shows the bottom navigation painting over the bank form while the keyboard is open. The form was nested in the view/content stacking context. The bank form now renders through a portal into a viewport-sized layer above navigation; its height and top follow VisualViewport resize/scroll events. Fields scroll independently, while the Save/error footer stays visible. Opening the form no longer automatically opens the keyboard. Viewport listeners are removed on unmount. This is scoped to Bank Details and preserves the existing save/store flow.
 
 All 19 existing automated tests, the build, and whitespace checks pass. Browser layout verification could not run in this environment: no Chromium binary was installed, and browser download attempts returned invalid archives. Native keyboard/PWA behavior still needs a phone check; no claim of successful browser or native-device verification is made for this fix.
+
+
+## Comprehensive follow-up review
+
+See `docs/END_TO_END_QA.md` for the 29 October 2026 workflow matrix, findings, regression tests, retained synthetic data, and explicit verification limits. The temporary responsive/failure review entries are removed from the final build.
