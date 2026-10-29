@@ -157,8 +157,17 @@ assurance API, which validates it and fetches current factors. Two regression
 cases cover newly enrolled factors and a failed live verification. The local
 suite now contains 79 tests (68 Node and 11 React/provider-mocked UI tests).
 
-Remaining before production release: hosted authenticator challenge completion and
-recovery/email delivery, legacy-data upgrade in a hosted fixture, physical-device
+Hosted MFA challenge completed successfully on the corrected preview: password
+sign-in stopped at the authenticator gate, the owner securely provided the code,
+and the financial workspace unlocked with existing records intact. Reload
+preserved the verified session. Global signout returned to the sign-in screen
+and reduced the test account's server-side session count from two to zero.
+The enrolled account was also checked using hosted database role assertions:
+AAL1 could access neither records nor keys; AAL2 could read its own test records.
+Those assertions used synthetic claims and persisted no changes.
+
+Remaining before production release: recovery/email delivery, legacy-data upgrade
+in a hosted fixture, physical-device
 PWA/offline/private-cache and keyboard checks, provider password-reauthentication
 policy/rate-limit review, and GitHub branch protection verification. Local mocked
 tests and database role tests do not replace those checks or guarantee security.
