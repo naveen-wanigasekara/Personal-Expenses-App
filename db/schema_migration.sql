@@ -45,3 +45,6 @@ ALTER TABLE public.budgets
   ALTER COLUMN income_categories  TYPE text USING income_categories::text,
   ALTER COLUMN expense_total      TYPE text USING expense_total::text,
   ALTER COLUMN expense_categories TYPE text USING expense_categories::text;
+
+-- Optional notes entered with an investment valuation, encrypted by the app.
+ALTER TABLE public.investment_valuations ADD COLUMN IF NOT EXISTS note text;

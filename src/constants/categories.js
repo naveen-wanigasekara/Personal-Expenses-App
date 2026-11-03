@@ -207,7 +207,12 @@ export const getCat = (id, type, expList, incList) => {
     type === "income"
       ? incList || INCOME_CATEGORIES
       : expList || EXPENSE_CATEGORIES;
-  return list.find((c) => c.id === id) || list[list.length - 1];
+  const defaults = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  // Custom categories may be appended or the catch-all may be deleted.
+  // An orphaned transaction must never be attributed to an unrelated category.
+  return list.find((c) => c.id === id)
+    || list.find((c) => ["other", "misc", "other-income"].includes(c.id))
+    || defaults[defaults.length - 1];
 };
 
 // The one expense category that can't be deleted or freely renamed, so the

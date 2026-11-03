@@ -7,6 +7,7 @@ import {
   getPayoutFrequency,
 } from "../utils/investmentCalc.js";
 import Sheet from "./Sheet.jsx";
+import {validDate} from "../utils/dateInput.js";
 import AmountInput from "./AmountInput.jsx";
 
 const INVESTMENT_TYPES = [
@@ -51,9 +52,9 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
   const valid =
     name.trim() &&
     initialAmount &&
-    +initialAmount > 0 &&
-    startDate &&
-    (!isFd || (+interestRate > 0 && +tenureMonths > 0));
+    Number.isFinite(+initialAmount) && +initialAmount > 0 &&
+    validDate(startDate) &&
+    (!isFd || (Number.isFinite(+interestRate) && +interestRate > 0 && Number.isSafeInteger(+tenureMonths) && +tenureMonths > 0 && Number.isFinite(+initialAmount * +interestRate * +tenureMonths)));
 
   const handleSave = () => {
     if (!valid) return;
@@ -76,7 +77,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       title={investment ? "Edit investment" : "New investment"}
       onClose={onClose}
     >
-      <div className="ct-visual preview">
+      <div className="ct-visual preview inv-visual">
         <div className="ct-vis-top">
           <span className="ct-bank">{name || "Investment Name"}</span>
           <LineChart size={18} strokeWidth={1.5} />
@@ -93,6 +94,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <input
         type="text"
         className="text-input"
+        aria-label="Investment name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="e.g. Vanguard S&P 500, Fixed Deposit — BOC"
@@ -104,6 +106,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           <label className="field-lbl">Type</label>
           <select
             className="text-input"
+            aria-label="Investment type"
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
@@ -119,6 +122,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           <input
             type="date"
             className="text-input"
+            aria-label="Start date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
@@ -131,6 +135,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <div className="big-input">
         <span className="big-cur">{CURRENCY}</span>
         <AmountInput
+          aria-label={investment ? "Initial amount" : "Starting amount"}
           value={initialAmount}
           onChange={setInitialAmount}
           placeholder="0.00"
@@ -138,8 +143,8 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       </div>
       {!investment && (
         <div className="hint">
-          This also records your first value check-in, dated to the start
-          date below.
+          This also records your first value check-in, dated to the selected
+          start date.
         </div>
       )}
 
@@ -152,6 +157,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
                 type="text"
                 inputMode="decimal"
                 className="text-input"
+                aria-label="Interest rate (% per annum)"
                 value={interestRate}
                 onChange={(e) => {
                   if (/^\d*\.?\d*$/.test(e.target.value)) setInterestRate(e.target.value);
@@ -163,6 +169,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
               <label className="field-lbl">Payout frequency</label>
               <select
                 className="text-input"
+                aria-label="Payout frequency"
                 value={payoutFrequency}
                 onChange={(e) => setPayoutFrequency(e.target.value)}
               >
@@ -180,6 +187,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
             type="text"
             inputMode="numeric"
             className="text-input"
+            aria-label="Tenure (months)"
             value={tenureMonths}
             onChange={(e) => {
               if (/^\d*$/.test(e.target.value)) setTenureMonths(e.target.value);
@@ -189,14 +197,14 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
           {payoutPeriodTooLong ? (
             <div className="warn-hint">
               {selectedFreq.label} payouts happen every {12 / selectedFreq.periodsPerYear}{" "}
-              months, but the tenure is only {tenureMonths} — no payout would
-              ever complete. Pick a shorter frequency or a longer tenure.
+              months. For this shorter {tenureMonths}-month tenure, the
+              prorated interest is paid at maturity.
             </div>
           ) : (
             <div className="hint">
               Interest is paid out separately each period — the deposit's own
               value stays at the principal until maturity, matching how a
-              real fixed deposit works.
+              real fixed deposit works. Any remaining partial period is paid at maturity.
             </div>
           )}
         </>
@@ -206,6 +214,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       <input
         type="text"
         className="text-input"
+        aria-label="Notes (optional)"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Optional notes"

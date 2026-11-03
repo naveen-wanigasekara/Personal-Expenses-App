@@ -47,6 +47,8 @@ export default function BudgetView({
     monthPlans[viewMonth] || emptyPlan(),
   );
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setFixedEdit(fixedPlan);
@@ -55,7 +57,7 @@ export default function BudgetView({
     setMonthEdit(
       monthPlans[viewMonth] || JSON.parse(JSON.stringify(fixedPlan)),
     );
-  }, [viewMonth, monthPlans]);
+  }, [viewMonth, monthPlans, fixedPlan]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -67,10 +69,20 @@ export default function BudgetView({
   const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
 
   const handleSave = async () => {
-    if (mode === "fixed") await setFixedPlan(fixedEdit);
-    else await setMonthPlan(viewMonth, monthEdit);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    if (saving) return;
+    setSaving(true);
+    setSaved(false);
+    setSaveError("");
+    try {
+      const ok = mode === "fixed" ? await setFixedPlan(fixedEdit) : await setMonthPlan(viewMonth, monthEdit);
+      if (ok === false) setSaveError("Couldn't save your budget. Please try again.");
+      else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1800);
+      }
+    } catch {
+      setSaveError("Couldn't save your budget. Please try again.");
+    } finally { setSaving(false); }
   };
 
   const copyFromFixed = () =>
@@ -160,11 +172,11 @@ export default function BudgetView({
       ) : (
         <>
           <div className="month-pill month-pill-full">
-            <button onClick={() => changeMonth(-1)}>
+            <button onClick={() => changeMonth(-1)} aria-label="Previous budget month">
               <ChevronLeft size={16} />
             </button>
             <span>{monthLabel(viewMonth)}</span>
-            <button onClick={() => changeMonth(1)}>
+            <button onClick={() => changeMonth(1)} aria-label="Next budget month">
               <ChevronRight size={16} />
             </button>
           </div>
@@ -243,6 +255,8 @@ export default function BudgetView({
         <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
           <span className="big-cur">{CURRENCY}</span>
           <AmountInput
+            disabled={saving}
+            aria-label={`${isFixed ? "Fixed monthly" : "This month’s"} ${side === "income" ? "income target" : "expense budget"}`}
             value={total}
             onChange={updateTotal}
             placeholder="0.00"
@@ -287,6 +301,8 @@ export default function BudgetView({
                   <div className="cb-input">
                     <span>{CURRENCY}</span>
                     <AmountInput
+            disabled={saving}
+                      aria-label={`${c.label} ${side === "income" ? "income target" : "budget"}`}
                       value={cats[c.id] || ""}
                       onChange={(v) => updateCat(c.id, v)}
                       placeholder="0.00"
@@ -328,11 +344,13 @@ export default function BudgetView({
         </div>
       </div>
 
+      {saveError && <p className="budget-save-error" role="alert">{saveError}</p>}
       <button
         className={`save-btn ${saved ? "saved" : ""}`}
+        disabled={saving}
         onClick={handleSave}
       >
-        {saved ? (
+        {saving ? "Saving…" : saved ? (
           <>
             <Check size={17} strokeWidth={2.5} /> Saved
           </>

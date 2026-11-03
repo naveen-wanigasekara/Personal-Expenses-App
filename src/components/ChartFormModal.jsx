@@ -65,6 +65,7 @@ function ChipRow({ options, value, onChange }) {
             key={opt.id}
             type="button"
             className={`chip ${value === opt.id ? "active" : ""}`}
+            aria-pressed={value === opt.id}
             onClick={() => onChange(opt.id)}
           >
             {Icon && <Icon size={14} strokeWidth={2} />}
@@ -148,6 +149,7 @@ export default function ChartFormModal({
       <input
         type="text"
         className="text-input"
+        aria-label="Chart name"
         value={cfg.name}
         onChange={(e) => set({ name: e.target.value })}
         placeholder="e.g. Groceries over time"
@@ -233,6 +235,8 @@ export default function ChartFormModal({
             {CHART_COLOR_TOKENS.map((token) => (
               <button
                 key={token}
+                aria-label={`${token} color`}
+                aria-pressed={cfg.color === token}
                 type="button"
                 className={`color-opt ${cfg.color === token ? "active" : ""}`}
                 onClick={() => set({ color: token })}

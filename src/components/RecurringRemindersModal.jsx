@@ -30,9 +30,10 @@ export default function RecurringRemindersModal({
     if (
       !label.trim() ||
       !dayOfMonth ||
+      !Number.isInteger(+dayOfMonth) ||
       +dayOfMonth < 1 ||
       +dayOfMonth > 28 ||
-      (amount && +amount < 0)
+      (amount && (!Number.isFinite(+amount) || +amount < 0))
     )
       return;
     onSave({
@@ -47,9 +48,10 @@ export default function RecurringRemindersModal({
   const valid =
     label.trim() &&
     dayOfMonth &&
+    Number.isInteger(+dayOfMonth) &&
     +dayOfMonth >= 1 &&
     +dayOfMonth <= 28 &&
-    !(amount && +amount < 0);
+    !(amount && (!Number.isFinite(+amount) || +amount < 0));
 
   return (
     <Sheet title="Recurring Reminders" onClose={onClose}>
@@ -80,6 +82,7 @@ export default function RecurringRemindersModal({
                   </div>
                   <button
                     className="manage-cat-btn danger"
+                    aria-label={`Delete reminder: ${r.label}`}
                     onClick={() => {
                       if (confirm(`Delete the "${r.label}" reminder?`))
                         onDelete(r.id);
@@ -99,6 +102,7 @@ export default function RecurringRemindersModal({
           <input
             type="text"
             className="text-input"
+            aria-label="Reminder label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. Electricity Bill"
@@ -109,6 +113,7 @@ export default function RecurringRemindersModal({
           <input
             type="number"
             className="text-input"
+            aria-label="Estimated amount (optional)"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
@@ -119,6 +124,7 @@ export default function RecurringRemindersModal({
           <input
             type="number"
             className="text-input"
+            aria-label="Due day each month (1–28)"
             value={dayOfMonth}
             onChange={(e) => setDayOfMonth(e.target.value)}
             min="1"
@@ -131,6 +137,7 @@ export default function RecurringRemindersModal({
           </label>
           <select
             className="text-input"
+            aria-label="Category for auto-dismiss (optional)"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >

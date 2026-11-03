@@ -1,6 +1,6 @@
 # Personal Expenses Tracker
 
-> A modern personal expense tracker — record income, expenses, credit cards, investments, and budgets with a beautiful dark UI, cloud sync, and end-to-end encryption.
+> A modern personal expense tracker — record income, expenses, credit cards, investments, and budgets with a beautiful dark UI, cloud sync, and server-managed encryption.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-18-61dafb.svg)
@@ -8,7 +8,7 @@
 ![Vite](https://img.shields.io/badge/Vite-5-646cff.svg)
 ![PWA](https://img.shields.io/badge/PWA-ready-5a0fc8.svg)
 
-A mobile-first personal finance app that helps you record every transaction in and out, plan a monthly budget, track credit card debt without double-counting, follow an investment portfolio (including real Fixed Deposit payout math), and see exactly where your money goes — with fully customizable dashboards, right down to charts you build yourself — across devices, in real time. All your financial data is end-to-end encrypted before it ever reaches the database. Install it to your phone's home screen like a native app.
+A mobile-first personal finance app that helps you record every transaction in and out, plan a monthly budget, track credit card debt without double-counting, follow an investment portfolio (including real Fixed Deposit payout math), and see exactly where your money goes — with fully customizable dashboards, right down to charts you build yourself — across devices, in real time. Financial fields are encrypted before database storage, with account access enforced by Supabase RLS. Install it to your phone's home screen like a native app.
 
 ---
 
@@ -105,11 +105,16 @@ Choose from 12 currencies in the Account settings — the selection is saved per
 | NZ$    | NZD  | New Zealand Dollar |
 | RM     | MYR  | Malaysian Ringgit  |
 
-### 🔒 Client-side encryption at rest
+### 🔒 Financial data security
 
-All user-entered financial data — transaction amounts, categories, notes, dates; card names, limits, balances; budget totals and category breakdowns — is encrypted with **AES-GCM-256** in the browser before being sent to Supabase, using a key derived from your user ID and a shared secret via PBKDF2 (100,000 iterations, SHA-256). Raw financial values are never stored in plaintext.
+Financial fields use AES-GCM-256 with per-user keys delivered by an authenticated
+server endpoint. The master key remains server-only, separate from the database.
+MFA and live-session checks protect data access. Historical data is migrated
+transactionally and decryption failures stop saves rather than silently becoming
+empty amounts. This is server-managed encryption, not end-to-end encryption.
 
-**Known limitation:** because `VITE_ENCRYPTION_SECRET` is bundled into the public client JS (it's not a real server-side secret — anyone can extract it from the deployed app), this encryption does not provide meaningful confidentiality against an attacker who has both the database and the app's source, since the key can be re-derived from a row's own `user_id` column. In practice, **Supabase's Row-Level Security policies are the actual access boundary** between users, not the encryption layer. This is a legitimate weakness worth being aware of if you're evaluating this app for genuinely sensitive data; a real fix would derive the key from a user-supplied passphrase instead (requiring a migration path for existing data) and is tracked as a future improvement rather than something patched in-place.
+See [security rollout requirements](docs/SECURITY_HARDENING.md). This branch needs
+an isolated backend and coordinated migration before it can be released.
 
 ### 🧭 Navigation that adapts to your screen
 
@@ -139,11 +144,11 @@ All user-entered financial data — transaction amounts, categories, notes, date
 
 | Layer      | Tech                                      |
 | ---------- | ----------------------------------------- |
-| Frontend   | React 18, Vite 5                          |
+| Frontend   | React 18, Vite 8                          |
 | Database   | PostgreSQL (via Supabase)                 |
 | Auth       | Supabase Auth (email + password)          |
-| Encryption | Web Crypto API — AES-GCM-256, PBKDF2      |
-| PWA        | vite-plugin-pwa (Workbox)                 |
+| Encryption | AES-GCM-256; server-side HKDF-SHA-256      |
+| PWA        | Public-asset-only service worker                 |
 | Icons      | Lucide React                              |
 | Typography | PT Serif + Source Sans 3 + JetBrains Mono |
 | Styling    | Vanilla CSS with CSS custom properties    |
@@ -290,17 +295,10 @@ The app is a static SPA that works on any static host.
 
 **Vercel** — connect your GitHub repo, add environment variables, deploy. Free tier covers personal use.
 
-**Netlify / Cloudflare Pages** — same workflow.
-
-Environment variables to set on your hosting platform:
-
-| Variable                 | Description                                            |
-| ------------------------ | ------------------------------------------------------ |
-| `VITE_SUPABASE_URL`      | Your Supabase project URL                              |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key                          |
-| `VITE_ENCRYPTION_SECRET` | Your encryption secret (same value as in `.env.local`) |
-
-> The encryption secret must be **identical** across all environments that share the same Supabase database. Changing it makes all existing encrypted rows unreadable.
+This version also needs the Node key endpoint at `/api/crypto-key`; static-only
+hosting is insufficient. Set the public Supabase URL/key and the server-only
+variables from [.env.example](.env.example). Never use `VITE_` for encryption keys.
+Preview and production must use separate Supabase environments and master keys.
 
 See [SETUP.md](./SETUP.md) for detailed deployment steps.
 
@@ -360,8 +358,27 @@ MIT — see [LICENSE](./LICENSE) for details.
 - [Supabase](https://supabase.com) for auth + Postgres with zero backend boilerplate
 - [Lucide](https://lucide.dev) for the icon set
 - [Vite](https://vitejs.dev) for the fast dev experience
-- [vite-plugin-pwa](https://vite-pwa-org.netlify.app) for Workbox PWA support
+- [the public-shell service worker](https://vite-pwa-org.netlify.app) for Workbox PWA support
 
 ---
 
 <p align="center">Built with care for anyone trying to make sense of their money.</p>
+
+
+### Appearance
+
+Choose **Dark**, **Light**, or **System** under **Profile → Appearance** on mobile, or **Account → Appearance** on desktop. Dark is the default. The choice is saved on this device and shared across its open app tabs; System follows the operating system’s appearance. It also applies to the sign-in and loading screens on the next visit. No database change is required.
+
+Run theme behavior checks with `npm test`.
+
+
+### Loan calculator
+
+Open **Loan Calculator**, directly below **Investments** in the mobile menu or desktop sidebar. Enter the loan amount, annual interest rate, and repayment period in years or months to see the estimated monthly installment and total interest over the loan term. Uses fixed-rate reducing-balance repayments at month end, supports zero interest, and excludes lender fees and insurance. Calculations do not create transactions or loan records.
+
+
+### Saved bank details
+
+**Bank Details** appears directly below **Loan Calculator** in the mobile menu and desktop sidebar. Save one or more accounts using Bank, Branch, Account holder name, and Account number. Account numbers remain text so leading zeros are preserved. Each account has **Copy bank details**, Edit, and Delete controls. Copy produces a four-line text block; if automatic copying is unavailable, a selectable text area is shown. No messages are sent by the app.
+
+Before enabling saving, apply `db/bank_details_migration.sql` to the intended Supabase database. It only adds an encrypted-text `bank_details` column to `user_settings`; existing per-user RLS policies stay in place. The implementation uses the app's existing client-side encryption and its documented limitations. Reads and writes are account-scoped and only touch this column. The migration has been prepared but has not been applied by this change.

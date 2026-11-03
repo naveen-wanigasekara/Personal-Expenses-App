@@ -14,6 +14,8 @@ import { getCat } from "../constants/categories.js";
 import { fmtCompact } from "../utils/format.js";
 import { loadLastCategory, saveLastCategory } from "../utils/storage.js";
 import Sheet from "./Sheet.jsx";
+import {validDate, validMonth} from "../utils/dateInput.js";
+import {validInstallmentMonths} from "../utils/installments.js";
 import AmountInput from "./AmountInput.jsx";
 
 export default function AddModal({
@@ -34,7 +36,7 @@ export default function AddModal({
 
   const [type, setType] = useState(editing?.type || "expense");
   const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
-  const [category, setCategory] = useState(editing?.category || "loan");
+  const [category, setCategory] = useState(editing?.category || allExpCats[0]?.id || "other");
   const [note, setNote] = useState(editing?.note || "");
   const [date, setDate] = useState(() => {
     if (editing?.date) return editing.date;
@@ -81,14 +83,9 @@ export default function AddModal({
     }
 
     const validCats = type === "income" ? allIncCats : allExpCats;
-    const defaults = {
-      income: "fixed",
-      expense: "loan",
-      "card-purchase": "loan",
-    };
     const last = userId ? loadLastCategory(userId, type) : null;
-    const isValid = last && validCats.find((c) => c.id === last);
-    setCategory(isValid ? last : defaults[type] || "loan");
+    const isValid = last && validCats.some((c) => c.id === last);
+    setCategory(isValid ? last : validCats[0]?.id || (type === "income" ? "other-income" : "other"));
 
     if (type !== "card-purchase") setIsInstallment(false);
   }, [type]);
@@ -123,10 +120,11 @@ export default function AddModal({
     if (isInstallment) {
       if (
         !amount ||
+        !Number.isFinite(+amount) ||
         +amount <= 0 ||
         !installLabel.trim() ||
-        !Number.isInteger(+installMonths) ||
-        +installMonths < 2 ||
+        !validInstallmentMonths(+installMonths) ||
+        !validMonth(installStartMonth) ||
         !cardId
       )
         return;
@@ -140,7 +138,7 @@ export default function AddModal({
       });
       return;
     }
-    if (!amount || +amount <= 0) return;
+    if (!amount || !Number.isFinite(+amount) || +amount <= 0 || !validDate(date)) return;
     if (isCardType && !cardId) return;
     const tx = { type, amount: +amount, note, date };
     if (type === "income") tx.category = category;
@@ -161,10 +159,10 @@ export default function AddModal({
     ? amount &&
       +amount > 0 &&
       installLabel.trim() &&
-      Number.isInteger(+installMonths) &&
-      +installMonths >= 2 &&
+      validInstallmentMonths(+installMonths) &&
+      validMonth(installStartMonth) &&
       cardId
-    : amount && +amount > 0 && (!isCardType || cardId);
+    : amount && +amount > 0 && validDate(date) && (!isCardType || cardId);
 
   // Installment limit warning
   const selectedCard = cards.find((c) => c.id === cardId);
@@ -255,9 +253,11 @@ export default function AddModal({
         </button>
       )}
 
+      {isInstallment && <label className="field-lbl">Monthly installment amount</label>}
       <div className="amount-input">
         <span className="amt-cur">{CURRENCY}</span>
         <AmountInput
+          aria-label={isInstallment ? "Monthly installment amount" : "Amount"}
           value={amount}
           onChange={(v) => {
             amountUserEdited.current = true;
@@ -281,6 +281,7 @@ export default function AddModal({
           <input
             type="text"
             className="text-input"
+            aria-label="Installment description"
             value={installLabel}
             onChange={(e) => setInstallLabel(e.target.value)}
             placeholder="e.g. Samsung TV"
@@ -290,6 +291,7 @@ export default function AddModal({
           <input
             type="number"
             className="text-input"
+            aria-label="Number of months"
             value={installMonths}
             onChange={(e) => setInstallMonths(e.target.value)}
             min="2"
@@ -300,6 +302,7 @@ export default function AddModal({
           <input
             type="month"
             className="text-input"
+            aria-label="Start month"
             value={installStartMonth}
             onChange={(e) => setInstallStartMonth(e.target.value)}
           />
@@ -393,6 +396,7 @@ export default function AddModal({
             <input
               type="text"
               className="text-input"
+              aria-label="Note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Optional description"
@@ -403,6 +407,7 @@ export default function AddModal({
             <input
               type="date"
               className="text-input"
+              aria-label="Date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />

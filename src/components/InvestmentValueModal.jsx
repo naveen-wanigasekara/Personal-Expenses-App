@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import { CurrencyCtx } from "../context.js";
 import Sheet from "./Sheet.jsx";
+import {validDate} from "../utils/dateInput.js";
 import AmountInput from "./AmountInput.jsx";
 
 export default function InvestmentValueModal({
@@ -20,9 +21,9 @@ export default function InvestmentValueModal({
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
   });
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(valuation?.note || "");
 
-  const valid = value && +value >= 0 && date;
+  const valid = value && Number.isFinite(+value) && +value >= 0 && validDate(date);
 
   const handleSave = () => {
     if (!valid) return;
@@ -37,13 +38,14 @@ export default function InvestmentValueModal({
       <label className="field-lbl">Current value</label>
       <div className="big-input">
         <span className="big-cur">{CURRENCY}</span>
-        <AmountInput value={value} onChange={setValue} placeholder="0.00" autoFocus />
+        <AmountInput aria-label="Current value" value={value} onChange={setValue} placeholder="0.00" autoFocus />
       </div>
 
       <label className="field-lbl">Date</label>
       <input
         type="date"
         className="text-input"
+        aria-label="Recorded date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
       />
@@ -56,6 +58,7 @@ export default function InvestmentValueModal({
       <input
         type="text"
         className="text-input"
+        aria-label="Note (optional)"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Optional note"

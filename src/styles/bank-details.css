@@ -1,0 +1,35 @@
+.view.view-bank-details { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; padding: 0; }
+.view-bank-details > .dash-topbar { margin: 0; }
+.bank-details-scroll { flex: 1; min-height: 0; overflow-y: auto; width: 100%; max-width: 900px; margin: 0 auto; padding: 24px 18px max(120px, calc(env(safe-area-inset-bottom) + 100px)); }
+.bank-intro { color: var(--ink-soft); font-size: 14px; line-height: 1.5; margin-top: 8px; }
+.bank-status, .bank-empty { color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
+.bank-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; padding: 32px 20px; text-align: center; }
+.bank-add { margin: 0 0 20px; }
+.bank-accounts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.bank-account { min-width: 0; margin-bottom: 0; }
+.bank-account-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; color: var(--accent-2); }
+.bank-account-heading h2 { color: var(--ink); font-size: 18px; overflow-wrap: anywhere; min-width: 0; }
+.bank-account-heading > svg { flex-shrink: 0; }
+.bank-account-fields { display: grid; gap: 14px; }
+.bank-account-fields dt { color: var(--ink-faint); font-size: 11px; margin-bottom: 4px; }
+.bank-account-fields dd { color: var(--ink); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.bank-account-number { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+.bank-account .save-btn { margin-top: 22px; }
+.bank-account-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.bank-account-actions button { min-height: 44px; }
+.bank-error { color: var(--danger); font-size: 13px; line-height: 1.5; margin: 12px 0; }
+.bank-manual-copy { margin-top: 14px; color: var(--ink-soft); font-size: 12px; }
+.bank-manual-copy textarea { margin-top: 8px; width: 100%; min-height: 150px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--bg-2); color: var(--ink); padding: 12px; font: 14px/1.6 var(--sans); resize: vertical; }
+.bank-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 768px) { .bank-accounts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .view.view-bank-details { height: calc(100dvh - 69px); } .bank-details-scroll { padding-top: 32px; } }
+
+/* Escape the view's stacking/animation context and fit above the keyboard. */
+.bank-form-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; z-index: 110; }
+.bank-form-layer > .backdrop { position: absolute; }
+.bank-form-sheet.sheet { display: flex; flex-direction: column; max-height: calc(100% - 8px); overflow: hidden; padding-bottom: 0; }
+.bank-form-sheet .sheet-handle, .bank-form-sheet .sheet-hd { flex-shrink: 0; }
+.bank-form { display: flex; flex-direction: column; min-height: 0; }
+.bank-form-fields { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 4px 12px; scroll-padding-block: 12px; }
+.bank-form-footer { flex-shrink: 0; padding: 12px 4px max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--bg-2); }
+.bank-form-footer .save-btn { margin-top: 0; min-height: 48px; }

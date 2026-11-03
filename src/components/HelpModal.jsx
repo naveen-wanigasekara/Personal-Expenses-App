@@ -31,6 +31,7 @@ export default function HelpModal({ onClose }) {
             >
               <button
                 className="help-section-hd"
+                aria-expanded={isOpen}
                 onClick={() => toggleSection(section.id)}
               >
                 <span className="help-section-icon">{section.icon}</span>
@@ -52,6 +53,7 @@ export default function HelpModal({ onClose }) {
                       >
                         <button
                           className="help-item-q"
+                          aria-expanded={isItemOpen}
                           onClick={() => toggleItem(key)}
                         >
                           <span>{item.q}</span>

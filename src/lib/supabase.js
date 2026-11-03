@@ -1,3 +1,6 @@
+import { createFinanceBatchStore } from "../utils/financeBatch.js";
+import { ENCRYPTED_FIELDS } from "./dataSecurity.js";
+import { purgePrivateCaches, clearAccountStorage } from "../utils/securityStorage.js";
 import { createClient } from "@supabase/supabase-js";
 import {
   initCrypto,
@@ -21,6 +24,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+const financeBatch = createFinanceBatchStore(supabase, encryptFields, ENCRYPTED_FIELDS);
+const rememberRows = (table, rows) => financeBatch.remember(table, rows);
+export const clearDataSnapshots = () => financeBatch.clear();
+export const commitFinanceChanges = (changes) => financeBatch.commit(changes);
+
 const TX_ENC = ["amount", "category", "note", "date"];
 const CARD_ENC = ["name", "credit_limit", "opening_balance", "colors"];
 const BUDGET_ENC = [
@@ -40,7 +48,16 @@ export async function signIn(email, password) {
 }
 
 export async function signOut() {
-  return await supabase.auth.signOut();
+  const { data } = await supabase.auth.getSession();
+  const result = await supabase.auth.signOut({ scope: "global" });
+  if (!result.error) {
+    clearCrypto();
+    clearDataSnapshots();
+    try { clearAccountStorage(data.session?.user?.id); } catch { /* Storage may be disabled. */ }
+    try { await purgePrivateCaches(); }
+    catch { return { error: new Error("Signed out, but local cache cleanup needs a retry.") }; }
+  }
+  return result;
 }
 
 export async function getUser() {
@@ -50,7 +67,7 @@ export async function getUser() {
 
 export async function resetPassword(email) {
   return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin,
+    redirectTo: `${window.location.origin}/?flow=recovery`,
   });
 }
 
@@ -62,6 +79,7 @@ export async function fetchTransactions(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
+  rememberRows("transactions", data);
   const rows = await Promise.all(
     (data || []).map((r) => decryptFields(r, TX_ENC)),
   );
@@ -78,6 +96,7 @@ export async function insertTransaction(tx) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("transactions", data);
   return decryptFields(data, TX_ENC);
 }
 
@@ -90,6 +109,7 @@ export async function updateTransaction(id, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("transactions", data);
   return decryptFields(data, TX_ENC);
 }
 
@@ -106,6 +126,7 @@ export async function fetchCards(userId) {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) throw error;
+  rememberRows("cards", data);
   return Promise.all((data || []).map((r) => decryptFields(r, CARD_ENC)));
 }
 
@@ -117,6 +138,7 @@ export async function upsertCard(card) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("cards", data);
   return decryptFields(data, CARD_ENC);
 }
 
@@ -132,6 +154,7 @@ export async function fetchBudgets(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
+  rememberRows("budgets", data);
   return Promise.all((data || []).map((r) => decryptFields(r, BUDGET_ENC)));
 }
 
@@ -143,6 +166,7 @@ export async function upsertBudget(budget) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("budgets", data);
   return decryptFields(data, BUDGET_ENC);
 }
 
@@ -163,6 +187,7 @@ export async function fetchInstallmentPlans(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
+  rememberRows("installment_plans", data);
   return Promise.all(
     (data || []).map((r) => decryptFields(r, INSTALLMENT_ENC)),
   );
@@ -176,6 +201,7 @@ export async function insertInstallmentPlan(plan) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("installment_plans", data);
   return decryptFields(data, INSTALLMENT_ENC);
 }
 
@@ -188,6 +214,7 @@ export async function updateInstallmentPlan(id, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("installment_plans", data);
   return decryptFields(data, INSTALLMENT_ENC);
 }
 
@@ -198,6 +225,7 @@ export async function fetchRecurringReminders(userId) {
     .select("*")
     .eq("user_id", userId);
   if (error) throw error;
+  rememberRows("recurring_reminders", data);
   return Promise.all((data || []).map((r) => decryptFields(r, REMINDER_ENC)));
 }
 
@@ -209,6 +237,7 @@ export async function insertRecurringReminder(reminder) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("recurring_reminders", data);
   return decryptFields(data, REMINDER_ENC);
 }
 
@@ -221,6 +250,7 @@ export async function updateRecurringReminder(id, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("recurring_reminders", data);
   return decryptFields(data, REMINDER_ENC);
 }
 
@@ -243,7 +273,7 @@ const INVESTMENT_ENC = [
   "payout_frequency",
   "tenure_months",
 ];
-const VALUATION_ENC = ["value", "recorded_date"];
+const VALUATION_ENC = ["value", "recorded_date", "note"];
 
 /* Investments */
 export async function fetchInvestments(userId) {
@@ -253,6 +283,7 @@ export async function fetchInvestments(userId) {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) throw error;
+  rememberRows("investments", data);
   return Promise.all((data || []).map((r) => decryptFields(r, INVESTMENT_ENC)));
 }
 
@@ -264,6 +295,7 @@ export async function insertInvestment(investment) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("investments", data);
   return decryptFields(data, INVESTMENT_ENC);
 }
 
@@ -276,6 +308,7 @@ export async function updateInvestment(id, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("investments", data);
   return decryptFields(data, INVESTMENT_ENC);
 }
 
@@ -289,8 +322,11 @@ export async function fetchInvestmentValuations(userId) {
   const { data, error } = await supabase
     .from("investment_valuations")
     .select("*")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
   if (error) throw error;
+  rememberRows("investment_valuations", data);
   return Promise.all((data || []).map((r) => decryptFields(r, VALUATION_ENC)));
 }
 
@@ -302,6 +338,7 @@ export async function insertInvestmentValuation(valuation) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("investment_valuations", data);
   return decryptFields(data, VALUATION_ENC);
 }
 
@@ -314,6 +351,7 @@ export async function updateInvestmentValuation(id, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("investment_valuations", data);
   return decryptFields(data, VALUATION_ENC);
 }
 
@@ -349,6 +387,7 @@ export async function fetchUserSettings(userId) {
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
+  rememberRows("user_settings", data);
   if (!data) return null;
   return decryptFields(data, SETTINGS_ENC);
 }
@@ -361,5 +400,6 @@ export async function upsertUserSettings(userId, updates) {
     .select()
     .single();
   if (error) throw error;
+  rememberRows("user_settings", data);
   return decryptFields(data, SETTINGS_ENC);
 }

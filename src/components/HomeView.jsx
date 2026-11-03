@@ -63,7 +63,10 @@ export default function HomeView({
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       out.push(monthKey(d));
     }
-    return out;
+    // The header can navigate beyond the recent year, including future
+    // installment months. Keep the selected month representable here.
+    if (!out.includes(viewMonth)) out.push(viewMonth);
+    return out.sort();
   })();
 
   // Resolve a transaction's effective category via getCat (same logic as TxRow)
@@ -202,6 +205,7 @@ export default function HomeView({
           <input
             className="tx-search-input"
             type="text"
+            aria-label="Search transactions"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by note, amount, or category…"
@@ -220,6 +224,7 @@ export default function HomeView({
         <div className="tx-filters">
           <select
             className="fselect tx-month-select"
+            aria-label="Transaction month"
             value={viewMonth}
             onChange={(e) => setViewMonth(e.target.value)}
           >
@@ -238,6 +243,7 @@ export default function HomeView({
           </select>
           <select
             className="fselect"
+            aria-label="Transaction type"
             value={filterType}
             onChange={(e) => {
               setFilterType(e.target.value);
@@ -247,10 +253,11 @@ export default function HomeView({
             <option value="all">All types</option>
             <option value="income">Income</option>
             <option value="expense">Cash Purchase</option>
-            <option value="card">CC Purchase</option>
+            <option value="card">Card transactions</option>
           </select>
           <select
             className="fselect"
+            aria-label="Transaction category"
             value={filterCat}
             onChange={(e) => setFilterCat(e.target.value)}
           >

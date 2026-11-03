@@ -114,7 +114,7 @@ export default function CardDetailView({
   return (
     <div className="view view-card-detail">
       <div className="detail-head">
-        <button className="back-btn" onClick={onBack}>
+        <button className="back-btn" onClick={onBack} aria-label="Back to cards">
           <ChevronLeft size={18} />
         </button>
         {/* Kept as the month-pill (not the card name) in this center slot —
@@ -135,11 +135,12 @@ export default function CardDetailView({
           </button>
         </div>
         <div className="detail-actions">
-          <button className="icon-btn" onClick={onEdit}>
+          <button className="icon-btn" onClick={onEdit} aria-label="Edit card">
             <Edit2 size={14} />
           </button>
           <button
             className="icon-btn danger"
+            aria-label="Delete card"
             onClick={() => {
               if (
                 confirm(

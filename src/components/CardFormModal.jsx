@@ -53,6 +53,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
 
       <label className="field-lbl">Card name</label>
       <input
+        aria-label="Card name"
         type="text"
         className="text-input"
         value={name}
@@ -66,7 +67,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
           <label className="field-lbl">Credit limit</label>
           <div className="big-input">
             <span className="big-cur">{CURRENCY}</span>
-            <AmountInput value={limit} onChange={setLimit} placeholder="0.00" />
+            <AmountInput aria-label="Credit limit" value={limit} onChange={setLimit} placeholder="0.00" />
           </div>
         </div>
         <div className="field-group">
@@ -76,6 +77,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
           <div className="big-input">
             <span className="big-cur">{CURRENCY}</span>
             <AmountInput
+              aria-label="Current outstanding balance"
               value={openingBalance}
               onChange={setOpeningBalance}
               placeholder="0.00"
@@ -100,6 +102,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
             }}
             onClick={() => setColorIdx(i)}
             aria-label={`Color ${i + 1}`}
+            aria-pressed={colorIdx === i}
           >
             {colorIdx === i && (
               <Check size={14} strokeWidth={3} color="white" />

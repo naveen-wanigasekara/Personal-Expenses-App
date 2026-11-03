@@ -83,6 +83,7 @@ export default function CategoryFormModal({
         </div>
       ) : (
         <input
+          aria-label="Category name"
           type="text"
           className="text-input"
           value={label}
@@ -98,6 +99,8 @@ export default function CategoryFormModal({
         {ICON_OPTIONS.map(({ name, icon: Icon }) => (
           <button
             key={name}
+            aria-label={name.replace(/([a-z])([A-Z])/g, "$1 $2")}
+            aria-pressed={iconName === name}
             className={`icon-opt ${iconName === name ? "active" : ""}`}
             onClick={() => setIconName(name)}
             style={
@@ -120,6 +123,8 @@ export default function CategoryFormModal({
         {CUSTOM_CAT_COLORS.map((c) => (
           <button
             key={c}
+            aria-label={`Color ${c}`}
+            aria-pressed={color === c}
             className={`color-opt ${color === c ? "active" : ""}`}
             onClick={() => setColor(c)}
             style={{ background: c }}
