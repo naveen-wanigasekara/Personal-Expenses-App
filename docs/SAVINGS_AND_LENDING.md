@@ -111,3 +111,8 @@ Completion retains existing per-user/per-month local storage and legacy inst:/re
 New installment plans use an explicit start date, defaulted to the creation date. The first charge is on that date. Each subsequent charge keeps its day of month, clamped to the target month's final day (31 January → 28/29 February → 31 March). The original day is retained when future amounts, cards, or durations are edited.
 
 The existing encrypted `start_month` text stores a full ISO date for new plans; loading separates `startDate` and `startMonth`. Legacy month-only values retain day 1 and are not rewritten. No migration, bulk update, or change to historical transactions is performed. Schedule dates appear in the ledger, card plan details/edit form, and notification schedule metadata. Bank payment deadlines remain independent of purchase/charge dates. Existing monthly balance, edit, and cancellation rules are preserved.
+
+
+### Installment notification window — 20 November 2026
+
+The Insights “Upcoming & due payments” disclosure is removed; financial totals and lending history remain unchanged. Upcoming installment notifications are limited to dates through today + 20 calendar days, inclusive. Saved installment transaction dates take precedence over the plan's calculated dates; legacy plans retain their recorded first-of-month schedule. Card bank deadlines no longer determine installment reminder dates. Current-month due/overdue schedule reminders, settled-card handling, monthly completion keys, and all card/recurring notifications are preserved. Older months still are not inferred unpaid without tracked payment status. This is a reminder-display change only, with no transaction writes or migrations.

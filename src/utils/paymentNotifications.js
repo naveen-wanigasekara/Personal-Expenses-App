@@ -21,6 +21,9 @@ export function buildPaymentNotifications({ cards = [], installmentPlans = [], r
   isCompleted = () => false, categoryForTransaction = transaction => transaction.category }) {
   const currentMonth = today.slice(0, 7), rows = [];
   const nextMonth = offsetMonth(currentMonth, 1);
+  const cutoff = new Date(`${today}T00:00:00Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() + 20);
+  const upcomingThrough = cutoff.toISOString().slice(0, 10);
   const cardById = new Map(cards.map(card => [card.id, card]));
   const add = row => {
     if (isCompleted(row.month, row.completionId)) return;
@@ -34,12 +37,14 @@ export function buildPaymentNotifications({ cards = [], installmentPlans = [], r
       completionId: `cc:${card.id}:${date || currentMonth}`, detail: 'Current outstanding balance', amountLabel: 'Outstanding' });
   }
   const installmentAmounts = new Map();
+  const installmentDates = new Map();
   const recordedCategories = new Map();
   for (const transaction of transactions) {
     const month = transaction.date?.slice(0, 7);
     if (transaction.installmentId && transaction.type === 'card-purchase') {
       const key = `${transaction.installmentId}:${month}`;
       installmentAmounts.set(key, (installmentAmounts.get(key) || 0) + Number(transaction.amount));
+      if (validDate(transaction.date) && (!installmentDates.has(key) || transaction.date < installmentDates.get(key))) installmentDates.set(key, transaction.date);
     }
     if (month === currentMonth || month === nextMonth) {
       if (!recordedCategories.has(month)) recordedCategories.set(month, new Set());
@@ -52,10 +57,11 @@ export function buildPaymentNotifications({ cards = [], installmentPlans = [], r
     for (let index = 0; index < Number(plan.totalMonths); index++) {
       const month = offsetMonth(plan.startMonth, index);
       if (month < currentMonth) continue; // No historical payment status exists for older occurrences.
-      const date = validDate(card?.paymentDueDate) && card.paymentDueDate.slice(0, 7) === month ? card.paymentDueDate : null;
+      const date = installmentDates.get(`${plan.id}:${month}`) || installmentDate(plan, index);
+      if (date > upcomingThrough) continue;
       const cardSettled = card && Number(card.currentBalance) <= 0 && month === currentMonth;
       add({ type: 'installment', sourceId: plan.id, title: plan.label, amount: installmentAmounts.get(`${plan.id}:${month}`) ?? Number(plan.monthlyAmount), date, month,
-        completionId: `inst:${plan.id}`, status: cardSettled ? 'scheduled' : undefined, detail: `${card?.name || 'Deleted card'} · Installment ${index + 1}/${plan.totalMonths}${plan.startDate ? ` · Scheduled ${installmentDate(plan, index)}` : ''}${cardSettled ? ' · Card balance settled' : ''}`, amountLabel: 'Installment' });
+        completionId: `inst:${plan.id}`, status: cardSettled ? 'scheduled' : undefined, detail: `${card?.name || 'Deleted card'} · Installment ${index + 1}/${plan.totalMonths}${cardSettled ? ' · Card balance settled' : ''}`, amountLabel: 'Installment' });
     }
   }
   for (const reminder of recurringReminders) {

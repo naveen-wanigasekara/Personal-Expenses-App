@@ -43,7 +43,7 @@ async function lend({borrower='Person',amount='50000',account='savings',rate='0'
  await entry('Money lent');const existing=Array.from(screen.getByLabelText('Borrower',{exact:true}).options).find(o=>o.text===borrower);if(existing) change('Borrower',existing.value);else {change('Borrower','__new');change('Borrower name',borrower);}change('Amount lent',amount);change('Funding source',account);if(Number(rate)>0){fireEvent.click(screen.getByLabelText('Charge interest'));change('Interest rate (%)',rate);}change('Date lent',date);await save();
 }
 it('savings loan and linked repayment update Insights, history and saved reload balances',async()=>{
- await mount();expect(screen.queryByRole('button',{name:'View people & repayments',exact:true})).toBeNull();expect(screen.queryByRole('button',{name:'Withdraw from savings',exact:true})).toBeNull();await lend();expect(moneyValue('Owed to you · principal')).toContain('50,000');
+ await mount();expect(screen.queryByText('Upcoming & due payments')).toBeNull();expect(screen.queryByRole('button',{name:'View people & repayments',exact:true})).toBeNull();expect(screen.queryByRole('button',{name:'Withdraw from savings',exact:true})).toBeNull();await lend();expect(moneyValue('Owed to you · principal')).toContain('50,000');
  expect(screen.getByText('Total Savings').closest('.running-bal').textContent).toContain('50,000');
  await entry('Loan repayment');change('Principal returned','50000');change('Received into','savings');await save();
  expect(moneyValue('Owed to you · principal')).toContain('0');expect(screen.getByText('Total Savings').closest('.running-bal').textContent).toContain('100,000');
@@ -238,8 +238,8 @@ it('integrates CC reminders and future installments with occurrence-specific com
  expect(within(dialog).getByRole('heading',{name:/Monthly Credit Card/})).toBeTruthy();expect(within(dialog).getByRole('heading',{name:/Due Payments/})).toBeTruthy();
  const before=JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records});
  const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`}));
- expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(2);
+ expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(1);
  expect(JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records})).toBe(before);
- cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(2);
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(1);
  localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
 });

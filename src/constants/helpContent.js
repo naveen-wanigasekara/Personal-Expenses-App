@@ -232,7 +232,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "What is the notification bell?",
-        a: "The bell shows the number of active payment reminders. Notifications groups dated overdue and due-today items under Due Payments, with other reminders under Monthly Credit Card (CC) Payments, Installment Payments, and Other Upcoming Payments. It includes saved card payment dates, the remaining active installment schedule, and recurring bills for this month and next. Exact dates are not guessed when missing. Card amounts are current outstanding balances, not bank statement/minimum-payment amounts; installments are part of card payments. The checkmark dismisses only that occurrence on this device and does not record a payment. Existing category-based recurring auto-dismiss still applies per month.",
+        a: "The bell shows the number of active payment reminders. Notifications groups dated overdue and due-today items under Due Payments, with other reminders under Monthly Credit Card (CC) Payments, Installment Payments, and Other Upcoming Payments. It includes saved card payment dates, upcoming installments within 20 days of today (inclusive), current-month due installments, and recurring bills for this month and next. Installment reminders use their recorded transaction dates, falling back to the plan schedule, independently of card payment deadlines. Exact dates are not guessed when missing. Card amounts are current outstanding balances, not bank statement/minimum-payment amounts; installments are part of card payments. The checkmark dismisses only that occurrence on this device and does not record a payment. Existing category-based recurring auto-dismiss still applies per month.",
       },
       {
         q: "What is Cash / Bank?",

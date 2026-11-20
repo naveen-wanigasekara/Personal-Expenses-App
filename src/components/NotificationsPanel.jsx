@@ -16,7 +16,7 @@ export default function NotificationsPanel({ notifications = [], onClose, onComp
   const currency = useContext(CurrencyCtx);
   return <Sheet title="Notifications" onClose={onClose} className="payment-notifications-sheet">
     <div className="payment-notifications-scroll">
-      <p className="notif-intro">Saved card payment dates, remaining installments, and recurring bills for this month and next.</p>
+      <p className="notif-intro">Saved card payment dates. Installments due within 20 days, plus current-month due reminders. Recurring bills for this month and next.</p>
       {!notifications.length && <div className="empty-sm">No upcoming or due payment reminders.</div>}
       {paymentNotificationSections(notifications).map(section => section.rows.length > 0 && <section key={section.id} className="payment-notif-section" aria-labelledby={`payment-notif-${section.id}`}>
         <h3 className="notif-section-label" id={`payment-notif-${section.id}`}>{section.title}<span className="count">{section.rows.length}</span></h3>
