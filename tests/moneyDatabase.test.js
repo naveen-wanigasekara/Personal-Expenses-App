@@ -58,6 +58,11 @@ test('money schema preserves old rows, enforces ownership, encryption, sessions 
  const rev=(await workspace()).revision;await rpc(db,[tx('legacy-other-device')]);
  await assert.rejects(write([insert('money_records','after-old-write',{data:'enc2:test'})],rev),/another device/);
  await db.exec('reset role; set role anon');await assert.rejects(db.query('select public.money_workspace()'),/permission denied/);
+ await as(db,B);await rpc(db,[insert('money_records','cleanup-B',{data:'enc2:test'})]);
+ await db.exec('reset role');await db.query("select set_config('request.jwt.claims','{}',false)");
+ await db.query('delete from auth.sessions where user_id=$1',[B]);
+ await db.query('delete from auth.users where id=$1',[B]);
+ assert.equal((await db.query('select count(*)::int as n from private.money_revision where user_id=$1',[B])).rows[0].n,0);
  await as(db);await db.exec('reset role');await db.query('delete from auth.sessions where id=$1',[SA]);await as(db);
  await assert.rejects(db.query('select public.money_workspace()'),/verified session/);
 });

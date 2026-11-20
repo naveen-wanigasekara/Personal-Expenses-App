@@ -37,3 +37,11 @@ All money data is encrypted using the existing user-bound encryption. A single d
 Run `npm test` (production build, Node calculations/database/security tests, React interaction tests). New tests cover all three discussed examples; withdrawal edits/deletes and backdating; original/remaining/annual interest and month ends; interest-only payments and missed interest; installment dues; principal overpayment; persistence across workspace remount; card payment separation; account isolation; ciphertext; session revocation; stale revisions; and atomic rollback.
 
 Local database tests use PGlite/Postgres with synthetic users and apply the actual additive migration. React tests use synthetic provider boundaries; they do not replace a live dev-database smoke test.
+
+## Dev verification — 20 November 2026
+
+Applied the additive migration to the isolated dev database and verified its existing schema/security functions matched the repository beforehand. Existing counts remained 971 transactions, 7 cards, 10 budgets, 37 installment plans, 1 recurring reminder, 3 investments, 4 valuations and 3 settings rows. Before/after checksums of existing transactions, cards and settings matched exactly.
+
+Ran the real authenticated database RPCs with synthetic encrypted records inside a transaction that was rolled back. Verified savings-funded lending/repayment, credit-card lending followed by cash repayment and a separate card payment, 5% monthly interest-only repayment, transfers, edits, deletions, stale revisions and atomic rollback. Decrypted the returned ciphertext through the app's encryption functions and reconciled balances using the app's calculation functions. No synthetic users or financial records remained after rollback.
+
+A follow-up `money_lending_cascade_fix.sql` preserves auth-account deletion cascades: child-row deletion must not recreate a revision after its owning auth user is gone. Fresh setups include the same fix in the main migration. The database regression test covers this cleanup.
