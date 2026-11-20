@@ -50,7 +50,7 @@ const SECTION_DEFS = [
   { id: "expense_out", label: "Out", desc: "Total expenses spent this month" },
   {
     id: "cash_in_hand",
-    label: "Cash in Hand",
+    label: "Cash / Bank",
     desc: "Cumulative cash balance across all time",
   },
   {
@@ -386,7 +386,7 @@ export default function DashView({
 
   // Deliberately NOT excluding Savings-tagged transactions here — this is
   // cash position, not spending (see the netWorthTrend comment above).
-  const runningBalance = balances.cash;
+  const runningBalance = balances.available;
 
   const budgetProgress = currentPlan?.expense?.total
     ? (thisStats.expenses / currentPlan.expense.total) * 100
@@ -460,8 +460,7 @@ export default function DashView({
     money_overview: moneyEnabled ? <div className="card money-overview">
       <div className="card-hd"><h3>Your Money</h3><span className="card-sub">As of {through}</span></div>
       <dl className="money-stats">
-        <div><dt>Available money · cash + bank</dt><dd>{CURRENCY} {fmt(balances.available)}</dd></div>
-        <div><dt>Bank balance</dt><dd>{CURRENCY} {fmt(balances.bank)}</dd></div>
+        <div><dt>Available money · Cash / Bank</dt><dd>{CURRENCY} {fmt(balances.available)}</dd></div>
         <div><dt>Owed to you · principal</dt><dd>{CURRENCY} {fmt(moneyOwed)}</dd></div>
         <div><dt>Unpaid loan interest</dt><dd>{CURRENCY} {fmt(interestOwed)}</dd></div>
         <div><dt>You owe · credit cards</dt><dd>{CURRENCY} {fmt(Math.max(0,totalCardDebt))}</dd></div>
@@ -472,7 +471,7 @@ export default function DashView({
         {cards.filter(c=>c.currentBalance>0).map(c=><p className="money-hint" key={c.id}>{c.name}: balance {CURRENCY} {fmt(c.currentBalance)}{c.paymentDueDate?` · Payment date ${c.paymentDueDate}`:" · Add a payment date in card settings for a reminder."}</p>)}
         {!lending.some(s=>s.status!=="Settled")&&!cards.some(c=>c.currentBalance>0)&&<p className="money-hint">No outstanding loans or card payments.</p>}
       </details>
-      <p className="money-hint">Savings and money lent are separate from available money. Existing entries default to Cash; use a Cash → Bank transfer to split your recorded balance.</p>
+      <p className="money-hint">Savings and money lent are separate from Cash / Bank.</p>
     </div> : null,
 
     net_this_month: (
@@ -522,7 +521,7 @@ export default function DashView({
 
     cash_in_hand: (
       <div className="running-bal">
-        <span className="running-bal-label">Cash in Hand</span>
+        <span className="running-bal-label">Cash / Bank</span>
         <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
           {runningBalance < 0 ? "−" : "+"}
           {CURRENCY} {fmt(Math.abs(runningBalance))}

@@ -2,11 +2,17 @@
 
 ## User flow
 
-Use the existing **New Entry** button for Money Lent, Loan Repayment, Withdraw from Savings, and Transfer Money. Normal income, cash purchases and card payments can select Cash or Bank. Existing entries retain their amounts, dates, categories, IDs and history; unlabeled old entries are treated as Cash.
+**New Entry** first shows six tasks: Expense, Income, Savings, Money lent, Repayment received, and Credit card. No amount or category fields appear until a task is selected.
+
+Expense combines Cash / Bank and credit card purchases using a payment-method selector. Savings combines Add to savings and Withdraw from savings, with fixed directions between Savings and Cash / Bank. Credit card combines balance payments and interest/fees. New entries use Cash / Bank as one funding/receiving balance; there is no separate Bank choice or new internal cash/bank transfer action.
+
+Forms use compact category/card selectors. Loans start interest-free; rate fields appear only when Charge interest is enabled. Notes and extra loan terms are optional expandable sections. A separate footer keeps Record visible while fields scroll and the on-screen keyboard is open. Entry types goes back to the task picker.
+
+Existing entries retain their amounts, dates, categories, IDs, funding identifiers and history. Historical Cash and Bank records are displayed together and summed as one available balance, without rewriting the database. Editing an old Bank entry preserves that source. Legacy internal cash-to-bank transfers remain editable as historical transfers and do not change the combined balance.
 
 - A savings-funded loan reduces savings and increases principal owed to you once.
 - A credit-card-funded loan increases that card's debt and principal owed to you, without spending or cash changes.
-- A principal repayment increases the selected Cash/Bank/Savings balance and reduces the loan principal. It is not income.
+- A principal repayment increases the selected Cash / Bank or Savings balance and reduces the loan principal. It is not income.
 - Interest received increases the selected balance and income; it does not reduce principal.
 - A cash repayment never settles a credit card. Record a separate Card Payment.
 - A transfer only moves balances. Savings withdrawals are Savings → Cash/Bank transfers.
@@ -19,7 +25,7 @@ Interest is simple, due on completed monthly or yearly anniversaries from the lo
 
 Repayment arrangements: single, flexible, interest-only, or 1–120 equal monthly principal installments. Interest is additional to scheduled principal. An optional final principal due date can be set. A card's optional next payment date is a manual reminder, not a computed statement/minimum amount; update it for each statement.
 
-Insights shows available cash+bank, bank balance, remaining savings, principal owed to you, unpaid loan interest, and positive card debt. Income/Spending exclude loan principal and transfers. Cash/bank/savings and receivables use the selected month capped at today; card debt remains current, matching Cards. Existing saved Insights layouts are retained and the new overview is added as a customizable section. The Ledger includes a Loans & Transfers filter.
+Insights shows available cash+bank, remaining savings, principal owed to you, unpaid loan interest, and positive card debt. Income/Spending exclude loan principal and transfers. Cash / Bank, savings and receivables use the selected month capped at today; card debt remains current, matching Cards. Existing saved Insights layouts are retained and the new overview is added as a customizable section. The Ledger includes a Loans & Transfers filter.
 
 ## Persistence and release
 

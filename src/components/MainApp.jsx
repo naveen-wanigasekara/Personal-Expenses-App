@@ -61,6 +61,7 @@ import UserView from "./UserView.jsx";
 import NavDrawer from "./NavDrawer.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
 import AddModal from "./AddModal.jsx";
+import NewEntryChooser from "./NewEntryChooser.jsx";
 import CardFormModal from "./CardFormModal.jsx";
 import InvestmentFormModal from "./InvestmentFormModal.jsx";
 import InvestmentValueModal from "./InvestmentValueModal.jsx";
@@ -115,6 +116,8 @@ export default function MainApp({ user }) {
   const [monthPlans, setMonthPlans] = useState({});
   const [fixedPlan, setFixedPlan] = useState(emptyPlan());
   const [showAdd, setShowAdd] = useState(false);
+  const [entryTask,setEntryTask]=useState(null);
+  useEffect(()=>{if(!showAdd) setEntryTask(null);},[showAdd]);
   const [editingTx, setEditingTx] = useState(null);
   const [childModalOpen, setChildModalOpen] = useState(false);
   const [showCardForm, setShowCardForm] = useState(null);
@@ -440,6 +443,10 @@ export default function MainApp({ user }) {
   const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
   const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
   const openMoneyForm=(kind,loanId=null)=>{setShowAdd(false);setMoneyForm({kind,loanId});};
+  const chooseEntryTask=task=>{
+    if(['loan','repayment','savings'].includes(task)) {setShowAdd(false);setMoneyForm({kind:task,fromChooser:true});}
+    else setEntryTask(task);
+  };
   const editEntry=(tx)=>{
     if(tx.moneyRecordId) {const record=moneyRecords.find(r=>r.id===tx.moneyRecordId);if(record) setMoneyForm({kind:record.kind,editing:record});}
     else setEditingTx(tx);
@@ -1576,20 +1583,23 @@ export default function MainApp({ user }) {
 
         {pendingDelete && <div className="undo-snackbar"><span>Transaction deleted</span><button className="undo-btn" onClick={undoDelete}>Undo</button></div>}
 
-        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} initialLoanId={moneyForm.loanId} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)}/>}
+        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} initialLoanId={moneyForm.loanId} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)} onBack={moneyForm.fromChooser?()=>{setMoneyForm(null);setShowAdd(true);}:undefined}/>}
 
-        {showAdd && (
+        {showAdd && !entryTask && <NewEntryChooser onChoose={chooseEntryTask} onClose={()=>setShowAdd(false)} moneyEnabled={moneyEnabled} hasCards={cards.length>0}/>}
+        {showAdd && entryTask && (
           <AddModal
             cards={cardsWithBalance}
             moneyEnabled={moneyEnabled}
-            onMoneyAction={openMoneyForm}
+            initialType={entryTask === "credit-card" ? "card-payment" : entryTask}
+            initialTask={entryTask}
+            onBack={()=>setEntryTask(null)}
             onClose={() => setShowAdd(false)}
             onSave={async(tx) => {
               await addTx(tx);
               setShowAdd(false);
             }}
-            onSaveInstallment={(plan) => {
-              saveInstallmentPlan(plan);
+            onSaveInstallment={async(plan) => {
+              await saveInstallmentPlan(plan);
               setShowAdd(false);
             }}
             allExpCats={allExpCats}

@@ -6,7 +6,7 @@ export const todayLocal = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
-export const accountLabel = id => ({ cash: 'Cash', bank: 'Bank', savings: 'Savings', card: 'Credit card' }[id] || id);
+export const accountLabel = id => ({ cash: 'Cash / Bank', bank: 'Cash / Bank', savings: 'Savings', card: 'Credit card' }[id] || id);
 export const isMoneyRecord = r => ['loan','repayment','transfer'].includes(r.kind);
 export function anniversary(date, months) {
   const [y,m,d] = date.split('-').map(Number);
@@ -22,7 +22,7 @@ export function moneyTransactions(records) {
   return records.flatMap(r => {
     const base = { id:r.id, moneyRecordId:r.id, date:r.date, account:r.account, cardId:r.kind==='loan' && r.account==='card' ? r.cardId : null, note:r.note || '' };
     if (r.kind==='loan') return [{...base, type:r.account==='card'?'card-purchase':'loan-lent', isLoan:true, category:'money-lent', amount:r.amount, note:`Lent to ${r.borrower}${r.note?` · ${r.note}`:''}` }];
-    if (r.kind==='transfer') return [{...base, type:'transfer', amount:r.amount, from:r.from, to:r.to, note:`${r.from==='savings'?'Withdraw from savings':'Transfer'} · ${accountLabel(r.from)} → ${accountLabel(r.to)}${r.note?` · ${r.note}`:''}`}];
+    if (r.kind==='transfer') return [{...base, type:'transfer', amount:r.amount, from:r.from, to:r.to, note:`${r.from==='savings'?'Withdraw from savings':r.to==='savings'?'Added to savings':'Internal transfer'} · ${accountLabel(r.from)} → ${accountLabel(r.to)}${r.note?` · ${r.note}`:''}`}];
     if (r.kind!=='repayment') return [];
     const name = loans.get(r.loanId)?.borrower || 'Borrower';
     return [

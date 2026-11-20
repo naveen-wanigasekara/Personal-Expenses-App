@@ -2,6 +2,7 @@ import { useState, useContext, useRef, memo } from "react";
 import { Edit2, Trash2, CreditCard, ChevronDown, Wallet, ArrowLeftRight } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
+import { accountLabel } from "../utils/money.js";
 import { fmt } from "../utils/format.js";
 
 const SWIPE_THRESHOLD = 60;
@@ -140,7 +141,7 @@ function TxRow({
                 ? `Interest/fees · ${cardName}`
                 : tx.type === "card-purchase" && cardName
                   ? `${cat.label} · ${cardName}`
-                  : `${cat.label}${tx.account && tx.account !== "card" ? ` · ${tx.account === "bank" ? "Bank" : tx.account === "savings" ? "Savings" : "Cash"}` : ""}`}
+                  : `${cat.label}${tx.account && tx.account !== "card" ? ` · ${accountLabel(tx.account)}` : ""}`}
           </div>
         </div>
         <div className="tx-date-col">{dateLabel}</div>
