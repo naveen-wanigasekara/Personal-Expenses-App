@@ -164,7 +164,7 @@ it('registers and renames borrowers, then explicitly merges their histories with
  fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Add borrower'}));
  change('Borrower name','New person');change('Borrower note','Friend');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  expect(screen.getByRole('heading',{name:'New person',exact:true})).toBeTruthy();expect(screen.getByText('Friend')).toBeTruthy();
- fireEvent.click(screen.getByRole('button',{name:'Back to borrowers'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
+ fireEvent.click(screen.getByRole('button',{name:'Back to borrowers'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
  change('Borrower name','Saman Silva');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(screen.getByRole('heading',{name:'Saman Silva',exact:true})).toBeTruthy();
  fireEvent.click(screen.getByText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Merge duplicate borrower'}));const target=store.records.find(r=>r.kind==='borrower'&&r.name==='S. Silva').id;change('Keep borrower',target);
  fireEvent.click(screen.getByRole('button',{name:'Merge histories'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
@@ -176,9 +176,9 @@ it('registers and renames borrowers, then explicitly merges their histories with
 it('archives inactive loans and restores them without forgiving principal or changing funds',async()=>{
  await mount();await lend({amount:'1000',account:'cash'});
  fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
- fireEvent.click(screen.getByRole('button',{name:'Archive inactive loan'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(true));
+ fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Archive inactive loan'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(true));
  expect(screen.queryByRole('button',{name:'Record repayment'})).toBeNull();expect(screen.getByText('Total principal outstanding').closest('div').textContent).toContain('1,000');
- fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Archived · balance still owed')).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Restore to active'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Archived · balance still owed')).toBeTruthy();fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Restore to active'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Active loans'}));expect(screen.getByRole('button',{name:'Record repayment'})).toBeTruthy();
  fireEvent.click(screen.getAllByRole('button',{name:'Insights'})[0]);expect(moneyValue('Owed to you · principal')).toContain('1,000');expect(moneyValue('Available money · Cash / Bank')).toContain('99,000');
 });

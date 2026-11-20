@@ -84,3 +84,13 @@ Rendered browser verification used the real components and styles with synthetic
 New Income → Repayment received entries show only borrowers with unpaid principal or accrued interest as of today. The loan selector likewise offers only that borrower’s unpaid loans, preserving the borrower while any one loan remains unpaid. Fully settled and registered-without-loans borrowers are excluded. Manually archived unpaid loans remain eligible because archiving does not forgive debt. The all-settled state explains why no borrower can be selected and disables Record.
 
 Editing an existing repayment retains its original loan even if that repayment settled it, so historical corrections remain possible. A stale shortcut falls back to an eligible loan; refreshed balances that invalidate an open selection choose an eligible borrower/loan and clear entered amounts. No stored borrower, loan, repayment or balance data is rewritten by this filtering.
+
+## Money Lending UI consistency — 20 November 2026
+
+Money Lent now shares the mobile header (menu, notifications and PWA refresh), page titles, search field, cards, action buttons, theme colors and empty-state patterns used by Cards, Investments, Ledger and Bank Details. A dedicated inner scroll region keeps the shared header and navigation usable. Desktop borrower cards form a two-column grid; the borrower back control stays available on desktop as well as mobile.
+
+Loan Actions holds Edit, Archive/Restore and Delete. Repayment Actions holds Edit and Delete, with the existing confirmations and financial safeguards unchanged. Manage borrower holds Edit borrower and Merge duplicate borrower. Record repayment and Lend money remain direct actions. Action disclosures close on selection, Escape, outside pointer input or keyboard focus leaving; the panel scrolls into view when opened and touch targets remain at least 44px.
+
+Interest-free loans omit interest amounts, calculation basis, next-interest dates and zero-interest payment breakdowns. Actual principal/interest received, accrued interest due and any advance credit remain visible when nonzero. Repaid principal appears when a payment exists; optional loan arrangements, notes and dates appear only when applicable. Borrower totals still include archived unpaid debt, and histories, lending terms, repayments and calculations are retained. No schema or stored-record changes are required.
+
+Verification includes the full financial/security/database suite and UI tests for conditional details, secondary action callbacks, Escape/outside dismissal, shared header actions and desktop back navigation, plus browser review at phone/tablet/desktop sizes in both themes using synthetic records.

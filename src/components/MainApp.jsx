@@ -1409,7 +1409,7 @@ export default function MainApp({ user }) {
               onCustomChartsChange={updateCustomCharts}
             />
           )}
-          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)}/>}
+          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)} onOpenNotifications={()=>setShowNotifs(true)} notifCount={notifCount} showQuickRefresh={isStandalone} onQuickRefresh={handleQuickRefresh}/>}
           {tab === "cards" && (
             <CardsView
               cards={cardsWithBalance}

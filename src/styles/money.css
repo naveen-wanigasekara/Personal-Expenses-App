@@ -98,24 +98,61 @@
 @media(max-height:600px) { .entry-navigation { padding-bottom:8px; margin-bottom:8px; } .entry-navigation .entry-intro { display:none; } .entry-back { margin-bottom:3px; } }
 
 
-/* Keep Money Lent actions content-sized instead of inheriting full-width text buttons. */
-.money-view .text-btn { width:auto; max-width:100%; flex:0 1 auto; }
-.money-view .money-actions { gap:6px 10px; align-items:center; margin:10px 0; }
-.money-view .money-record-action {
-  display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  min-height:36px; padding:6px 10px; border:1px solid var(--border-2);
-  border-radius:9px; background:var(--surface); color:var(--ink);
-  font-size:12px; font-weight:600; line-height:1.35; text-align:left;
-  touch-action:manipulation; transition:background .15s,border-color .15s;
-}
-.money-record-action svg { flex:none; }
-.money-view .money-record-action-danger { color:var(--danger); background:var(--danger-soft); }
-.money-view .money-record-action:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
-@media(hover:hover) {
-  .money-view .money-record-action:hover { background:var(--surface-2); border-color:var(--ink-soft); }
-  .money-view .money-record-action-danger:hover { color:var(--danger); background:var(--danger-soft); border-color:var(--danger); }
+/* Lending uses the same topbar, page titles, cards and action tokens as other tabs. */
+.view.money-view { display:flex; flex-direction:column; height:100dvh; overflow:hidden; padding:0; max-width:none; margin:0; }
+.money-view>.dash-topbar { flex:none; margin:0; }
+.lending-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:20px 18px max(120px,calc(env(safe-area-inset-bottom) + 100px)); }
+.lending-content { max-width:1040px; margin:0 auto; }
+.lending-page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.lending-page-heading .page-hd { min-width:0; flex:1; }
+.lending-page-heading .page-title { overflow-wrap:anywhere; }
+.money-view .archive-button { margin:0; flex:none; font-size:12px; }
+.money-view .borrower-toolbar { gap:8px; margin:0 0 18px; }
+.money-view .lending-primary { width:auto; margin:0; min-height:40px; padding:9px 14px; font-size:13px; border-radius:12px; }
+.money-view .tx-edit,.money-view .tx-del { min-height:36px; max-width:100%; line-height:1.4; }
+.money-view .tx-edit svg,.money-view .tx-del svg { flex:none; }
+.money-view .tx-edit:focus-visible,.money-view .tx-del:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.lending-intro { margin:0 0 16px; }
+.money-view .borrower-search { max-width:440px; margin:0 0 18px; }
+.lending-borrower-grid { display:grid; gap:16px; }
+.lending-borrower-grid .borrower-card { margin:0; }
+.lending-loan-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.lending-loan-heading h2,.lending-loan-heading h3 { min-width:0; margin:0; font-family:var(--sans); font-weight:600; font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+.lending-meta>span { min-width:0; overflow-wrap:anywhere; }
+.lending-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:12px; color:var(--ink-soft); margin:10px 0 0; }
+.money-view .money-stats { margin:16px 0; gap:14px 18px; }
+.money-view .money-stats:empty { display:none; }
+.money-view .money-stats dt { font-size:12px; line-height:1.5; }
+.money-view .money-stats dd { font-family:var(--sans); font-size:18px; line-height:1.3; font-variant-numeric:tabular-nums; }
+.money-view .borrower-summary { margin:0 0 20px; }
+.money-view .borrower-section-title { margin:20px 0 12px; }
+.lending-terms { display:flex; flex-wrap:wrap; column-gap:16px; color:var(--ink-soft); font-size:12px; line-height:1.6; }
+.lending-terms:empty { display:none; }
+.lending-terms p { margin:0 0 6px; }
+.lending-note { font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.lending-history { border-top:1px solid var(--border); margin-top:12px; padding-top:4px; }
+.lending-history>summary,.borrower-history>summary { min-height:40px; display:list-item; align-content:center; font-size:13px; color:var(--ink-soft); cursor:pointer; }
+.lending-payment-heading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px 10px; }
+.lending-payment-heading>p { flex:1; margin:0; line-height:1.6; }
+.lending-payment-heading>.lending-action-menu { margin-left:auto; }
+.borrower-event-title>time { margin-left:auto; color:var(--ink-soft); font-size:12px; }
+.lending-action-menu { position:relative; flex:none; }
+.lending-action-menu[open] { z-index:4; }
+.money-view .lending-menu-trigger { display:flex; align-items:center; gap:6px; min-height:36px; padding:6px 10px; list-style:none; font-size:12px; cursor:pointer; user-select:none; }
+.lending-menu-trigger::-webkit-details-marker { display:none; }
+.lending-action-list { position:absolute; top:calc(100% + 6px); right:0; width:218px; max-width:calc(100vw - 50px); max-height:min(300px,55dvh); overflow:auto; padding:5px; background:var(--surface); border:1px solid var(--border-2); border-radius:12px; box-shadow:var(--shadow-md); }
+.lending-menu-item { display:flex; align-items:center; gap:9px; width:100%; min-height:40px; padding:9px 10px; border:0; border-radius:8px; background:none; color:var(--ink); font:500 13px/1.4 var(--sans); text-align:left; cursor:pointer; }
+.lending-menu-item svg { flex:none; }
+.lending-menu-item.danger { color:var(--danger); }
+.lending-menu-item:hover,.lending-menu-item:focus-visible { background:var(--surface-2); outline:2px solid var(--accent); outline-offset:-2px; }
+.lending-menu-item.danger:hover { background:var(--danger-soft); }
+.lending-menu-item:disabled { opacity:.5; cursor:default; }
+.lending-empty { padding:36px 14px; }
+@media(min-width:1024px) {
+  .view.money-view { height:calc(100dvh - 76px); }
+  .lending-scroll { padding:28px 30px 48px; }
+  .lending-borrower-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(max-width:1023px),(any-pointer:coarse) {
-  .money-view .money-record-action { min-height:44px; }
-  .money-view .money-actions { gap:8px 10px; }
+  .money-view .tx-edit,.money-view .tx-del,.money-view .lending-primary,.money-view .lending-menu-trigger,.lending-menu-item { min-height:44px; }
 }
