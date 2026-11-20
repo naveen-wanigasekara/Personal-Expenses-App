@@ -4,7 +4,7 @@ import MoneyLentView from '../src/components/MoneyLentView.jsx';
 const loan=(extra={})=>({id:'loan',kind:'loan',borrower:'Person',date:'2026-01-01',amount:1000,account:'cash',rate:0,ratePeriod:'monthly',interestBasis:'original',arrangement:'flexible',...extra});
 const payment=(extra={})=>({id:'pay',kind:'repayment',loanId:'loan',date:'2026-02-01',principal:200,interest:0,account:'cash',...extra});
 function expectNoLendingShortcuts(){for(const name of ['Lend money','Lent Money','Add borrower','Lend again'])expect(screen.queryByRole('button',{name,exact:true})).toBeNull();}
-function mount(records,props={}){render(<MoneyLentView records={records} cards={[]} onNew={vi.fn()} onRepay={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Open Person'}));}
+function mount(records,props={}){render(<MoneyLentView records={records} cards={[]} onNew={vi.fn()} onRepay={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));}
 afterEach(cleanup);
 it('shows only relevant principal fields for interest-free loans and their repayments',()=>{
  mount([loan(),payment()]);

@@ -156,3 +156,6 @@
 @media(max-width:1023px),(any-pointer:coarse) {
   .money-view .tx-edit,.money-view .tx-del,.money-view .lending-primary,.money-view .lending-menu-trigger,.lending-menu-item { min-height:44px; }
 }
+
+/* The view switch uses the existing action styling with a clear selected state. */
+.money-view .lending-view-button[aria-pressed="false"] { background:var(--surface); color:var(--ink-soft); border-color:var(--border-2); }

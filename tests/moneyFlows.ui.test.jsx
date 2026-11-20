@@ -62,7 +62,7 @@ it('interest-only receipts show income while keeping the full principal outstand
  await mount();await lend({amount:'100000',account:'cash',rate:'5',date:'2026-01-02'});
  await entry('Loan repayment');change('Interest received','5000');change('Date','2026-02-02');await save();
  expect(moneyValue('Owed to you · principal')).toContain('100,000');expect(moneyValue('Available money · Cash / Bank')).toContain('5,000');
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(screen.getByText('Interest received').closest('div').textContent).toContain('5,000');expect(screen.getByText('Principal outstanding').closest('div').textContent).toContain('100,000');
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(screen.getByText('Interest received').closest('div').textContent).toContain('5,000');expect(screen.getByText('Principal outstanding').closest('div').textContent).toContain('100,000');
 });
 it('withdrawal validation leaves the form open, saves once, and ledger edits reverse correctly',async()=>{
  await mount();await entry('Withdraw from savings');change('Amount','100001');fireEvent.click(screen.getByRole('button',{name:'Record',exact:true}));expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Insufficient savings'));expect(store.records).toHaveLength(0);
@@ -144,7 +144,7 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  await mount();await lend({borrower:'Saman',amount:'50000',date:'2026-01-02'});
  await lend({borrower:'Saman',amount:'25000',account:'cash',rate:'5',date:'2026-02-02'});
  const loans=store.records.filter(r=>r.kind==='loan');expect(loans).toHaveLength(2);expect(loans[0].borrowerId).toBe(loans[1].borrowerId);expect(store.records.filter(r=>r.kind==='borrower')).toHaveLength(1);
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.getAllByRole('button',{name:'Open Saman'})).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.getAllByRole('article')).toHaveLength(2);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getAllByRole('button',{name:'Open Saman'})).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (2)')).toBeTruthy();
  // Lending remains available through New Entry after page shortcuts are removed.
  expect(screen.queryByRole('button',{name:'Lend money',exact:true})).toBeNull();await entry('Money lent');change('Borrower',loans[0].borrowerId);expect(screen.getByRole('dialog',{name:'Expenses'})).toBeTruthy();expect(screen.getByLabelText('Borrower',{exact:true}).value).toBe(loans[0].borrowerId);fireEvent.click(screen.getByRole('button',{name:'Close'}));
@@ -155,13 +155,13 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();expect(screen.getByText('Total principal outstanding').closest('div').textContent).toContain('65,000');
  const history=screen.getByText('Complete transaction history (3)').closest('details');fireEvent.click(within(history).getByText('Complete transaction history (3)'));
  expect(history.querySelectorAll('.borrower-event')).toHaveLength(3);expect(within(history).getByText('Repayment received')).toBeTruthy();
- cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();
+ cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();
 });
 
 it('renames borrowers and explicitly merges their histories without changing balances',async()=>{
  await mount();await lend({borrower:'Saman',amount:'1000',account:'cash'});await lend({borrower:'S. Silva',amount:'2000',account:'cash'});
  const originalLoans=structuredClone(store.records.filter(r=>r.kind==='loan'));
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
  change('Borrower name','Saman Silva');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(screen.getByRole('heading',{name:'Saman Silva',exact:true})).toBeTruthy();
  fireEvent.click(screen.getByText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Merge duplicate borrower'}));const target=store.records.find(r=>r.kind==='borrower'&&r.name==='S. Silva').id;change('Keep borrower',target);
  fireEvent.click(screen.getByRole('button',{name:'Merge histories'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
@@ -172,8 +172,8 @@ it('renames borrowers and explicitly merges their histories without changing bal
 
 it('archives inactive loans and restores them without forgiving principal or changing funds',async()=>{
  await mount();await lend({amount:'1000',account:'cash'});
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
- fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Archive inactive loan'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
+ fireEvent.click(screen.getByRole('button',{name:'Archive'}));fireEvent.click(screen.getByRole('button',{name:'Active loans'}));fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Archive inactive loan'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(true));
  expect(screen.queryByRole('button',{name:'Record repayment'})).toBeNull();expect(screen.getByText('Total principal outstanding').closest('div').textContent).toContain('1,000');
  fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Archived · balance still owed')).toBeTruthy();fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Restore to active'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Active loans'}));expect(screen.getByRole('button',{name:'Record repayment'})).toBeTruthy();
@@ -183,7 +183,7 @@ it('archives inactive loans and restores them without forgiving principal or cha
 it('keeps unpaid-interest loans active after principal payoff, then automatically archives on interest settlement',async()=>{
  await mount();await lend({amount:'1000',account:'cash',rate:'5'});
  await entry('Loan repayment');change('Principal returned','1000');change('Date','2026-02-02');await save();
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.getByRole('button',{name:'Open Person'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getByRole('button',{name:'Open Person'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
  fireEvent.click(screen.getByRole('button',{name:'Record repayment'}));change('Interest received','50');change('Date','2026-02-02');await save();
  expect(screen.queryByRole('button',{name:'Record repayment'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Settled',{selector:'span'})).toBeTruthy();expect(screen.getByText('Repayment history (2)')).toBeTruthy();
 });

@@ -55,7 +55,7 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
           { label: 'Delete loan', icon: Trash2, danger: true, onSelect: () => onDelete(loan) },
         ]} />
       </div>
-      <div className="lending-meta">{status(summary)}<span>{funding}</span><span>{Number(loan.rate) === 0 ? 'Interest-free' : `${loan.rate}% ${loan.ratePeriod}`}</span></div>
+      <div className="lending-meta"><span>{group.name}</span>{status(summary)}<span>{funding}</span><span>{Number(loan.rate) === 0 ? 'Interest-free' : `${loan.rate}% ${loan.ratePeriod}`}</span></div>
       {loan.archived && summary.status !== 'Settled' && <p className="money-hint">Archived · balance still owed</p>}
       <Amounts currency={currency} items={[
         ['Principal outstanding', summary.outstanding],
@@ -103,6 +103,10 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
   };
   const selectedTotal = selected ? totals(selected) : null;
   const filteredGroups = groups.filter(group => (mode === 'directory' || visibleLoans(group).length > 0) && group.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const activeLoans = groups.flatMap(group => group.loans.filter(loan => !isArchived(loan)).map(loan => ({ loan, group })))
+    .filter(({ group }) => group.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+    .sort((a, b) => b.loan.date.localeCompare(a.loan.date) || a.loan.id.localeCompare(b.loan.id));
+  const hasVisibleEntries = mode === 'active' ? activeLoans.length > 0 : filteredGroups.length > 0;
   return <div className="view money-view">
     <div className="dash-topbar">
       <div className="mheader-left"><button className="icon-btn" aria-label="Menu" onClick={onOpenMenu}><Menu size={16} /></button></div>
@@ -115,7 +119,10 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
       </div>
       {error && <p className="money-error" role="alert">{error}</p>}
       <div className="borrower-toolbar">
-        {!selected && <button className="tx-edit" onClick={() => { setMode(mode === 'directory' ? 'active' : 'directory'); setSearch(''); }}><Users size={16} />{mode === 'directory' ? 'Active loans' : 'Borrowers'}</button>}
+        {!selected && <>
+          {mode !== 'archive' && <button className="tx-edit lending-view-button" aria-pressed={mode === 'active'} onClick={() => { setMode('active'); setSearch(''); }}><Wallet size={16} aria-hidden="true" /> Active loans</button>}
+          <button className="tx-edit lending-view-button" aria-pressed={mode === 'directory'} onClick={() => { setMode('directory'); setSearch(''); }}><Users size={16} aria-hidden="true" /> Borrowers</button>
+        </>}
         {selected && onSaveBorrower && <MoneyActionMenu label="Manage borrower" actions={[
           { label: 'Edit borrower', icon: Pencil, onSelect: () => setForm(selected) },
           onMergeBorrowers && groups.length > 1 && { label: 'Merge duplicate borrower', icon: Users, onSelect: () => setMerge(selected) },
@@ -136,15 +143,15 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
       </> : <>
         <p className="money-hint lending-intro">{mode === 'archive' ? 'Settled and archived loans. All history is retained.' : mode === 'directory' ? 'One record per person, across all lending dates.' : 'Active loans only. Settled loans move to Archive automatically.'}</p>
         {groups.length > 0 && <div className="tx-search-bar borrower-search"><Search size={14} className="tx-search-icon" aria-hidden="true" /><input type="search" aria-label="Find a borrower" className="tx-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a borrower…" /></div>}
-        <div className="lending-borrower-grid">{filteredGroups.map(group => {
+        {mode === 'active' ? <div className="lending-loan-list">{activeLoans.map(({ loan, group }) => loanCard(loan, group))}</div> : <div className="lending-borrower-grid">{filteredGroups.map(group => {
           const total = totals(group), visible = visibleLoans(group);
           return <article className="card borrower-card" key={group.id}><div className="lending-loan-heading"><h2>{group.name}</h2><span className="money-status">{visible.length} {mode === 'archive' ? 'archived' : mode === 'directory' ? '' : 'active'} {visible.length === 1 ? 'loan' : 'loans'}</span></div>
             <Amounts currency={currency} items={group.loans.length ? [["Principal outstanding", total.outstanding], total.interestDue > 0 && ['Unpaid interest', total.interestDue]] : []} />
             {group.loans.some(loan => loan.archived && summaryFor(loan).status !== 'Settled') && <p className="money-hint">Includes an archived balance that is still owed.</p>}
             <div className="money-actions"><button className="tx-edit" aria-label={`Open ${group.name}`} onClick={() => setSelectedId(group.id)}>View borrower & history</button></div>
           </article>;
-        })}</div>
-        {!filteredGroups.length && <div className="empty lending-empty"><div className="empty-icon"><Wallet size={26} strokeWidth={1.5} /></div><div className="empty-title">{search ? 'No matching borrowers' : mode === 'archive' ? 'No archived loans' : mode === 'directory' ? 'No borrowers yet' : 'No active loans'}</div><div className="empty-sub">{search ? 'Try another name or clear your search.' : mode === 'archive' ? 'Settled and inactive loans will appear here.' : 'Use New Entry → Expenses → Lend money to get started.'}</div></div>}
+        })}</div>}
+        {!hasVisibleEntries && <div className="empty lending-empty"><div className="empty-icon"><Wallet size={26} strokeWidth={1.5} /></div><div className="empty-title">{search ? 'No matching borrowers' : mode === 'archive' ? 'No archived loans' : mode === 'directory' ? 'No borrowers yet' : 'No active loans'}</div><div className="empty-sub">{search ? 'Try another name or clear your search.' : mode === 'archive' ? 'Settled and inactive loans will appear here.' : 'Use New Entry → Expenses → Lend money to get started.'}</div></div>}
       </>}
     </div></div>
     {form && <BorrowerForm borrower={form === 'new' ? null : form} onClose={() => setForm(null)} onSave={async draft => { const id = await onSaveBorrower(draft); setForm(null); setSelectedId(id); if (!selected) setMode('directory'); }} />}
