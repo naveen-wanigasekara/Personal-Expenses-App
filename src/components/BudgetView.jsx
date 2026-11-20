@@ -78,19 +78,25 @@ export default function BudgetView({
       if (ok === false) setSaveError("Couldn't save your budget. Please try again.");
       else {
         setSaved(true);
-        setTimeout(() => setSaved(false), 1800);
+
       }
     } catch {
       setSaveError("Couldn't save your budget. Please try again.");
     } finally { setSaving(false); }
   };
 
-  const copyFromFixed = () =>
+  const copyFromFixed = () => {
+    setSaved(false); setSaveError("");
     setMonthEdit(JSON.parse(JSON.stringify(fixedPlan)));
+  };
+  useEffect(() => { setSaved(false); setSaveError(""); }, [mode, side, viewMonth]);
 
   const isFixed = mode === "fixed";
   const plan = isFixed ? fixedEdit : monthEdit;
-  const setPlan = isFixed ? setFixedEdit : setMonthEdit;
+  const setPlan = next => {
+    setSaved(false); setSaveError("");
+    (isFixed ? setFixedEdit : setMonthEdit)(next);
+  };
   const sidePlan = plan[side] || { total: 0, categories: {} };
   const total = sidePlan.total || "";
   const cats = sidePlan.categories || {};

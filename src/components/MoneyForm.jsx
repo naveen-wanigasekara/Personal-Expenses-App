@@ -100,7 +100,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
           {draft.kind === 'repayment' && <>
             {repaymentGroups.length ? <>
               {borrowerPicker(true)}
-              {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, chosenGroup.loans)]))}
+              {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, groups.find(group => group.id === chosenGroup.id)?.loans || chosenGroup.loans)]))}
               {summary && <div className="entry-balance"><span>Principal still owed</span><strong>{currency} {summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {currency} {summary.interestDue.toLocaleString()}</small>}</div>}
               <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
               {select('account', 'Received into', accounts, true)}

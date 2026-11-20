@@ -1,3 +1,4 @@
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 import { useState, useContext } from "react";
 import { Check, CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -8,6 +9,7 @@ import AmountInput from "./AmountInput.jsx";
 
 export default function CardFormModal({ card, onClose, onSave, moneyEnabled = false }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
   const [paymentDueDate,setPaymentDueDate]=useState(card?.paymentDueDate || "");
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
@@ -22,21 +24,22 @@ export default function CardFormModal({ card, onClose, onSave, moneyEnabled = fa
 
   const handleSave = () => {
     if (!name.trim() || !limit || +limit <= 0) return;
-    onSave({
+    return runSave(() => onSave({
       id: card?.id,
       name: name.trim(),
       limit: +limit,
       openingBalance: +openingBalance || 0,
       colors: CARD_COLORS[colorIdx],
       paymentDueDate,
-    });
+    }));
   };
 
   const valid = name.trim() && limit && +limit > 0;
   const [from, to] = CARD_COLORS[colorIdx];
 
   return (
-    <Sheet title={card ? "Edit card" : "New card"} onClose={onClose}>
+    <Sheet title={card ? "Edit card" : "New card"} onClose={() => { if (!saving) onClose(); }}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <div
         className="ct-visual preview"
         style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
@@ -121,6 +124,7 @@ export default function CardFormModal({ card, onClose, onSave, moneyEnabled = fa
       >
         {card ? "Update card" : "Add card"}
       </button>
+      </fieldset>
     </Sheet>
   );
 }

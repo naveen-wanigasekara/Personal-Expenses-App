@@ -1,3 +1,4 @@
+import { compareValuations } from '../utils/investmentValues.js';
 import { useContext } from "react";
 import {
   ChevronLeft,
@@ -40,9 +41,7 @@ export default function InvestmentDetailView({
     ? (gain / investment.initialAmount) * 100
     : 0;
 
-  const sorted = [...valuations].sort((a, b) =>
-    a.recordedDate.localeCompare(b.recordedDate),
-  );
+  const sorted = [...valuations].sort(compareValuations);
   const reverseChron = [...sorted].reverse();
 
   const startLabel = fmtDate(investment.startDate);

@@ -13,7 +13,7 @@ it('displays categorized due and upcoming payments with amounts, dates and statu
 });
 it('completion targets only the selected occurrence and retains the existing close action',()=>{
  const onComplete=vi.fn(),onClose=vi.fn();render(<NotificationsPanel notifications={reminders()} onComplete={onComplete} onClose={onClose}/>);
- fireEvent.click(screen.getByRole('button',{name:'Mark Laptop for December 2026 as completed'}));expect(onComplete).toHaveBeenCalledWith('inst:plan','2026-12');
+ fireEvent.click(screen.getByRole('button',{name:'Mark Laptop for December 2026, installment 1 due 2026-12-01 as completed'}));expect(onComplete).toHaveBeenCalledWith('inst:plan:ptx_plan_0','2026-12');
  fireEvent.click(screen.getByRole('button',{name:'Close'}));expect(onClose).toHaveBeenCalledOnce();
 });
 it('shows missing dates honestly and supports an empty notification list',()=>{

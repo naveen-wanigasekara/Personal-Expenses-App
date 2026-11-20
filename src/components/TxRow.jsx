@@ -1,3 +1,4 @@
+import { installmentOccurrences } from '../utils/installments.js';
 import { useState, useContext, useRef, memo } from "react";
 import { Edit2, Trash2, CreditCard, ChevronDown, Wallet, ArrowLeftRight } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -53,9 +54,8 @@ function TxRow({
 
   let installmentSeq = null;
   if (installmentPlan && tx.installmentId) {
-    const [sy, sm] = installmentPlan.startMonth.split("-").map(Number);
-    const [ty, tm] = tx.date.slice(0, 7).split("-").map(Number);
-    installmentSeq = (ty - sy) * 12 + (tm - sm) + 1;
+    const occurrence = installmentOccurrences(installmentPlan, [tx])[0];
+    installmentSeq = occurrence ? occurrence.index + 1 : null;
   }
 
   // Desktop-only date column (hidden on mobile/tablet via CSS). Built from

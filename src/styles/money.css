@@ -167,7 +167,7 @@
 .sheet.payment-notifications-sheet { display:flex; flex-direction:column; overflow:hidden; }
 .payment-notifications-sheet>.sheet-hd,.payment-notifications-sheet>.sheet-handle { flex:none; }
 .payment-notifications-scroll { min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:0 3px 6px; }
-.notif-intro,.notif-explanation { color:var(--ink-soft); font-size:12px; line-height:1.6; }
+.notif-intro,.notif-explanation { color:var(--ink-soft); font-size:.8125rem; line-height:1.6; }
 .notif-intro { margin:0 0 16px; }
 .notif-explanation { margin:18px 0 0; }
 .payment-notif-section { margin-bottom:20px; }
@@ -175,13 +175,18 @@
 .payment-notif-item { align-items:flex-start; padding:12px; gap:10px; }
 .payment-notif-heading { display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; margin-bottom:4px; }
 .payment-notif-heading .notif-title { overflow-wrap:anywhere; margin:0; font-size:14px; }
-.payment-notif-item .notif-meta { font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.payment-notif-item .notif-meta { font-size:.875rem; line-height:1.6; overflow-wrap:anywhere; }
 .payment-notif-date { margin:4px 0; }
 .payment-notif-item .notif-amt { margin-top:6px; font-size:14px; white-space:normal; overflow-wrap:anywhere; }
-.payment-notif-item .notif-amt>span { font-size:11px; color:var(--ink-soft); font-weight:500; }
+.payment-notif-item .notif-amt>span { font-size:.8125rem; color:var(--ink-soft); font-weight:500; }
 .payment-notif-item .notif-complete-btn { width:36px; height:36px; }
-.payment-notif-status { font-size:10px; font-weight:600; padding:3px 7px; border-radius:20px; background:var(--neutral-soft); color:var(--neutral); }
+.payment-notif-status { font-size:.75rem; font-weight:600; padding:3px 7px; border-radius:20px; background:var(--neutral-soft); color:var(--neutral); }
 .payment-notif-status.overdue,.payment-notif-status.due { background:var(--danger-soft); color:var(--danger); }
 .payment-notif-status.date-needed { background:var(--warn-soft); color:var(--warn); }
 .payment-notif-item.overdue,.payment-notif-item.due { border-left:3px solid var(--danger); }
 @media(max-width:1023px),(any-pointer:coarse) { .payment-notif-item .notif-complete-btn { width:44px; height:44px; } }
+
+.payment-notif-month { margin:8px 0 2px; font-size:.875rem; font-weight:600; color:var(--ink-soft); }
+.tx-date-total>span { font-weight:400; text-transform:none; letter-spacing:0; }
+
+.save-fields { border:0; padding:0; margin:0; min-width:0; }

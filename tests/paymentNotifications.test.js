@@ -38,7 +38,7 @@ test('card reminders show current outstanding balances without adding installmen
  assert.equal(rows.filter(r=>r.type==='card').length,1);assert.equal(rows.find(r=>r.type==='card').amount,100000);assert.equal(rows.filter(r=>r.type==='installment').length,2);
 });
 test('uses the recorded installment amount when that occurrence was edited',()=>{
- const rows=build({installmentPlans:[plan()],transactions:[{type:'card-purchase',installmentId:'plan',date:'2026-11-01',amount:8000}]});
+ const rows=build({installmentPlans:[plan()],transactions:[{id:'ptx_plan_0',type:'card-purchase',installmentId:'plan',date:'2026-11-01',amount:8000},{id:'ptx_plan_1',type:'card-purchase',installmentId:'plan',date:'2026-12-01',amount:10000}]});
  assert.equal(rows.find(r=>r.month==='2026-11').amount,8000);assert.equal(rows.find(r=>r.month==='2026-12').amount,10000);
 });
 test('a settled card retains its installment reminder without falsely calling it overdue',()=>{
@@ -69,4 +69,29 @@ test('20-day window crosses leap-year February and clamps month-end schedules',(
 test('keeps current-month overdue reminders, completion and cancelled-plan filtering',()=>{
  const rows=build({installmentPlans:[plan({startDate:'2026-11-10'}),plan({id:'off',active:false})],isCompleted:(month,id)=>month==='2026-12'&&id==='inst:plan'});
  assert.deepEqual(rows.map(r=>[r.date,r.status]),[['2026-11-10','overdue']]);
+});
+
+test('moved installment dates cannot create phantom months or include charges outside the window',()=>{
+ const rows=build({installmentPlans:[plan({id:'shift',startDate:'2026-11-25',totalMonths:2,monthlyAmount:1000})],transactions:[
+ {id:'ptx_shift_0',type:'card-purchase',installmentId:'shift',date:'2026-12-05',amount:1000},
+ {id:'ptx_shift_1',type:'card-purchase',installmentId:'shift',date:'2026-12-25',amount:1000}]});
+ assert.deepEqual(rows.map(r=>[r.date,r.amount,r.sequence]),[['2026-12-05',1000,1]]);
+});
+test('two installments in one month retain independent amounts, dates and completion identities',()=>{
+ const config={installmentPlans:[plan({startDate:'2026-11-25',totalMonths:2})],transactions:[
+ {id:'ptx_plan_0',type:'card-purchase',installmentId:'plan',date:'2026-12-01',amount:8000},
+ {id:'ptx_plan_1',type:'card-purchase',installmentId:'plan',date:'2026-12-05',amount:10000}]};
+ const rows=build(config);assert.equal(rows.length,2);assert.equal(new Set(rows.map(r=>r.id)).size,2);
+ assert.deepEqual(rows.map(r=>r.amount),[8000,10000]);
+ const remaining=build({...config,isCompleted:(month,id)=>month===rows[0].completionMonth&&id===rows[0].completionId});
+ assert.equal(remaining.length,1);assert.equal(remaining[0].occurrenceId,'ptx_plan_1');
+});
+test('explicit empty or partially deleted transaction schedules are not regenerated',()=>{
+ assert.equal(build({installmentPlans:[plan()],transactions:[]}).length,0);
+ const rows=build({installmentPlans:[plan()],transactions:[{id:'ptx_plan_1',type:'card-purchase',installmentId:'plan',date:'2026-12-01',amount:10000}]});
+ assert.deepEqual(rows.map(r=>r.date),['2026-12-01']);
+});
+test('legacy completed keys still dismiss their original occurrence after a date move',()=>{
+ const rows=build({installmentPlans:[plan({totalMonths:2})],transactions:[{id:'ptx_plan_0',type:'card-purchase',installmentId:'plan',date:'2026-12-05',amount:10000}],isCompleted:(month,id)=>month==='2026-11'&&id==='inst:plan'});
+ assert.equal(rows.length,0);
 });

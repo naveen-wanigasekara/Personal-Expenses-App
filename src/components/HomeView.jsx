@@ -311,7 +311,7 @@ export default function HomeView({
                   <div className="tx-date">
                     <span>{dateLabel}</span>
                     <span className="tx-date-total">
-                      {CURRENCY} {fmt(dayTotal)}
+                      <span>Net spending </span>{CURRENCY} {fmt(dayTotal)}
                     </span>
                   </div>
                   <div className="tx-stack">

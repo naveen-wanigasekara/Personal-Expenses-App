@@ -53,7 +53,7 @@ export default function CategoriesModal({
               <button
                 className="manage-cat-btn"
                 onClick={() => setEditingCat({ ...c, type: tab })}
-                aria-label="Edit"
+                aria-label={`Edit ${c.label}`}
               >
                 <Edit2 size={14} />
               </button>
@@ -65,7 +65,7 @@ export default function CategoriesModal({
                   if (!isProtected && confirm(`Delete the "${c.label}" category?`))
                     onDelete(tab, c.id);
                 }}
-                aria-label="Delete"
+                aria-label={`Delete ${c.label}`}
               >
                 <Trash2 size={14} />
               </button>

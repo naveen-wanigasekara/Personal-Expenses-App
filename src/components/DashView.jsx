@@ -40,7 +40,7 @@ import CustomChartCard from "./charts/CustomChartCard.jsx";
 import { moneyBalances, loanSummary, todayLocal } from "../utils/money.js";
 
 const SECTION_DEFS = [
-  {id:"money_overview",label:"Your Money",desc:"Available money, bank balance, loans and payments due"},
+  {id:"money_overview",label:"Your Money",desc:"Available money, savings and money owed"},
   {
     id: "net_this_month",
     label: "Net This Month",
@@ -1267,14 +1267,14 @@ export default function DashView({
                     <button
                       onClick={() => moveSection(s.id, -1)}
                       disabled={i === 0}
-                      aria-label="Move up"
+                      aria-label={`Move ${s.label} up`}
                     >
                       <ChevronUp size={14} />
                     </button>
                     <button
                       onClick={() => moveSection(s.id, 1)}
                       disabled={i === sections.length - 1}
-                      aria-label="Move down"
+                      aria-label={`Move ${s.label} down`}
                     >
                       <ChevronDown size={14} />
                     </button>
@@ -1288,7 +1288,7 @@ export default function DashView({
                       <button
                         className="section-chart-btn"
                         onClick={() => setEditingChart(chart)}
-                        aria-label="Edit chart"
+                        aria-label={`Edit ${chart.name} chart`}
                       >
                         <Edit2 size={14} />
                       </button>
@@ -1298,7 +1298,7 @@ export default function DashView({
                           if (confirm(`Delete the "${chart.name}" chart?`))
                             deleteChart(chart.id);
                         }}
-                        aria-label="Delete chart"
+                        aria-label={`Delete ${chart.name} chart`}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -1307,7 +1307,7 @@ export default function DashView({
                   <button
                     className={`section-toggle ${s.visible ? "on" : "off"}`}
                     onClick={() => toggleSection(s.id)}
-                    aria-label={s.visible ? "Hide section" : "Show section"}
+                    aria-label={`${s.visible ? "Hide" : "Show"} ${s.label} section`}
                   >
                     {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>

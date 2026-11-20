@@ -9,5 +9,5 @@ export default defineConfig({
   plugins: [securePwa()],
   test: { environment: 'jsdom', include: ['tests/*.ui.test.jsx'], clearMocks: true },
   server: { port: 5173, open: true },
-  build: { outDir: 'dist', sourcemap: false },
+  build: { outDir: 'dist', sourcemap: false, rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'vendor', test: /node_modules/ }] } } } },
 });

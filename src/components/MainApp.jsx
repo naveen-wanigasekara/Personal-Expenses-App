@@ -1,3 +1,4 @@
+import { latestValuationValue } from '../utils/investmentValues.js';
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plus,
@@ -81,7 +82,7 @@ const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "b
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
 import {validDate} from "../utils/dateInput.js";
-import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets, installmentStart, installmentDate} from "../utils/installments.js";
+import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets, installmentStart, installmentDate, revisedInstallments} from "../utils/installments.js";
 
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
@@ -221,12 +222,9 @@ export default function MainApp({ user }) {
 
   const addCat = useCallback(
     async (type, cat) => {
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = { ...prev, [type]: [...prev[type], cat] };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: [...prevCats[type], cat] };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -234,7 +232,7 @@ export default function MainApp({ user }) {
         showError("Couldn't save category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   const editCat = useCallback(
@@ -249,17 +247,9 @@ export default function MainApp({ user }) {
         const { label: _droppedLabel, ...rest } = updates;
         safeUpdates = rest;
       }
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = {
-          ...prev,
-          [type]: prev[type].map((c) =>
-            c.id === id ? { ...c, ...safeUpdates } : c,
-          ),
-        };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: prevCats[type].map(c => c.id === id ? { ...c, ...safeUpdates } : c) };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -267,18 +257,15 @@ export default function MainApp({ user }) {
         showError("Couldn't save category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   const deleteCat = useCallback(
     async (type, id) => {
       if (getProtectedCategory(type, id)) return;
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: prevCats[type].filter(c => c.id !== id) };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -286,7 +273,7 @@ export default function MainApp({ user }) {
         showError("Couldn't delete category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   useEffect(() => {
@@ -411,6 +398,7 @@ export default function MainApp({ user }) {
             investmentId: r.investment_id,
             value: +r.value,
             recordedDate: r.recorded_date,
+            createdAt: r.created_at || "",
             note: r.note || "",
           })),
         );
@@ -579,9 +567,10 @@ export default function MainApp({ user }) {
         });
       } catch (e) {
         showError("Couldn't save card.");
+        throw new Error("Couldn't save card.");
       }
     },
-    [user.id],
+    [user.id, moneyEnabled, cards, commitBatch],
   );
 
   const removeCard = useCallback(
@@ -597,7 +586,7 @@ export default function MainApp({ user }) {
         showError("Couldn't delete card.");
       }
     },
-    [cards],
+    [cards, moneyRecords, moneyEnabled, commitBatch],
   );
 
   const saveInvestment = useCallback(
@@ -656,11 +645,13 @@ export default function MainApp({ user }) {
               investmentId: id,
               value: +investment.initialAmount,
               recordedDate: investment.startDate,
+              createdAt: new Date().toISOString(),
             },
           ]);
         }
       } catch (e) {
         showError("Couldn't save investment.");
+        throw new Error("Couldn't save investment.");
       }
     },
     [user.id],
@@ -690,12 +681,7 @@ export default function MainApp({ user }) {
   // the value of whichever remaining valuation has the latest recorded date.
   // Used after every add/edit/delete of a valuation so current_value never
   // drifts out of sync with the actual history.
-  const latestValuationValue = (valuationsForInvestment) => {
-    if (!valuationsForInvestment.length) return null;
-    return valuationsForInvestment.reduce((latest, v) =>
-      v.recordedDate >= latest.recordedDate ? v : latest,
-    ).value;
-  };
+
 
   const recordInvestmentValue = useCallback(
     async (investmentId, value, date, note) => {
@@ -705,13 +691,13 @@ export default function MainApp({ user }) {
 
       const nextForInvestment = [
         ...investmentValuations.filter((v) => v.investmentId === investmentId),
-        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, createdAt: new Date().toISOString(), note: note || "" },
       ];
       const newCurrentValue = latestValuationValue(nextForInvestment);
 
       setInvestmentValuations((p) => [
         ...p,
-        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, createdAt: new Date().toISOString(), note: note || "" },
       ]);
       setInvestments((p) =>
         p.map((i) =>
@@ -729,6 +715,7 @@ export default function MainApp({ user }) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
         showError("Couldn't record value. Try again.");
+        throw new Error("Couldn't record value. Try again.");
       }
     },
     [investments, investmentValuations, user.id],
@@ -770,6 +757,7 @@ export default function MainApp({ user }) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
         showError("Couldn't update value. Try again.");
+        throw new Error("Couldn't update value. Try again.");
       }
     },
     [investments, investmentValuations],
@@ -914,6 +902,7 @@ export default function MainApp({ user }) {
       } catch {
         rollbackLocal();
         showError("Couldn't confirm the installment save. Refresh your records.");
+        throw new Error("Couldn't confirm the installment save. Refresh your records.");
       }
     },
     [user.id],
@@ -981,21 +970,8 @@ export default function MainApp({ user }) {
       const planTxs = transactions.filter((t) => t.installmentId === planId);
       const oldFutureTxs = planTxs.filter((t) => monthKey(t.date) > currentMk);
 
-      const newFutureTxs = [];
-      if (scheduleChanged) {
-        for (let i = paid; i < newTotalMonths; i++) {
-          newFutureTxs.push({
-            id: `ptx_${planId}_${i}`,
-            type: "card-purchase",
-            amount: +updates.monthlyAmount,
-            category: updates.category,
-            cardId: updates.cardId,
-            note: updates.label,
-            date: installmentDate(plan, i),
-            installmentId: planId,
-          });
-        }
-      }
+      const revised = revisedInstallments(plan, updates, transactions, currentMk);
+      const newFutureTxs = scheduleChanged ? revised.future : [];
 
       const updatedPlan = {
         ...plan,
@@ -1003,7 +979,7 @@ export default function MainApp({ user }) {
         category: updates.category,
         monthlyAmount: +updates.monthlyAmount,
         totalMonths: newTotalMonths,
-        totalAmount: +updates.monthlyAmount * newTotalMonths,
+        totalAmount: scheduleChanged ? revised.total : (planTxs.length ? planTxs.reduce((sum, row) => sum + Number(row.amount), 0) : plan.totalAmount),
         cardId: updates.cardId,
       };
 
@@ -1046,6 +1022,7 @@ export default function MainApp({ user }) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
         showError("Couldn't update installment plan. Try again.");
+        throw new Error("Couldn't update installment plan. Try again.");
       }
     },
     [transactions, installmentPlans, user.id],
@@ -1628,8 +1605,8 @@ export default function MainApp({ user }) {
             moneyEnabled={moneyEnabled}
             card={showCardForm === "new" ? null : showCardForm}
             onClose={() => setShowCardForm(null)}
-            onSave={(c) => {
-              saveCard(c);
+            onSave={async(c) => {
+              await saveCard(c);
               setShowCardForm(null);
             }}
           />
@@ -1638,11 +1615,12 @@ export default function MainApp({ user }) {
         {editingPlan && (
           <InstallmentPlanFormModal
             plan={editingPlan}
+            transactions={transactions}
             cards={cardsWithBalance}
             allExpCats={allExpCats}
             onClose={() => setEditingPlan(null)}
-            onSave={(planId, updates) => {
-              updateInstallmentPlanDetails(planId, updates);
+            onSave={async(planId, updates) => {
+              await updateInstallmentPlanDetails(planId, updates);
               setEditingPlan(null);
             }}
           />
@@ -1654,8 +1632,8 @@ export default function MainApp({ user }) {
               showInvestmentForm === "new" ? null : showInvestmentForm
             }
             onClose={() => setShowInvestmentForm(null)}
-            onSave={(inv) => {
-              saveInvestment(inv);
+            onSave={async(inv) => {
+              await saveInvestment(inv);
               setShowInvestmentForm(null);
             }}
           />
@@ -1665,8 +1643,8 @@ export default function MainApp({ user }) {
           <InvestmentValueModal
             investment={recordingValueFor}
             onClose={() => setRecordingValueFor(null)}
-            onSave={(value, date, note) => {
-              recordInvestmentValue(recordingValueFor.id, value, date, note);
+            onSave={async(value, date, note) => {
+              await recordInvestmentValue(recordingValueFor.id, value, date, note);
               setRecordingValueFor(null);
             }}
           />
@@ -1677,8 +1655,8 @@ export default function MainApp({ user }) {
             investment={editingValuation.investment}
             valuation={editingValuation.valuation}
             onClose={() => setEditingValuation(null)}
-            onSave={(value, date, note) => {
-              updateInvestmentValueEntry(
+            onSave={async(value, date, note) => {
+              await updateInvestmentValueEntry(
                 editingValuation.investment.id,
                 editingValuation.valuation.id,
                 value,

@@ -15,10 +15,11 @@ vi.mock('../src/lib/supabase.js',()=>{
     else {const data=c.table==='money_records'?{...c.data.data,id:c.id}:{...c.data,id:c.id};const i=rows.findIndex(r=>r.id===c.id);if(i<0) rows.push(data);else rows[i]={...rows[i],...data};}
    } return ++store.revision;
   }),
-  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:empty,upsertBudget:vi.fn(),fetchInstallmentPlans:async()=>structuredClone((store.installment_plans||store.notificationPlans||[]).map(p=>({active:true,...p}))),fetchRecurringReminders:async()=>structuredClone(store.notificationReminders||[]),insertRecurringReminder:vi.fn(),updateRecurringReminder:vi.fn(),deleteRecurringReminder:vi.fn(),fetchInvestments:empty,fetchInvestmentValuations:empty,fetchUserSettings:async()=>null,upsertUserSettings:vi.fn(),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
+  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:async()=>structuredClone(store.budgets||[]),upsertBudget:vi.fn(async row=>{if(store.fail)throw Error('Save failed');store.budgets=[...(store.budgets||[]).filter(r=>r.month_key!==row.month_key),row];}),fetchInstallmentPlans:async()=>structuredClone((store.installment_plans||store.notificationPlans||[]).map(p=>({active:true,...p}))),fetchRecurringReminders:async()=>structuredClone(store.recurring_reminders||store.notificationReminders||[]),insertRecurringReminder:vi.fn(async row=>{store.recurring_reminders=[...(store.recurring_reminders||[]),row];}),updateRecurringReminder:vi.fn(async(id,row)=>{store.recurring_reminders=store.recurring_reminders.map(r=>r.id===id?{...r,...row}:r);}),deleteRecurringReminder:vi.fn(async id=>{store.recurring_reminders=store.recurring_reminders.filter(r=>r.id!==id);}),fetchInvestments:async()=>structuredClone(store.investments||[]),fetchInvestmentValuations:async()=>structuredClone(store.investment_valuations||[]),fetchUserSettings:async()=>store.settings||null,upsertUserSettings:vi.fn(async(id,data)=>{if(store.fail)throw Error('Save failed');store.settings=JSON.parse(JSON.stringify({...store.settings,...data}));}),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
  };
 });
 import MainApp from '../src/components/MainApp.jsx';
+import ThemeProvider from '../src/components/ThemeProvider.jsx';
 import MoneyForm from '../src/components/MoneyForm.jsx';
 const user={id:'qa-user',email:'synthetic@example.com',created_at:'2026-01-01'};
 const change=(name,value)=>fireEvent.change(screen.getByLabelText(name,{exact:true}),{target:{value}});
@@ -31,14 +32,14 @@ const entry=async kind=>{
 const save=async()=>{fireEvent.click(screen.getByRole('button',{name:'Record',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());};
 const moneyValue=label=>screen.getByText(label,{exact:true}).closest('div').querySelector('dd').textContent;
 beforeEach(()=>{
- delete store.installment_plans;delete store.notificationPlans;delete store.notificationReminders;
+ delete store.recurring_reminders;delete store.budgets;delete store.settings;delete store.investments;delete store.investment_valuations;delete store.installment_plans;delete store.notificationPlans;delete store.notificationReminders;
  localStorage.removeItem(`completed_notifs_${user.id}_${new Date().toISOString().slice(0,7)}`);
  store.transactions=[{id:'salary',type:'income',category:'fixed',amount:200000,date:'2026-01-01'},{id:'savings',type:'expense',category:'savings-investments',amount:100000,date:'2026-01-01'}];
  store.cards=[{id:'hnb',name:'HNB',credit_limit:500000,opening_balance:0,colors:['#222','#555']}];store.records=[];store.revision=0;store.fail=false;
  window.scrollTo=vi.fn();window.matchMedia=vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));window.confirm=vi.fn(()=>true);sessionStorage.clear();
 });
 afterEach(cleanup);
-async function mount(){render(<MainApp user={user}/>);await screen.findByText('Your Money',{selector:'h3'});}
+async function mount(){render(<ThemeProvider><MainApp user={user}/></ThemeProvider>);await screen.findByText('Your Money',{selector:'h3'});}
 async function lend({borrower='Person',amount='50000',account='savings',rate='0',date='2026-01-02'}={}){
  await entry('Money lent');const existing=Array.from(screen.getByLabelText('Borrower',{exact:true}).options).find(o=>o.text===borrower);if(existing) change('Borrower',existing.value);else {change('Borrower','__new');change('Borrower name',borrower);}change('Amount lent',amount);change('Funding source',account);if(Number(rate)>0){fireEvent.click(screen.getByLabelText('Charge interest'));change('Interest rate (%)',rate);}change('Date lent',date);await save();
 }
@@ -136,7 +137,7 @@ it('card expenses still create complete installment schedules from the single Ex
  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
  const updated=store.transactions.filter(t=>t.installment_id===store.installment_plans[0].id).sort((a,b)=>a.date.localeCompare(b.date));
  expect(updated.map(t=>t.date)).toEqual(['2026-11-15','2026-12-15','2027-01-15','2027-02-15']);
- expect(updated.map(t=>t.amount)).toEqual([10000,12000,12000,12000]);
+ expect(updated.map(t=>t.amount)).toEqual([10000,12000,12000,12000]);expect(store.installment_plans[0].total_amount).toBe(46000);
 
 });
 
@@ -233,13 +234,84 @@ it('integrates CC reminders and future installments with occurrence-specific com
  localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
  store.cards[0].opening_balance=100000;store.cards[0].payment_due_date=`${month}-25`;
  store.notificationPlans=[{id:'notif-plan',card_id:'hnb',label:'Notification laptop',monthly_amount:10000,total_amount:30000,total_months:3,start_month:month,category:'other',active:true}];
+ store.transactions.push(...[0,1,2].map(index=>{const d=new Date(date.getFullYear(),date.getMonth()+index,1);return{id:`ptx_notif-plan_${index}`,type:'card-purchase',installment_id:'notif-plan',card_id:'hnb',amount:10000,category:'other',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`};}));
  store.notificationReminders=[{id:'notif-rent',label:'Notification rent',amount:5000,day_of_month:1,active:true}];
  await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);const dialog=screen.getByRole('dialog',{name:'Notifications'});
  expect(within(dialog).getByRole('heading',{name:/Monthly Credit Card/})).toBeTruthy();expect(within(dialog).getByRole('heading',{name:/Due Payments/})).toBeTruthy();
  const before=JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records});
- const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`}));
- expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(1);
+ const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`}));
+ expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(1);
  expect(JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records})).toBe(before);
- cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(1);
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(1);
  localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
+});
+
+it('creates, edits, reloads and deletes an unused card with its payment date intact',async()=>{
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Add a card'}));
+ change('Card name','QA new card');change('Credit limit','200000');change('Next card payment date','2026-12-20');
+ fireEvent.click(screen.getByRole('button',{name:'Add card',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(store.cards.find(c=>c.name==='QA new card').payment_due_date).toBe('2026-12-20');
+ fireEvent.click(screen.getByRole('button',{name:/QA new card.*Outstanding Balance/}));fireEvent.click(screen.getByRole('button',{name:'Edit card',exact:true}));
+ change('Next card payment date','2026-12-25');change('Card name','QA renamed card');fireEvent.click(screen.getByRole('button',{name:'Update card'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/QA renamed card.*Outstanding Balance/}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit card',exact:true}));expect(screen.getByLabelText('Next card payment date').value).toBe('2026-12-25');fireEvent.click(screen.getByRole('button',{name:'Close'}));
+ fireEvent.click(screen.getByRole('button',{name:'Delete card',exact:true}));await waitFor(()=>expect(store.cards.some(c=>c.name==='QA renamed card')).toBe(false));
+});
+it('protects a card linked to a loan created after the card list was loaded',async()=>{
+ await mount();await lend({account:'card'});fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));
+ fireEvent.click(screen.getByRole('button',{name:'Delete card',exact:true}));expect(screen.getByText(/This card funds a recorded loan/)).toBeTruthy();expect(store.cards).toHaveLength(1);expect(store.records.some(r=>r.kind==='loan')).toBe(true);
+});
+it('cancels only future installments and preserves the original billed charge after reload',async()=>{
+ await mount();await entry('Expense');change('Pay with','card');fireEvent.click(screen.getByLabelText('Split into installments'));
+ change('Monthly installment amount','10000');change('Installment description','Cancel test');change('Number of months','3');
+ fireEvent.click(screen.getByRole('button',{name:'Create plan'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ const first=structuredClone(store.transactions.find(t=>t.installment_id));
+ fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));fireEvent.click(screen.getByRole('button',{name:'Cancel',exact:true}));
+ await waitFor(()=>expect(store.installment_plans[0].active).toBe(false));expect(store.transactions.filter(t=>t.installment_id)).toEqual([first]);
+ cleanup();await mount();expect(store.transactions.filter(t=>t.installment_id)).toEqual([first]);
+});
+it('persists category add, edit and deletion without deferred state or stale category writes',async()=>{
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Manage Categories',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:'Add category',exact:true}));change('Category name','QA category');fireEvent.click(within(screen.getByRole('dialog',{name:'New category'})).getByRole('button',{name:'Add category',exact:true}));
+ await waitFor(()=>expect(store.settings.categories.expense.some(c=>c.label==='QA category')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'Edit QA category',exact:true}));change('Category name','QA renamed');fireEvent.click(screen.getByRole('button',{name:'Save changes',exact:true}));
+ await waitFor(()=>expect(store.settings.categories.expense.some(c=>c.label==='QA renamed')).toBe(true));
+ fireEvent.click(screen.getByRole('button',{name:'Delete QA renamed',exact:true}));await waitFor(()=>expect(store.settings.categories.expense.some(c=>c.label==='QA renamed')).toBe(false));
+ cleanup();await mount();expect(store.settings.categories.expense.some(c=>c.label==='QA category'||c.label==='QA renamed')).toBe(false);
+});
+it('keeps a stable loan label after the earlier loan is fully repaid',async()=>{
+ await mount();await lend({amount:'10000'});await lend({amount:'20000',date:'2026-01-03'});await entry('Loan repayment');change('Principal returned','10000');await save();
+ await entry('Loan repayment');expect(screen.getByLabelText('Loan').selectedOptions[0].textContent).toMatch(/^Loan 2 /);
+});
+it('does not record successful card changes when the backend rejects the save',async()=>{
+ await mount();const before=structuredClone(store.cards);fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Add a card'}));
+ change('Card name','Rejected card');change('Credit limit','100000');store.fail=true;fireEvent.click(screen.getByRole('button',{name:'Add card',exact:true}));
+ await screen.findByRole('heading',{name:'Refresh your saved records'});expect(store.cards).toEqual(before);
+});
+it('creates, edits, values, reloads and removes an investment with its linked history',async()=>{
+ await mount();fireEvent.click(screen.getByRole('button',{name:'Investments',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Add an investment',exact:true}));
+ change('Investment name','QA portfolio');change('Starting amount','10000');fireEvent.click(screen.getByRole('button',{name:'Add investment',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ fireEvent.click(screen.getByRole('button',{name:/^QA portfolio/}));fireEvent.click(screen.getByRole('button',{name:'Record value',exact:true}));change('Current value','15000');
+ fireEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Record value',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(store.investments[0].current_value).toBe(15000);cleanup();await mount();
+ fireEvent.click(screen.getByRole('button',{name:'Investments',exact:true}));fireEvent.click(screen.getByRole('button',{name:/^QA portfolio/}));
+ fireEvent.click(screen.getAllByRole('button',{name:'Edit value',exact:true})[0]);change('Current value','16000');fireEvent.click(screen.getByRole('button',{name:'Save changes',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(store.investments[0].current_value).toBe(16000);
+ fireEvent.click(screen.getAllByRole('button',{name:'Delete value',exact:true})[0]);await waitFor(()=>expect(store.investment_valuations).toHaveLength(1));expect(store.investments[0].current_value).toBe(10000);expect(screen.getByRole('button',{name:'Delete value',exact:true}).disabled).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Edit investment',exact:true}));change('Investment name','QA portfolio renamed');fireEvent.click(screen.getByRole('button',{name:'Save changes',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(store.investments[0].name).toBe('QA portfolio renamed');fireEvent.click(screen.getByRole('button',{name:'Delete investment',exact:true}));await waitFor(()=>expect(store.investments).toHaveLength(0));expect(store.investment_valuations).toHaveLength(0);
+ cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'Investments',exact:true}));expect(screen.getByText('No investments yet')).toBeTruthy();
+});
+it('saves and reloads fixed and monthly budgets without losing the fixed plan',async()=>{
+ await mount();fireEvent.click(screen.getByRole('button',{name:'Budget',exact:true}));change('Fixed monthly expense budget','100000');change('Groceries budget','20000');fireEvent.click(screen.getByRole('button',{name:'Save fixed plan',exact:true}));
+ await waitFor(()=>expect(store.budgets.find(r=>r.month_key==='fixed').expense_total).toBe(100000));
+ fireEvent.click(screen.getByRole('button',{name:'This month',exact:true}));change('This month’s expense budget','120000');fireEvent.click(screen.getByRole('button',{name:'Save for this month',exact:true}));
+ await waitFor(()=>expect(store.budgets.find(r=>r.month_key!=='fixed').expense_total).toBe(120000));
+ cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'Budget',exact:true}));expect(screen.getByLabelText('Fixed monthly expense budget').value).toBe('100,000.00');fireEvent.click(screen.getByRole('button',{name:'This month',exact:true}));expect(screen.getByLabelText('This month’s expense budget').value).toBe('120,000.00');
+});
+it('creates, reloads and deletes a recurring reminder through Profile',async()=>{
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Recurring Reminders',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Add reminder',exact:true}));
+ change('Reminder label','QA recurring');change('Estimated amount (optional)','9000');change('Due day each month (1–28)','25');fireEvent.click(screen.getByRole('button',{name:'Save Reminder',exact:true}));
+ await waitFor(()=>expect(store.recurring_reminders).toHaveLength(1));cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications',exact:true})[0]);expect(screen.getAllByText('QA recurring')).toHaveLength(2);fireEvent.click(screen.getByRole('button',{name:'Close',exact:true}));
+ fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Recurring Reminders',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Delete reminder: QA recurring',exact:true}));await waitFor(()=>expect(store.recurring_reminders).toHaveLength(0));
 });
