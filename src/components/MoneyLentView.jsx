@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { Archive, ArrowLeft, Menu, Plus, Users, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Archive, ArrowLeft, Menu, Plus, Users, ArrowDownLeft, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 import { CurrencyCtx } from '../context.js';
 import { accountLabel, loanSummary, roundMoney, todayLocal } from '../utils/money.js';
 import { borrowerGroups, borrowerLoanLabel } from '../utils/borrowers.js';
@@ -45,14 +45,14 @@ export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, 
       {loan.note && <p>{loan.note}</p>}
       <div className="money-actions">
         {summary.status !== 'Settled' && <button className="text-btn" onClick={() => onRepay(loan.id, group.id)}>Record repayment</button>}
-        <button className="text-btn" onClick={() => onEdit(loan)}>Edit loan</button>
+        <button className="text-btn money-record-action" onClick={() => onEdit(loan)}><Pencil size={14} aria-hidden="true" /> Edit loan</button>
         {onArchive && summary.status !== 'Settled' && <button className="text-btn" disabled={busy} onClick={() => run(() => onArchive(loan, !archived))}>{archived ? 'Restore to active' : 'Archive inactive loan'}</button>}
       </div>
       <details><summary>Repayment history ({summary.payments.length})</summary>{summary.payments.length ? summary.payments.map(payment => <div className="money-payment activity-received" key={payment.id}>
         <p><span className="activity-status">Received</span> {payment.date} · {accountLabel(payment.account)}</p><p>Principal {currency} {fmt(payment.principal)} · Interest {currency} {fmt(payment.interest)}</p>{payment.note && <p>{payment.note}</p>}
-        <div className="money-actions"><button className="text-btn" onClick={() => onEdit(payment)}>Edit repayment</button><button className="text-btn" onClick={() => onDelete(payment)}>Delete repayment</button></div>
+        <div className="money-actions"><button className="text-btn money-record-action" onClick={() => onEdit(payment)}><Pencil size={14} aria-hidden="true" /> Edit repayment</button><button className="text-btn money-record-action money-record-action-danger" onClick={() => onDelete(payment)}><Trash2 size={14} aria-hidden="true" /> Delete repayment</button></div>
       </div>) : <p className="money-hint">No repayments yet.</p>}</details>
-      <details className="loan-more"><summary>More actions</summary><button className="text-btn" onClick={() => onDelete(loan)}>Delete loan</button></details>
+      <details className="loan-more"><summary>More actions</summary><button className="text-btn money-record-action money-record-action-danger" onClick={() => onDelete(loan)}><Trash2 size={14} aria-hidden="true" /> Delete loan</button></details>
     </article>;
   };
   const fullHistory = group => {
@@ -67,7 +67,7 @@ export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, 
         <p>{currency} {fmt(received ? Number(event.principal) + Number(event.interest) : event.amount)} · {accountLabel(event.account)}{!received && event.account === 'card' ? ` · ${cards.find(c => c.id === event.cardId)?.name || 'Deleted card'}` : ''}</p>
         <p className="money-hint">{borrowerLoanLabel(loan, group.loans)}{received ? ` · Principal ${currency} ${fmt(event.principal)} · Interest ${currency} ${fmt(event.interest)}` : ''}</p>
         {event.note && <p>{event.note}</p>}
-        <div className="money-actions"><button className="text-btn" onClick={() => onEdit(event)}>Edit entry</button></div>
+        <div className="money-actions"><button className="text-btn money-record-action" onClick={() => onEdit(event)}><Pencil size={14} aria-hidden="true" /> Edit entry</button></div>
       </div>;
     })}</details>;
   };

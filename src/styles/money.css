@@ -96,3 +96,26 @@
 .loan-more { margin-top:6px; }
 @media(max-width:420px) { .money-heading h1 { font-size:21px; } .archive-button { font-size:11px; gap:4px; } .borrower-summary { gap:16px 10px; } }
 @media(max-height:600px) { .entry-navigation { padding-bottom:8px; margin-bottom:8px; } .entry-navigation .entry-intro { display:none; } .entry-back { margin-bottom:3px; } }
+
+
+/* Keep Money Lent actions content-sized instead of inheriting full-width text buttons. */
+.money-view .text-btn { width:auto; max-width:100%; flex:0 1 auto; }
+.money-view .money-actions { gap:6px 10px; align-items:center; margin:10px 0; }
+.money-view .money-record-action {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:36px; padding:6px 10px; border:1px solid var(--border-2);
+  border-radius:9px; background:var(--surface); color:var(--ink);
+  font-size:12px; font-weight:600; line-height:1.35; text-align:left;
+  touch-action:manipulation; transition:background .15s,border-color .15s;
+}
+.money-record-action svg { flex:none; }
+.money-view .money-record-action-danger { color:var(--danger); background:var(--danger-soft); }
+.money-view .money-record-action:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+@media(hover:hover) {
+  .money-view .money-record-action:hover { background:var(--surface-2); border-color:var(--ink-soft); }
+  .money-view .money-record-action-danger:hover { color:var(--danger); background:var(--danger-soft); border-color:var(--danger); }
+}
+@media(max-width:1023px),(any-pointer:coarse) {
+  .money-view .money-record-action { min-height:44px; }
+  .money-view .money-actions { gap:8px 10px; }
+}
