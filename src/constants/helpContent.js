@@ -210,14 +210,14 @@ export const HELP_SECTIONS = [
   {
     id: "money-lent", title: "Savings & Money Lent", icon: "💰",
     items: [
-      {q: "How do I withdraw from savings?", a: "Tap New Entry → Income → Withdraw from savings. Enter the amount. The receiving balance is Cash / Bank. Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
+      {q: "How do I withdraw from savings?", a: "Tap New Entry → Income → Withdraw from savings. Enter the amount. The receiving balance is Cash. Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
       {q: "How do I track several loans to one person?", a: "Open Money Lent → Borrowers to register a person, or choose New borrower when lending. Select the same borrower each time you lend again. View borrower & history shows every loan, repayment, date, funding source and interest term. Each loan keeps its own rate and repayment history. Manage borrower → Edit borrower renames the display without rewriting old loans. Manage borrower → Merge duplicate borrower joins histories only when you explicitly select the same person’s other record."},
       {q: "Where do completed or inactive loans go?", a: "Money Lent shows active loans. Loans move to Archive automatically when principal and accrued interest are settled. Loan Actions → Archive inactive loan hides an inactive loan from the main list, but any unpaid debt still appears in Insights and borrower totals. Open Archive to review payment histories or restore an unpaid archived loan. Overdue loans remain active unless you archive them yourself."},
-      {q: "How do I lend money?", a: "Tap New Entry → Expenses → Lend money. Choose the borrower, amount, date and source (Cash / Bank, Savings, or a specific credit card). Loans are interest-free by default. Turn on Charge interest to enter a monthly or yearly rate. More options contains repayment arrangements, calculation basis and notes. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
-      {q: "How do I record repayments?", a: "Choose New Entry → Income → Repayment received, select the borrower and then their dated loan and split the payment into principal returned and interest received. Select Cash / Bank or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Expenses → Pay credit card separately when you pay your bank."},
+      {q: "How do I lend money?", a: "Tap New Entry → Expenses → Lend money. Choose the borrower, amount, date and source (Cash, Savings, or a specific credit card). Loans are interest-free by default. Turn on Charge interest to enter a monthly or yearly rate. More options contains repayment arrangements, calculation basis and notes. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
+      {q: "How do I record repayments?", a: "Choose New Entry → Income → Repayment received, select the borrower and then their dated loan and split the payment into principal returned and interest received. Select Cash or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Expenses → Pay credit card separately when you pay your bank."},
       {q: "How is loan interest calculated?", a: "Simple interest is due on each completed monthly or yearly anniversary of the lending date. Choose original principal or remaining principal. For remaining principal, repayments on a due date reduce the next period’s charge. There is no automatic compounding or partial-period charge. Unpaid interest stays separate from principal; interest paid early appears as a credit. Bank/card fees are separate expenses."},
       {q: "Where do I see outstanding loans?", a: "Open Money Lent from the menu or desktop sidebar. Each loan shows original amount, principal returned and outstanding, interest received and due, funding source, dates, repayment arrangement and payment history. Monthly installments schedule equal principal payments; interest is separate. Loans with repayments cannot be deleted until those repayments are removed."},
-      {q: "What do the Insights balances mean?", a: "Cash / Bank combines your available cash and bank money in one balance. Savings is the remaining emergency fund. Owed to You is outstanding loan principal, with unpaid interest shown separately. You Owe is positive credit card balances. Principal repayments and transfers are excluded from Income and Spending. Balances use the selected month, capped at today; card debt is current. Existing Cash and Bank entries remain intact and are included together; no transfer between them is needed."},
+      {q: "What do the Insights balances mean?", a: "Cash combines your available cash and bank money in one balance. Savings is the remaining emergency fund. Owed to You is outstanding loan principal, with unpaid interest shown separately. You Owe is positive credit card balances. Principal repayments and transfers are excluded from Income and Spending. Balances use the selected month, capped at today; card debt is current. Existing Cash and Bank entries remain intact and are included together; no transfer between them is needed."},
       {q: "How do card payment reminders work?", a: "Edit a card to enter its next payment date. Insights lists that reminder alongside your current card balance; this is not an automatically calculated statement amount or minimum payment. Update the date for each statement. Money Lent separately shows loan principal and interest due from people."},
     ],
   },
@@ -228,19 +228,19 @@ export const HELP_SECTIONS = [
     items: [
       {
         q: "What does the Insights tab show?",
-        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash / Bank, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
+        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
       },
       {
         q: "What is the notification bell?",
         a: "The bell shows the number of active payment reminders. Notifications groups dated overdue and due-today items under Due Payments, with other reminders under Monthly Credit Card (CC) Payments, Installment Payments, and Other Upcoming Payments. It includes saved card payment dates, upcoming installments within 20 days of today (inclusive), current-month due installments, and recurring bills for this month and next. Installment reminders use their recorded transaction dates, falling back to the plan schedule, independently of card payment deadlines. Installment reminders retain each saved charge's date, amount, and identity when edited. Exact card payment dates are not guessed when missing. Card amounts are current outstanding balances, not bank statement/minimum-payment amounts; installments are part of card payments. The checkmark dismisses only that occurrence on this device and does not record a payment. Existing category-based recurring auto-dismiss still applies per month.",
       },
       {
-        q: "What is Cash / Bank?",
+        q: "What is Cash?",
         a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank.",
       },
       {
         q: "What is the Cash Balance Trend?",
-        a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash / Bank — plotted month by month so you can see whether it's trending up or down.",
+        a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash — plotted month by month so you can see whether it's trending up or down.",
       },
       {
         q: "What is Total Investments?",
@@ -391,7 +391,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Number formatting",
-        a: "Key amounts — Net this month, Cash / Bank, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
+        a: "Key amounts — Net this month, Cash, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
       },
     ],
   },

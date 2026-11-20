@@ -108,7 +108,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
             </> : <p className="entry-caption">{records.some(record => record.kind === 'loan') ? 'No outstanding loans. All recorded loans are fully settled.' : 'No loans recorded yet. Record Expenses → Lend money first.'}</p>}
           </>}
           {draft.kind === 'transfer' && <>
-            {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p>
+            {legacyInternal ? <p className="entry-caption">Existing transfer within Cash. The combined balance is unchanged.</p>
               : !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Savings action" className="text-input" value={draft.from === 'savings' ? 'withdraw' : 'save'} onChange={e => setDraft(previous => ({ ...previous, from: e.target.value === 'withdraw' ? 'savings' : 'cash', to: e.target.value === 'withdraw' ? 'cash' : 'savings' }))}><option value="save">Add to savings</option><option value="withdraw">Withdraw from savings</option></select></label>}
             {amount('amount', 'Amount')}
             {!legacyInternal && <p className="entry-caption">Moves your own money; excluded from income earned and spending.</p>}

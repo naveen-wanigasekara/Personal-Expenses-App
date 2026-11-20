@@ -7,7 +7,7 @@ export const todayLocal = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
-export const accountLabel = id => ({ cash: 'Cash / Bank', bank: 'Cash / Bank', savings: 'Savings', card: 'Credit card' }[id] || id);
+export const accountLabel = id => ({ cash: 'Cash', bank: 'Cash', savings: 'Savings', card: 'Credit card' }[id] || id);
 export const isMoneyRecord = r => ['loan','repayment','transfer'].includes(r.kind);
 export function anniversary(date, months) {
   const [y,m,d] = date.split('-').map(Number);
