@@ -145,6 +145,7 @@ export const INCOME_CATEGORIES = [
     icon: TrendingDown,
     color: "#5a8ba3",
   },
+  { id: "loan-interest", label: "Loan Interest Received", icon: Percent, color: "#4a9b7a" },
   {
     id: "other-income",
     label: "Other Income",
@@ -230,6 +231,7 @@ export const isSpendableExpense = (t, expList, incList) => {
     t.type !== "card-interest"
   )
     return false;
+  if (t.isLoan) return false;
   return (
     getCat(t.category, "expense", expList, incList).id !== SAVINGS_CATEGORY_ID
   );

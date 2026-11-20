@@ -28,9 +28,15 @@ export default function AddModal({
   onAddCat,
   editing,
   userId,
+  onMoneyAction,
+  moneyEnabled = false,
   installmentPlans,
 }) {
   const isEditing = !!editing;
+  const [account,setAccount]=useState(editing?.account || "cash");
+  const [saving,setSaving]=useState(false);
+  const savingRef=useRef(false);
+  const [saveError,setSaveError]=useState("");
   const CURRENCY = useContext(CurrencyCtx);
   const amountUserEdited = useRef(false);
 
@@ -116,7 +122,8 @@ export default function AddModal({
     }
   }, [category]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if(savingRef.current) return;
     if (isInstallment) {
       if (
         !amount ||
@@ -140,7 +147,7 @@ export default function AddModal({
     }
     if (!amount || !Number.isFinite(+amount) || +amount <= 0 || !validDate(date)) return;
     if (isCardType && !cardId) return;
-    const tx = { type, amount: +amount, note, date };
+    const tx = { type, amount: +amount, note, date, account: isCardType && type !== "card-payment" ? null : account };
     if (type === "income") tx.category = category;
     else if (type === "expense") tx.category = category;
     else if (type === "card-purchase") {
@@ -152,7 +159,9 @@ export default function AddModal({
     } else if (type === "card-payment") {
       tx.cardId = cardId;
     }
-    onSave(tx);
+    savingRef.current=true;setSaving(true);setSaveError("");
+    try { await onSave(tx); } catch(error) {setSaveError(error.message || "Could not save. Please try again.");}
+    finally {savingRef.current=false;setSaving(false);}
   };
 
   const valid = isInstallment
@@ -213,6 +222,7 @@ export default function AddModal({
       onClose={onClose}
       className="sheet-wide"
     >
+      {!isEditing && onMoneyAction && <div className="money-choice"><button disabled={!moneyEnabled} onClick={()=>onMoneyAction("loan")}>Money lent</button><button disabled={!moneyEnabled} onClick={()=>onMoneyAction("repayment")}>Loan repayment</button><button disabled={!moneyEnabled} onClick={()=>onMoneyAction("withdrawal")}>Withdraw from savings</button><button disabled={!moneyEnabled} onClick={()=>onMoneyAction("transfer")}>Transfer money</button>{!moneyEnabled&&<p className="money-hint">Savings withdrawals and lending need the database update before they can be used.</p>}</div>}
       <div className="type-chips">
         {availableTypes.map((t) => {
           const Ic = t.icon;
@@ -389,6 +399,7 @@ export default function AddModal({
           </>
         )}
 
+      {moneyEnabled && !isInstallment && (!isCardType || type === "card-payment") && <label className="money-field"><span>{type === "income" ? "Received into" : "Paid from"}</span><select aria-label={type === "income" ? "Received into" : "Paid from"} className="text-input" value={account} onChange={e=>setAccount(e.target.value)}><option value="cash">Cash</option><option value="bank">Bank</option></select></label>}
       {!isInstallment && (
         <div className="field-row">
           <div className="field-group">
@@ -415,12 +426,13 @@ export default function AddModal({
         </div>
       )}
 
+      {saveError && <p role="alert" className="money-error">{saveError}</p>}
       <button
         className={`save-btn ${!valid ? "disabled" : ""}`}
         onClick={handleSave}
-        disabled={!valid}
+        disabled={!valid || saving}
       >
-        {isInstallment
+        {saving ? "Saving…" : isInstallment
           ? "Create Plan"
           : isEditing
             ? "Save changes"

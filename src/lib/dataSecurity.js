@@ -1,8 +1,9 @@
 import { encryptFields, decryptFields } from './crypto.js';
 
 export const ENCRYPTED_FIELDS = {
-  transactions: ['amount', 'category', 'note', 'date'],
-  cards: ['name', 'credit_limit', 'opening_balance', 'colors'],
+  transactions: ['amount', 'category', 'note', 'date', 'account'],
+  money_records: ['data'],
+  cards: ['name', 'credit_limit', 'opening_balance', 'colors', 'payment_due_date'],
   budgets: ['income_total', 'income_categories', 'expense_total', 'expense_categories'],
   installment_plans: ['label', 'total_amount', 'monthly_amount', 'total_months', 'start_month', 'category'],
   recurring_reminders: ['label', 'amount', 'day_of_month', 'category'],
@@ -21,6 +22,7 @@ export async function upgradeEncryption(client, userId) {
     while (true) {
       const query = client.from(table).select('*').eq('user_id', userId).order(table === 'user_settings' ? 'user_id' : table === 'budgets' ? 'month_key' : 'id').range(offset, offset + 499);
       const { data, error } = await query;
+      if (error && table === "money_records" && ["42P01","PGRST205"].includes(error.code)) break;
       if (error) throw error;
       for (const row of data || []) {
         const source = Object.fromEntries(fields.filter((field) => row[field] != null && !String(row[field]).startsWith('enc2:')).map((field) => [field, row[field]]));

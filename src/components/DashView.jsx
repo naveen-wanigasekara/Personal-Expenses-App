@@ -37,7 +37,10 @@ import Sheet from "./Sheet.jsx";
 import ChartFormModal from "./ChartFormModal.jsx";
 import CustomChartCard from "./charts/CustomChartCard.jsx";
 
+import { moneyBalances, loanSummary, todayLocal } from "../utils/money.js";
+
 const SECTION_DEFS = [
+  {id:"money_overview",label:"Your Money",desc:"Available money, bank balance, loans and payments due"},
   {
     id: "net_this_month",
     label: "Net This Month",
@@ -53,7 +56,7 @@ const SECTION_DEFS = [
   {
     id: "total_savings",
     label: "Total Savings",
-    desc: "Cumulative amount tagged as savings, all-time",
+    desc: "Savings remaining after withdrawals and loans",
   },
   {
     id: "card_debt",
@@ -121,6 +124,10 @@ function mergeLayout(saved, extraDefs = []) {
 
 export default function DashView({
   transactions,
+  moneyRecords = [],
+  moneyEnabled = false,
+  onOpenLoans,
+  onWithdraw,
   getEffectivePlan,
   cards,
   investments,
@@ -177,6 +184,12 @@ export default function DashView({
   const isCurrentMonth = viewMonth === monthKey(new Date());
   const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
   const greeting = getTimeOfDay();
+
+  const through = viewMonth < todayLocal().slice(0,7) ? `${viewMonth}-31` : todayLocal();
+  const balances = useMemo(()=>moneyBalances(transactions,through),[transactions,through]);
+  const lending = useMemo(()=>moneyRecords.filter(r=>r.kind==="loan"&&r.date<=through).map(loan=>({loan,...loanSummary(loan,moneyRecords,through)})),[moneyRecords,through]);
+  const moneyOwed = lending.reduce((sum,s)=>sum+s.outstanding,0);
+  const interestOwed = lending.reduce((sum,s)=>sum+s.interestDue,0);
 
   const last6 = useMemo(() => {
     const out = [];
@@ -259,14 +272,7 @@ export default function DashView({
     return Array.from({ length: 12 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
       const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const balance = transactions
-        .filter((t) => monthKey(t.date) <= mk)
-        .reduce((sum, t) => {
-          if (t.type === "income") return sum + +t.amount;
-          if (t.type === "expense" || t.type === "card-payment")
-            return sum - +t.amount;
-          return sum;
-        }, 0);
+      const balance = moneyBalances(transactions,`${mk}-31`).available;
       return {
         mk,
         balance,
@@ -279,16 +285,7 @@ export default function DashView({
   // Total Savings dashboard stat. Uses getCat (not a raw string compare) to
   // resolve the transaction's effective category, consistent with the rest
   // of this file.
-  const totalSavings = useMemo(() => {
-    return transactions
-      .filter(
-        (t) =>
-          t.type === "expense" &&
-          getCat(t.category, "expense", allExpCats, allIncCats).id ===
-            SAVINGS_CATEGORY_ID,
-      )
-      .reduce((s, t) => s + +t.amount, 0);
-  }, [transactions, allExpCats, allIncCats]);
+  const totalSavings = balances.savings;
 
   const expCatSpend = useMemo(() => {
     const inMonth = transactions.filter(
@@ -389,16 +386,7 @@ export default function DashView({
 
   // Deliberately NOT excluding Savings-tagged transactions here — this is
   // cash position, not spending (see the netWorthTrend comment above).
-  const runningBalance = useMemo(() => {
-    return transactions
-      .filter((t) => monthKey(t.date) <= viewMonth)
-      .reduce((sum, t) => {
-        if (t.type === "income") return sum + +t.amount;
-        if (t.type === "expense" || t.type === "card-payment")
-          return sum - +t.amount;
-        return sum;
-      }, 0);
-  }, [transactions, viewMonth]);
+  const runningBalance = balances.cash;
 
   const budgetProgress = currentPlan?.expense?.total
     ? (thisStats.expenses / currentPlan.expense.total) * 100
@@ -409,7 +397,7 @@ export default function DashView({
   const hasPlan =
     currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0;
 
-  const totalCardDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
+  const totalCardDebt = cards.reduce((s, c) => s + Math.max(0,c.currentBalance || 0), 0);
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const totalUtil = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
 
@@ -469,6 +457,24 @@ export default function DashView({
   };
 
   const sectionContent = {
+    money_overview: moneyEnabled ? <div className="card money-overview">
+      <div className="card-hd"><h3>Your Money</h3><span className="card-sub">As of {through}</span></div>
+      <dl className="money-stats">
+        <div><dt>Available money · cash + bank</dt><dd>{CURRENCY} {fmt(balances.available)}</dd></div>
+        <div><dt>Bank balance</dt><dd>{CURRENCY} {fmt(balances.bank)}</dd></div>
+        <div><dt>Owed to you · principal</dt><dd>{CURRENCY} {fmt(moneyOwed)}</dd></div>
+        <div><dt>Unpaid loan interest</dt><dd>{CURRENCY} {fmt(interestOwed)}</dd></div>
+        <div><dt>You owe · credit cards</dt><dd>{CURRENCY} {fmt(Math.max(0,totalCardDebt))}</dd></div>
+      </dl>
+      <div className="money-actions"><button className="text-btn" onClick={onOpenLoans}>View people & repayments</button><button className="text-btn" onClick={onWithdraw}>Withdraw from savings</button></div>
+      <details><summary>Upcoming & due payments</summary>
+        {lending.filter(s=>s.status!=="Settled").map(s=><p className="money-hint" key={s.loan.id}>{s.loan.borrower}: {s.principalDue>0?`principal due ${CURRENCY} ${fmt(s.principalDue)}. `:""}{s.interestDue>0?`interest due ${CURRENCY} ${fmt(s.interestDue)}. `:""}{s.nextInterestDate?`Next interest ${s.nextInterestDate}. `:""}{s.nextPrincipalDate?`Next principal ${s.nextPrincipalDate}. `:""}{!s.nextInterestDate&&!s.nextPrincipalDate&&s.status!=="Payment due"?"No repayment date agreed.":""}</p>)}
+        {cards.filter(c=>c.currentBalance>0).map(c=><p className="money-hint" key={c.id}>{c.name}: balance {CURRENCY} {fmt(c.currentBalance)}{c.paymentDueDate?` · Payment date ${c.paymentDueDate}`:" · Add a payment date in card settings for a reminder."}</p>)}
+        {!lending.some(s=>s.status!=="Settled")&&!cards.some(c=>c.currentBalance>0)&&<p className="money-hint">No outstanding loans or card payments.</p>}
+      </details>
+      <p className="money-hint">Savings and money lent are separate from available money. Existing entries default to Cash; use a Cash → Bank transfer to split your recorded balance.</p>
+    </div> : null,
+
     net_this_month: (
       <div className="summary-net">
         <div className="balance-label">Net this month</div>
@@ -486,7 +492,7 @@ export default function DashView({
           <ArrowUp size={12} strokeWidth={3} />
         </div>
         <div className="io-text">
-          <div className="io-label">In</div>
+          <div className="io-label">Income</div>
           <div className="io-val">
             {CURRENCY} {fmt(thisStats.income)}
           </div>
@@ -500,7 +506,7 @@ export default function DashView({
           <ArrowDown size={12} strokeWidth={3} />
         </div>
         <div className="io-text">
-          <div className="io-label">Out</div>
+          <div className="io-label">Spending</div>
           <div className="io-val">
             {CURRENCY} {fmt(thisStats.expenses)}
           </div>
@@ -845,7 +851,7 @@ export default function DashView({
     cashflow: (
       <div className="card">
         <div className="card-hd">
-          <h3>Cashflow</h3>
+          <h3>Income & Spending</h3>
           <div className="legend">
             <span>
               <span className="dot in" />

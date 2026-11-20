@@ -1,5 +1,5 @@
 import { useState, useContext, useRef, memo } from "react";
-import { Edit2, Trash2, CreditCard, ChevronDown } from "lucide-react";
+import { Edit2, Trash2, CreditCard, ChevronDown, Wallet, ArrowLeftRight } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
 import { fmt } from "../utils/format.js";
@@ -22,7 +22,11 @@ function TxRow({
   const touchStartY = useRef(null);
 
   let cat, sign, color;
-  if (tx.type === "income") {
+  if(tx.moneyRecordId) {
+    const label=tx.isLoan?"Money lent":tx.type==="transfer"?"Transfer":tx.isLoanInterest?"Loan interest received":"Principal repayment";
+    cat={label,icon:tx.type==="transfer"?ArrowLeftRight:Wallet,color:"#4a9b7a"};
+    sign=tx.isLoan?"−":tx.type==="transfer"?"↔":"+";color=tx.isLoanInterest?"income":"neutral";
+  } else if (tx.type === "income") {
     cat = getCat(tx.category, "income", allExpCats, allIncCats);
     sign = "+";
     color = "income";
@@ -136,7 +140,7 @@ function TxRow({
                 ? `Interest/fees · ${cardName}`
                 : tx.type === "card-purchase" && cardName
                   ? `${cat.label} · ${cardName}`
-                  : cat.label}
+                  : `${cat.label}${tx.account && tx.account !== "card" ? ` · ${tx.account === "bank" ? "Bank" : tx.account === "savings" ? "Savings" : "Cash"}` : ""}`}
           </div>
         </div>
         <div className="tx-date-col">{dateLabel}</div>

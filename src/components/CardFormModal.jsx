@@ -6,8 +6,9 @@ import { fmt } from "../utils/format.js";
 import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
 
-export default function CardFormModal({ card, onClose, onSave }) {
+export default function CardFormModal({ card, onClose, onSave, moneyEnabled = false }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const [paymentDueDate,setPaymentDueDate]=useState(card?.paymentDueDate || "");
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
   const [openingBalance, setOpeningBalance] = useState(
@@ -27,6 +28,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
       limit: +limit,
       openingBalance: +openingBalance || 0,
       colors: CARD_COLORS[colorIdx],
+      paymentDueDate,
     });
   };
 
@@ -91,6 +93,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
           : "If you already owe money on this card, enter it here. Leave 0 if starting fresh."}
       </div>
 
+      {moneyEnabled && <label className="money-field"><span>Next card payment date (optional)</span><input type="date" aria-label="Next card payment date" className="text-input" value={paymentDueDate} onChange={e=>setPaymentDueDate(e.target.value)}/><span className="money-hint">A reminder date, not a calculated statement amount. Update it for each statement.</span></label>}
       <label className="field-lbl">Color</label>
       <div className="color-grid">
         {CARD_COLORS.map((c, i) => (

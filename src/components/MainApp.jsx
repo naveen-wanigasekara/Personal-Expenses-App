@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plus,
   BarChart3,
@@ -17,6 +17,7 @@ import { CurrencyCtx } from "../context.js";
 import { usePWA } from "../hooks/usePWA.js";
 import {
   getCat,
+  INCOME_CATEGORIES,
   isSpendableExpense,
   getProtectedCategory,
   getDefaultUserCats,
@@ -24,6 +25,8 @@ import {
 } from "../constants/categories.js";
 import {
   commitFinanceChanges,
+  fetchMoneyWorkspace,
+  commitMoneyChanges,
   fetchTransactions,
   insertTransaction,
   updateTransaction,
@@ -67,7 +70,11 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
-const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
+import MoneyForm from "./MoneyForm.jsx";
+import MoneyLentView from "./MoneyLentView.jsx";
+import { moneyTransactions, validateMoneyRecords, validateSavingsChange } from "../utils/money.js";
+
+const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
 import {validMonth} from "../utils/dateInput.js";
@@ -82,10 +89,25 @@ export default function MainApp({ user }) {
     const saved = sessionStorage.getItem(LAST_TAB_KEY);
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
+  const moneyRevision = useRef(null);
+  const moneyWriteLock = useRef(false);
+  const [moneyRecords,setMoneyRecords]=useState([]);
+  const [moneyEnabled,setMoneyEnabled]=useState(false);
+  const [moneyForm,setMoneyForm]=useState(null);
+  const [pendingDelete,setPendingDelete]=useState(null);
+  const deleteTimer=useRef(null);
+  useEffect(()=>()=>clearTimeout(deleteTimer.current),[]);
+  const [loadFailed,setLoadFailed]=useState(false);
   const [loaded, setLoaded] = useState(false);
   const [mustReload, setMustReload] = useState(false);
   const commitBatch = useCallback(async (changes) => {
-    try { return await commitFinanceChanges(changes); }
+    try {
+      if(moneyRevision.current !== null) {
+        moneyRevision.current=await commitMoneyChanges(changes,moneyRevision.current);
+        return;
+      }
+      return await commitFinanceChanges(changes);
+    }
     catch (error) { setMustReload(true); throw error; }
   }, []);
   const [transactions, setTransactions] = useState([]);
@@ -125,7 +147,6 @@ export default function MainApp({ user }) {
   const [customCharts, setCustomCharts] = useState([]);
   const [installmentPlans, setInstallmentPlans] = useState([]);
   const [recurringReminders, setRecurringReminders] = useState([]);
-  const [pendingDelete, setPendingDelete] = useState(null);
   const [showNotifs, setShowNotifs] = useState(false);
   const [investments, setInvestments] = useState([]);
   const [investmentValuations, setInvestmentValuations] = useState([]);
@@ -189,7 +210,7 @@ export default function MainApp({ user }) {
   );
 
   const allExpCats = userCats.expense;
-  const allIncCats = userCats.income;
+  const allIncCats = useMemo(()=>userCats.income.some(c=>c.id==="loan-interest") ? userCats.income : [...userCats.income,INCOME_CATEGORIES.find(c=>c.id==="loan-interest")],[userCats.income]);
 
   const addCat = useCallback(
     async (type, cat) => {
@@ -268,6 +289,11 @@ export default function MainApp({ user }) {
   useEffect(() => {
     (async () => {
       try {
+        let workspace=null;
+        try { workspace=await fetchMoneyWorkspace(); } catch(error) {
+          if(!["PGRST202","42883"].includes(error.code)) throw error;
+        }
+        if(workspace) {setMoneyRecords(workspace.records);moneyRevision.current=workspace.revision;setMoneyEnabled(true);}
         const [
           txRows,
           cardRows,
@@ -278,8 +304,8 @@ export default function MainApp({ user }) {
           valuationRows,
           settingsRow,
         ] = await Promise.all([
-          fetchTransactions(user.id),
-          fetchCards(user.id),
+          workspace ? Promise.resolve(workspace.transactions) : fetchTransactions(user.id),
+          workspace ? Promise.resolve(workspace.cards) : fetchCards(user.id),
           fetchBudgets(user.id),
           fetchInstallmentPlans(user.id),
           fetchRecurringReminders(user.id),
@@ -298,6 +324,7 @@ export default function MainApp({ user }) {
             note: r.note || "",
             date: r.date,
             installmentId: r.installment_id || null,
+            account:r.account || "cash",
           })),
         );
 
@@ -307,6 +334,7 @@ export default function MainApp({ user }) {
             name: r.name,
             limit: +r.credit_limit,
             openingBalance: +r.opening_balance,
+            paymentDueDate:r.payment_due_date||"",
             colors: r.colors,
           })),
         );
@@ -396,6 +424,7 @@ export default function MainApp({ user }) {
         setCustomCharts(settingsRow?.custom_charts ?? []);
       } catch (e) {
         console.error(e);
+        setLoadFailed(true);
         setErrorBanner("Couldn't load your data. Please refresh.");
       } finally {
         setLoaded(true);
@@ -408,87 +437,79 @@ export default function MainApp({ user }) {
     setTimeout(() => setErrorBanner(null), 4000);
   };
 
-  const addTx = useCallback(
-    async (tx) => {
-      const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const dbRow = {
-        id,
-        user_id: user.id,
-        type: tx.type,
-        amount: tx.amount,
-        category: tx.category || null,
-        card_id: tx.cardId || null,
-        note: tx.note || "",
-        date: tx.date,
-      };
-      setTransactions((p) => [{ ...tx, id }, ...p]);
-      try {
-        await insertTransaction(dbRow);
-      } catch (e) {
-        setTransactions((p) => p.filter((t) => t.id !== id));
-        showError("Couldn't save transaction. Try again.");
-      }
-    },
-    [user.id],
-  );
-
-  const deleteTx = useCallback(
-    (id) => {
-      const tx = transactions.find((t) => t.id === id);
-      if (!tx) return;
-      // Flush any previous pending delete immediately
-      setPendingDelete((prev) => {
-        if (prev) {
-          clearTimeout(prev.timer);
-          deleteTransaction(prev.tx.id).catch(() => {});
-        }
-        return null;
-      });
-      setTransactions((p) => p.filter((t) => t.id !== id));
-      const timer = setTimeout(async () => {
-        setPendingDelete(null);
-        try {
-          await deleteTransaction(id);
-        } catch {
-          showError("Couldn't delete transaction.");
-        }
-      }, 5000);
-      setPendingDelete({ tx, timer });
-    },
-    [transactions],
-  );
-
-  const undoDelete = useCallback(() => {
-    setPendingDelete((prev) => {
-      if (!prev) return null;
-      clearTimeout(prev.timer);
-      setTransactions((p) => [prev.tx, ...p]);
-      return null;
-    });
-  }, []);
-
-  const editTx = useCallback(
-    async (id, updates) => {
-      const prev = transactions;
-      setTransactions((p) =>
-        p.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-      );
-      try {
-        await updateTransaction(id, {
-          type: updates.type,
-          amount: updates.amount,
-          category: updates.category || null,
-          card_id: updates.cardId || null,
-          note: updates.note || "",
-          date: updates.date,
-        });
-      } catch (e) {
-        setTransactions(prev);
-        showError("Couldn't update transaction.");
-      }
-    },
-    [transactions],
-  );
+  const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
+  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
+  const openMoneyForm=(kind,loanId=null)=>{setShowAdd(false);setMoneyForm({kind,loanId});};
+  const editEntry=(tx)=>{
+    if(tx.moneyRecordId) {const record=moneyRecords.find(r=>r.id===tx.moneyRecordId);if(record) setMoneyForm({kind:record.kind,editing:record});}
+    else setEditingTx(tx);
+  };
+  const writeTracked = async (changes) => {
+    if(moneyWriteLock.current) throw new Error('A save is already in progress. Please wait.');
+    moneyWriteLock.current=true;
+    try {await commitBatch(changes);} finally {moneyWriteLock.current=false;}
+  };
+  const saveMoneyRecord=async(draft)=>{
+    const id=draft.id||`money_${crypto.randomUUID()}`;
+    const record={id,kind:draft.kind,date:draft.date,note:(draft.note||'').trim(),
+      ...(draft.kind==='loan'?{borrower:draft.borrower.trim(),amount:draft.amount,account:draft.account,cardId:draft.account==='card'?draft.cardId:null,rate:draft.rate,ratePeriod:draft.ratePeriod,interestBasis:draft.interestBasis,arrangement:draft.arrangement,installmentMonths:draft.installmentMonths,dueDate:draft.dueDate}:
+      draft.kind==='repayment'?{loanId:draft.loanId,principal:draft.principal,interest:draft.interest,account:draft.account}:
+      {from:draft.from,to:draft.to,amount:draft.amount})};
+    const next=moneyRecords.some(r=>r.id===id)?moneyRecords.map(r=>r.id===id?record:r):[...moneyRecords,record];
+    validateMoneyRecords(next,transactions,cards,moneyRecords);
+    await writeTracked([{table:'money_records',op:draft.id?'update':'insert',id,data:{data:record}}]);
+    setMoneyRecords(next);setMoneyForm(null);
+  };
+  const deleteMoneyRecord=async(record)=>{
+    try {
+      const next=moneyRecords.filter(r=>r.id!==record.id);
+      validateMoneyRecords(next,transactions,cards,moneyRecords);
+      if(!window.confirm(`Delete this ${record.kind}? Its balance effects will be reversed.`)) return;
+      await writeTracked([{table:'money_records',op:'delete',id:record.id}]);setMoneyRecords(next);
+    } catch(error) {showError(error.message);}
+  };
+  const transactionRow=tx=>({type:tx.type,amount:tx.amount,category:tx.category||null,card_id:tx.cardId||null,note:tx.note||'',date:tx.date,...(moneyEnabled?{account:tx.account||'cash'}:{})});
+  const addTx = async(tx)=>{
+    const id=`tx_${crypto.randomUUID()}`;
+    validateSavingsChange(allTransactions,[...allTransactions,{...tx,id}]);
+    if(moneyEnabled) await writeTracked([{table:'transactions',op:'insert',id,data:transactionRow(tx)}]);
+    else await insertTransaction({id,user_id:user.id,...transactionRow(tx)});
+    setTransactions(p=>[{...tx,id},...p]);
+  };
+  const editTx = async(id,updates)=>{
+    const next=transactions.map(t=>t.id===id?{...t,...updates}:t);
+    validateSavingsChange(allTransactions,[...next,...projectedMoney]);
+    if(moneyEnabled) await writeTracked([{table:'transactions',op:'update',id,data:transactionRow(updates)}]);
+    else await updateTransaction(id,transactionRow(updates));
+    setTransactions(next);
+  };
+  const finalizeDelete=async(tx)=>{
+    try {
+      if(moneyEnabled) await writeTracked([{table:'transactions',op:'delete',id:tx.id}]);
+      else await deleteTransaction(tx.id);
+    } catch(error) {
+      setTransactions(rows=>rows.some(t=>t.id===tx.id)?rows:[tx,...rows]);
+      showError(error.message||'Could not delete transaction.');
+      throw error;
+    }
+  };
+  const undoDelete=()=>{
+    clearTimeout(deleteTimer.current);
+    if(pendingDelete) setTransactions(rows=>[pendingDelete.tx,...rows]);
+    setPendingDelete(null);
+  };
+  const deleteTx = async(id)=>{
+    const virtual=allTransactions.find(t=>t.id===id&&t.moneyRecordId);
+    if(virtual) return deleteMoneyRecord(moneyRecords.find(r=>r.id===virtual.moneyRecordId));
+    try {
+      const next=transactions.filter(t=>t.id!==id);
+      validateSavingsChange(allTransactions,[...next,...projectedMoney]);
+      if(pendingDelete) {clearTimeout(deleteTimer.current);setPendingDelete(null);await finalizeDelete(pendingDelete.tx);}
+      const tx=transactions.find(t=>t.id===id);if(!tx) return;
+      setTransactions(next);setPendingDelete({tx});
+      deleteTimer.current=setTimeout(()=>{setPendingDelete(null);void finalizeDelete(tx).catch(()=>{});},5000);
+    } catch(error) {showError(error.message||'Could not delete transaction.');}
+  };
 
   const saveCard = useCallback(
     async (card) => {
@@ -500,9 +521,11 @@ export default function MainApp({ user }) {
         credit_limit: +card.limit || 0,
         opening_balance: +card.openingBalance || 0,
         colors: card.colors,
+        ...(moneyEnabled ? {payment_due_date:card.paymentDueDate || null} : {}),
       };
       try {
-        await upsertCard(dbRow);
+        if(moneyEnabled) {const {id: _id,user_id: _user,...data}=dbRow;await commitBatch([{table:"cards",op:cards.some(c=>c.id===id)?"update":"insert",id,data}]);}
+        else await upsertCard(dbRow);
         setCards((prev) => {
           const exists = prev.find((c) => c.id === id);
           const next = {
@@ -511,6 +534,7 @@ export default function MainApp({ user }) {
             limit: +card.limit,
             openingBalance: +card.openingBalance || 0,
             colors: card.colors,
+            paymentDueDate:card.paymentDueDate||"",
           };
           return exists
             ? prev.map((c) => (c.id === id ? next : c))
@@ -525,10 +549,12 @@ export default function MainApp({ user }) {
 
   const removeCard = useCallback(
     async (id) => {
+      if(moneyRecords.some(r=>r.kind==="loan"&&r.account==="card"&&r.cardId===id)) {showError("This card funds a recorded loan. Keep it to preserve the debt history.");return;}
       const prev = cards;
       setCards((p) => p.filter((c) => c.id !== id));
       try {
-        await deleteCard(id);
+        if(moneyEnabled) await commitBatch([{table:"cards",op:"delete",id}]);
+        else await deleteCard(id);
       } catch (e) {
         setCards(prev);
         showError("Couldn't delete card.");
@@ -1065,7 +1091,7 @@ export default function MainApp({ user }) {
     return cards.map((card) => {
       let balance = card.openingBalance || 0;
       let futureInstallmentTotal = 0;
-      transactions.forEach((t) => {
+      allTransactions.forEach((t) => {
         if (t.cardId !== card.id) return;
         const isFutureInstallment =
           t.installmentId && monthKey(t.date) > currentMk;
@@ -1076,7 +1102,7 @@ export default function MainApp({ user }) {
       });
       return { ...card, currentBalance: balance, futureInstallmentTotal };
     });
-  }, [cards, transactions, currentMk]);
+  }, [cards, allTransactions, currentMk]);
 
   // Notifications are computed live, not stored rows, so "Completed" just
   // dismisses a specific occurrence for the current month — keyed by month
@@ -1164,7 +1190,7 @@ export default function MainApp({ user }) {
   );
 
   const monthStats = useMemo(() => {
-    const inMonth = transactions.filter((t) => monthKey(t.date) === viewMonth);
+    const inMonth = allTransactions.filter((t) => monthKey(t.date) === viewMonth);
     const income = inMonth
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + +t.amount, 0);
@@ -1188,9 +1214,9 @@ export default function MainApp({ user }) {
       byIncCat,
       list: inMonth,
     };
-  }, [transactions, viewMonth, allExpCats, allIncCats]);
+  }, [allTransactions, viewMonth, allExpCats, allIncCats]);
 
-  if (mustReload) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
+  if (mustReload || loadFailed) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
 
   if (!loaded) {
     return (
@@ -1232,6 +1258,7 @@ export default function MainApp({ user }) {
   }
 
   const navVisible =
+    !moneyForm &&
     !showAdd &&
     !editingTx &&
     !showCardForm &&
@@ -1307,7 +1334,7 @@ export default function MainApp({ user }) {
               setViewMonth={setViewMonth}
               transactions={monthStats.list}
               onDelete={deleteTx}
-              onEdit={setEditingTx}
+              onEdit={editEntry}
               cards={cardsWithBalance}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
@@ -1321,10 +1348,14 @@ export default function MainApp({ user }) {
           )}
           {tab === "dashboard" && (
             <DashView
-              transactions={transactions}
+              transactions={allTransactions}
               getEffectivePlan={getEffectivePlan}
               cards={cardsWithBalance}
               investments={investments}
+              moneyRecords={moneyRecords}
+              moneyEnabled={moneyEnabled}
+              onOpenLoans={()=>setTab("money-lent")}
+              onWithdraw={()=>openMoneyForm("withdrawal")}
               viewMonth={viewMonth}
               setViewMonth={setViewMonth}
               user={user}
@@ -1342,15 +1373,16 @@ export default function MainApp({ user }) {
               onCustomChartsChange={updateCustomCharts}
             />
           )}
+          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={()=>openMoneyForm("loan")} onRepay={id=>openMoneyForm("repayment",id)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onOpenMenu={()=>setShowDrawer(true)}/>}
           {tab === "cards" && (
             <CardsView
               cards={cardsWithBalance}
-              transactions={transactions}
+              transactions={allTransactions}
               onEdit={(c) => setShowCardForm(c)}
               onNew={() => setShowCardForm("new")}
               onDelete={removeCard}
               onDeleteTx={deleteTx}
-              onEditTx={setEditingTx}
+              onEditTx={editEntry}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
               onEditPlan={setEditingPlan}
@@ -1513,6 +1545,7 @@ export default function MainApp({ user }) {
                 active={tab === "cards"}
                 onClick={() => setTab("cards")}
               />
+              {moneyEnabled && <NavBtn icon={Wallet} label="Money Lent" active={tab === "money-lent"} onClick={()=>setTab("money-lent")}/>}
               <NavBtn
                 icon={LineChart}
                 label="Investments"
@@ -1541,21 +1574,18 @@ export default function MainApp({ user }) {
           </nav>
         )}
 
-        {pendingDelete && (
-          <div className="undo-snackbar">
-            <span>Transaction deleted</span>
-            <button className="undo-btn" onClick={undoDelete}>
-              Undo
-            </button>
-          </div>
-        )}
+        {pendingDelete && <div className="undo-snackbar"><span>Transaction deleted</span><button className="undo-btn" onClick={undoDelete}>Undo</button></div>}
+
+        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} initialLoanId={moneyForm.loanId} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)}/>}
 
         {showAdd && (
           <AddModal
             cards={cardsWithBalance}
+            moneyEnabled={moneyEnabled}
+            onMoneyAction={openMoneyForm}
             onClose={() => setShowAdd(false)}
-            onSave={(tx) => {
-              addTx(tx);
+            onSave={async(tx) => {
+              await addTx(tx);
               setShowAdd(false);
             }}
             onSaveInstallment={(plan) => {
@@ -1573,10 +1603,11 @@ export default function MainApp({ user }) {
         {editingTx && (
           <AddModal
             editing={editingTx}
+            moneyEnabled={moneyEnabled}
             cards={cardsWithBalance}
             onClose={() => setEditingTx(null)}
-            onSave={(tx) => {
-              editTx(editingTx.id, tx);
+            onSave={async(tx) => {
+              await editTx(editingTx.id, tx);
               setEditingTx(null);
             }}
             allExpCats={allExpCats}
@@ -1589,6 +1620,7 @@ export default function MainApp({ user }) {
 
         {showCardForm && (
           <CardFormModal
+            moneyEnabled={moneyEnabled}
             card={showCardForm === "new" ? null : showCardForm}
             onClose={() => setShowCardForm(null)}
             onSave={(c) => {
@@ -1676,6 +1708,7 @@ export default function MainApp({ user }) {
 
         {showDrawer && (
           <NavDrawer
+            moneyEnabled={moneyEnabled}
             onClose={() => setShowDrawer(false)}
             onNavigate={(destination) => {
               setTab(destination);

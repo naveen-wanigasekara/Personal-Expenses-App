@@ -54,6 +54,7 @@ function inDateRange(t, range, now) {
 }
 
 function effectiveCategory(t, allExpCats, allIncCats) {
+  if (t.moneyRecordId && !t.isLoanInterest) return {id:"money-movement",label:t.isLoan?"Money Lent":t.type==="transfer"?"Transfers":"Principal Repayments",color:"#4a9b7a"};
   if (t.type === "card-payment") return null;
   const type = t.type === "income" ? "income" : "expense";
   return getCat(t.category, type, allExpCats, allIncCats);

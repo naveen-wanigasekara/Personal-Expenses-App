@@ -208,6 +208,18 @@ export const HELP_SECTIONS = [
     ],
   },
   {
+    id: "money-lent", title: "Savings & Money Lent", icon: "💰",
+    items: [
+      {q: "How do I withdraw from savings?", a: "Tap New Entry → Withdraw from savings. Enter the amount and receiving account (Cash or Bank). Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
+      {q: "How do I lend money?", a: "Tap New Entry → Money lent. Choose the borrower, amount, date and source (Cash, Bank, Savings, or a specific credit card). Set 0% for interest-free loans, or enter the rate and whether it is per month or per year. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
+      {q: "How do I record repayments?", a: "Choose New Entry → Loan repayment, select the loan and split the payment into principal returned and interest received. Select Cash, Bank or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Card Payment separately when you pay your bank."},
+      {q: "How is loan interest calculated?", a: "Simple interest is due on each completed monthly or yearly anniversary of the lending date. Choose original principal or remaining principal. For remaining principal, repayments on a due date reduce the next period’s charge. There is no automatic compounding or partial-period charge. Unpaid interest stays separate from principal; interest paid early appears as a credit. Bank/card fees are separate expenses."},
+      {q: "Where do I see outstanding loans?", a: "Open Money Lent from the menu/sidebar or View people & repayments in Insights. Each loan shows original amount, principal returned and outstanding, interest received and due, funding source, dates, repayment arrangement and payment history. Monthly installments schedule equal principal payments; interest is separate. Loans with repayments cannot be deleted until those repayments are removed."},
+      {q: "What do the Insights balances mean?", a: "Available Money is Cash plus Bank. Savings is the remaining emergency fund. Owed to You is outstanding loan principal, with unpaid interest shown separately. You Owe is positive credit card balances. Principal repayments and transfers are excluded from Income and Spending. Balances use the selected month, capped at today; card debt is current. Old entries default to Cash. A Cash → Bank transfer can split your existing recorded balance without creating income."},
+      {q: "How do card payment reminders work?", a: "Edit a card to enter its next payment date. Insights lists that reminder alongside your current card balance; this is not an automatically calculated statement amount or minimum payment. Update the date for each statement. Money Lent separately shows loan principal and interest due from people."},
+    ],
+  },
+  {
     id: "insights",
     title: "Insights Tab",
     icon: "📊",
