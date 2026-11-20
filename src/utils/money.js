@@ -1,3 +1,4 @@
+import { borrowerGroups, validateBorrowerProfiles } from './borrowers.js';
 import { validDate } from './dateInput.js';
 
 export const SAVINGS_ID = 'savings-investments';
@@ -18,13 +19,14 @@ export function anniversary(date, months) {
 // inserted again as income/expenses. Repayments have separate principal and
 // interest lines so only the latter enters income reports.
 export function moneyTransactions(records) {
+  const names = new Map(borrowerGroups(records).flatMap(group => group.loans.map(loan => [loan.id, group.name])));
   const loans = new Map(records.filter(r=>r.kind==='loan').map(r=>[r.id,r]));
   return records.flatMap(r => {
     const base = { id:r.id, moneyRecordId:r.id, date:r.date, account:r.account, cardId:r.kind==='loan' && r.account==='card' ? r.cardId : null, note:r.note || '' };
-    if (r.kind==='loan') return [{...base, type:r.account==='card'?'card-purchase':'loan-lent', isLoan:true, category:'money-lent', amount:r.amount, note:`Lent to ${r.borrower}${r.note?` · ${r.note}`:''}` }];
+    if (r.kind==='loan') return [{...base, type:r.account==='card'?'card-purchase':'loan-lent', isLoan:true, category:'money-lent', amount:r.amount, note:`Lent to ${names.get(r.id) || r.borrower}${r.note?` · ${r.note}`:''}` }];
     if (r.kind==='transfer') return [{...base, type:'transfer', amount:r.amount, from:r.from, to:r.to, note:`${r.from==='savings'?'Withdraw from savings':r.to==='savings'?'Added to savings':'Internal transfer'} · ${accountLabel(r.from)} → ${accountLabel(r.to)}${r.note?` · ${r.note}`:''}`}];
     if (r.kind!=='repayment') return [];
-    const name = loans.get(r.loanId)?.borrower || 'Borrower';
+    const name = names.get(r.loanId) || loans.get(r.loanId)?.borrower || 'Borrower';
     return [
       ...(r.principal>0?[{...base,id:`${r.id}:principal`,type:'loan-principal',amount:r.principal,note:`Principal received from ${name}${r.note?` · ${r.note}`:''}`}]:[]),
       ...(r.interest>0?[{...base,id:`${r.id}:interest`,type:'income',category:'loan-interest',isLoanInterest:true,amount:r.interest,note:`Interest received from ${name}${r.note?` · ${r.note}`:''}`}]:[]),
@@ -91,6 +93,7 @@ export function loanSummary(loan, records, through=todayLocal()) {
 
 const validAmount = (value,zero=false) => Number.isFinite(Number(value)) && Number(value)>=(zero?0:0.01) && Number(value)<=1e12 && Math.abs(Number(value)*100-Math.round(Number(value)*100))<0.001;
 export function validateMoneyRecords(records, transactions, cards=[], previous=[]) {
+  validateBorrowerProfiles(records);
   const loans=new Map(records.filter(r=>r.kind==='loan').map(r=>[r.id,r]));
   for(const r of records.filter(isMoneyRecord)) {
     if(!validDate(r.date)||r.date>todayLocal()) throw new Error('Choose a valid date that is not in the future.');
@@ -136,4 +139,16 @@ export function validateSavingsChange(beforeTransactions, afterTransactions) {
     next=roundMoney(next+(after.get(date)||0));
     if(next<Math.min(0,previous)-0.005) throw new Error('This change would leave insufficient savings for an existing withdrawal or loan.');
   }
+}
+
+// Archiving changes presentation, never the underlying debt or cash movements.
+export function isLoanArchived(loan, records, through=todayLocal()) {
+  return loan.archived === true || loanSummary(loan, records, through).status === 'Settled';
+}
+
+// Entry direction describes cash flow; it does not change earned income or spending.
+export function entryDirection(tx) {
+  if (tx.type === 'income' || tx.type === 'loan-principal') return 'income';
+  if (tx.type === 'transfer') return tx.from === 'savings' ? 'income' : tx.to === 'savings' ? 'expense' : 'internal';
+  return 'expense';
 }

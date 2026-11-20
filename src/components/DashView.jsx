@@ -491,7 +491,7 @@ export default function DashView({
           <ArrowUp size={12} strokeWidth={3} />
         </div>
         <div className="io-text">
-          <div className="io-label">Income</div>
+          <div className="io-label">Income earned</div>
           <div className="io-val">
             {CURRENCY} {fmt(thisStats.income)}
           </div>
@@ -850,7 +850,7 @@ export default function DashView({
     cashflow: (
       <div className="card">
         <div className="card-hd">
-          <h3>Income & Spending</h3>
+          <h3>Income earned & Spending</h3>
           <div className="legend">
             <span>
               <span className="dot in" />
@@ -911,7 +911,7 @@ export default function DashView({
         <div className="card">
           <div className="card-hd">
             <h3>Where it came from</h3>
-            <span className="card-sub">Income · This month</span>
+            <span className="card-sub">Income earned · This month</span>
           </div>
           <div className="cat-list-v2">
             {incCatEarn.map((c) => {

@@ -1,20 +1,30 @@
-import { useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useContext, useRef, useState } from 'react';
 import Sheet from './Sheet.jsx';
 import AmountInput from './AmountInput.jsx';
+import EntryNavigation from './EntryNavigation.jsx';
+import { CurrencyCtx } from '../context.js';
+import { borrowerGroups, borrowerLoanLabel } from '../utils/borrowers.js';
 import { accountLabel, loanSummary, todayLocal } from '../utils/money.js';
 
 const displayAccount = account => account === 'bank' ? 'cash' : account;
 
-export default function MoneyForm({ kind, editing, cards, records, initialLoanId, onClose, onSave, onBack }) {
+export default function MoneyForm({ kind, editing, cards, records, initialLoanId, initialBorrowerId,
+  onClose, onSave, onBack, entryGroup, entryTask, onSubtypeChange, moneyEnabled = true }) {
+  const currency = useContext(CurrencyCtx);
+  const groups = borrowerGroups(records);
+  const repaymentGroups = groups.filter(g => g.loans.length > 0);
+  const initialGroup = groups.find(g => g.id === initialBorrowerId || g.loans.some(l => l.id === (editing?.kind === 'loan' ? editing.id : editing?.loanId || initialLoanId)))
+    || (kind === 'repayment' ? repaymentGroups[0] : null);
+  const [borrowerSelection, setBorrowerSelection] = useState(initialGroup?.id || (groups.length ? '' : '__new'));
   const isSavings = ['savings', 'withdrawal', 'transfer'].includes(kind);
   const legacyInternal = editing?.kind === 'transfer' && editing.from !== 'savings' && editing.to !== 'savings';
   const [draft, setDraft] = useState(() => ({
     borrower: '', amount: '', account: 'cash', cardId: cards[0]?.id || '', rate: 0,
     ratePeriod: 'monthly', interestBasis: 'original', arrangement: 'flexible', installmentMonths: 12,
-    dueDate: '', date: todayLocal(), note: '', loanId: initialLoanId || records.find(r => r.kind === 'loan')?.id || '',
+    dueDate: '', date: todayLocal(), note: '', loanId: initialLoanId || initialGroup?.loans[0]?.id || '',
     principal: '', interest: '', from: kind === 'withdrawal' ? 'savings' : 'cash', to: kind === 'withdrawal' ? 'cash' : 'savings',
-    ...editing, kind: isSavings ? 'transfer' : kind,
+    ...editing, borrower: initialGroup?.name || editing?.borrower || '', borrowerId: initialGroup?.id || editing?.borrowerId || '',
+    kind: isSavings ? 'transfer' : kind,
   }));
   const [hasInterest, setHasInterest] = useState(Number(editing?.rate) > 0);
   const [saving, setSaving] = useState(false);
@@ -25,10 +35,25 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
   const amount = (key, label) => <label className="money-field"><span>{label}</span><AmountInput aria-label={label} className="text-input" value={draft[key]} onChange={value => set(key, value)} placeholder="0.00" /></label>;
   const select = (key, label, options, account = false) => <label className="money-field"><span>{label}</span><select className="text-input" aria-label={label} value={account ? displayAccount(draft[key]) : draft[key]} onChange={e => set(key, e.target.value)}>{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select></label>;
   const accounts = ['cash', 'savings'].map(id => [id, accountLabel(id)]);
+  const chosenGroup = groups.find(g => g.id === borrowerSelection);
   const selected = records.find(r => r.kind === 'loan' && r.id === draft.loanId);
   const summary = selected ? loanSummary(selected, records.filter(r => r.id !== editing?.id), draft.date) : null;
   const showInterestPayment = Number(selected?.rate) > 0 || Number(draft.interest) > 0;
-  const title = kind === 'loan' ? 'Money lent' : kind === 'repayment' ? 'Repayment received' : legacyInternal ? 'Transfer' : 'Savings';
+  const selectBorrower = value => {
+    setBorrowerSelection(value);
+    const group = groups.find(g => g.id === value);
+    setDraft(previous => ({ ...previous, borrowerId: group?.id || '', borrower: group?.name || '',
+      ...(kind === 'repayment' ? { loanId: group?.loans[0]?.id || '', principal: '', interest: '' } : {}) }));
+  };
+  const borrowerPicker = repayment => <label className="money-field"><span>Borrower</span>
+    <select className="text-input" aria-label="Borrower" value={borrowerSelection} onChange={e => selectBorrower(e.target.value)} required>
+      <option value="" disabled>Choose a borrower</option>
+      {(repayment ? repaymentGroups : groups).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+      {!repayment && <option value="__new">+ New borrower</option>}
+    </select>
+  </label>;
+  const subtypeTitle = kind === 'loan' ? 'Lend money' : kind === 'repayment' ? 'Repayment received' : legacyInternal ? 'Transfer' : 'Savings';
+  const title = entryGroup ? entryGroup === 'income' ? 'Income' : 'Expenses' : `${editing ? 'Edit: ' : ''}${subtypeTitle}`;
   const submit = async event => {
     event.preventDefault(); if (lock.current) return;
     lock.current = true; setSaving(true); setError('');
@@ -37,13 +62,15 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
     } catch (err) { setError(err.message || 'Could not save. Please try again.'); }
     finally { lock.current = false; setSaving(false); }
   };
-  const valid = draft.kind === 'repayment' ? !!selected && (+draft.principal > 0 || +draft.interest > 0) : +draft.amount > 0 && (draft.kind !== 'loan' || draft.borrower.trim());
-  return <Sheet title={`${editing ? 'Edit: ' : ''}${title}`} className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
-    {onBack && <button className="entry-back" type="button" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Entry types</button>}
+  const valid = draft.kind === 'repayment' ? !!selected && (+draft.principal > 0 || +draft.interest > 0)
+    : +draft.amount > 0 && (draft.kind !== 'loan' || draft.borrower.trim());
+  return <Sheet title={title} className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
+    {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
     <form onSubmit={submit} className="entry-form money-form">
       <fieldset disabled={saving}>
         {draft.kind === 'loan' && <>
-          {field('borrower', 'Borrower name', 'text', { required: true, maxLength: 120 })}
+          {borrowerPicker(false)}
+          {borrowerSelection === '__new' && field('borrower', 'Borrower name', 'text', { required: true, maxLength: 120 })}
           {amount('amount', 'Amount lent')}
           {select('account', 'Funding source', [...accounts, ...(cards.length ? [['card', 'Credit card']] : [])], true)}
           {draft.account === 'card' && select('cardId', 'Credit card', [...cards.map(c => [c.id, c.name]), ...(draft.cardId && !cards.some(c => c.id === draft.cardId) ? [[draft.cardId, 'Previously selected card (deleted)']] : [])])}
@@ -51,16 +78,20 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
           {hasInterest && <div className="money-fields">{field('rate', 'Interest rate (%)', 'number', { min: 0.01, max: 100, step: '0.01', required: true })}{select('ratePeriod', 'Rate period', [['monthly', 'Per month'], ['yearly', 'Per year']])}</div>}
         </>}
         {draft.kind === 'repayment' && <>
-          {records.some(r => r.kind === 'loan') ? <>
-            {select('loanId', 'Loan', records.filter(r => r.kind === 'loan').map(r => [r.id, `${r.borrower} · ${r.amount.toLocaleString()}`]))}
-            {summary && <div className="entry-balance"><span>Still owed</span><strong>{summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {summary.interestDue.toLocaleString()}</small>}</div>}
+          {repaymentGroups.length ? <>
+            {borrowerPicker(true)}
+            {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, chosenGroup.loans)]))}
+            {summary && <div className="entry-balance"><span>Principal still owed</span><strong>{currency} {summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {currency} {summary.interestDue.toLocaleString()}</small>}</div>}
             <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
             {select('account', 'Received into', accounts, true)}
-          </> : <p className="entry-caption">No loans recorded yet. Record money lent first.</p>}
+            <p className="entry-caption">Only interest counts as income earned.{selected?.account === 'card' && ' Cash received does not pay your credit card. Record Expenses → Pay credit card when you pay the bank.'}</p>
+          </> : <p className="entry-caption">No loans recorded yet. Record Expenses → Lend money first.</p>}
         </>}
         {draft.kind === 'transfer' && <>
-          {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p> : <label className="money-field"><span>Action</span><select aria-label="Savings action" className="text-input" value={draft.from === 'savings' ? 'withdraw' : 'save'} onChange={e => setDraft(previous => ({ ...previous, from: e.target.value === 'withdraw' ? 'savings' : 'cash', to: e.target.value === 'withdraw' ? 'cash' : 'savings' }))}><option value="save">Add to savings</option><option value="withdraw">Withdraw from savings</option></select></label>}
+          {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p>
+            : !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Savings action" className="text-input" value={draft.from === 'savings' ? 'withdraw' : 'save'} onChange={e => setDraft(previous => ({ ...previous, from: e.target.value === 'withdraw' ? 'savings' : 'cash', to: e.target.value === 'withdraw' ? 'cash' : 'savings' }))}><option value="save">Add to savings</option><option value="withdraw">Withdraw from savings</option></select></label>}
           {amount('amount', 'Amount')}
+          {!legacyInternal && <p className="entry-caption">Moves your own money; excluded from income earned and spending.</p>}
           {!legacyInternal && <p className="entry-route">{accountLabel(draft.from)} <span aria-hidden="true">→</span> {accountLabel(draft.to)}</p>}
         </>}
         {field('date', draft.kind === 'loan' ? 'Date lent' : 'Date', 'date', { required: true, max: todayLocal() })}

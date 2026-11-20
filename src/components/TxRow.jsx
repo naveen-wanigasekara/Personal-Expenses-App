@@ -2,7 +2,7 @@ import { useState, useContext, useRef, memo } from "react";
 import { Edit2, Trash2, CreditCard, ChevronDown, Wallet, ArrowLeftRight } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
-import { accountLabel } from "../utils/money.js";
+import { accountLabel, entryDirection } from "../utils/money.js";
 import { fmt } from "../utils/format.js";
 
 const SWIPE_THRESHOLD = 60;
@@ -48,6 +48,7 @@ function TxRow({
     sign = "−";
     color = "expense";
   }
+  const received = entryDirection(tx) === 'income';
   const Icon = cat.icon;
 
   let installmentSeq = null;
@@ -101,7 +102,7 @@ function TxRow({
 
   return (
     <div
-      className={`tx ${open ? "tx-open" : ""} ${swiped ? "tx-swiped" : ""}`}
+      className={`tx ${received ? "activity-received" : ""} ${open ? "tx-open" : ""} ${swiped ? "tx-swiped" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -116,7 +117,7 @@ function TxRow({
       <button className="tx-main" onClick={handleRowClick}>
         <div
           className="tx-icon"
-          style={{ background: `${cat.color}1a`, color: cat.color }}
+          style={received ? { background: "var(--received-bg)", color: "var(--received-ink)" } : { background: `${cat.color}1a`, color: cat.color }}
         >
           <Icon size={17} strokeWidth={2} />
         </div>
@@ -135,6 +136,7 @@ function TxRow({
             )}
           </div>
           <div className="tx-sub">
+            {received && <span className="activity-status">Received</span>}
             {tx.type === "card-payment"
               ? `Payment → ${cardName}`
               : tx.type === "card-interest"
@@ -145,7 +147,7 @@ function TxRow({
           </div>
         </div>
         <div className="tx-date-col">{dateLabel}</div>
-        <div className={`tx-amt ${color}`}>
+        <div className={`tx-amt ${received ? "received" : color}`}>
           <span className="tx-amt-sign">{sign}</span>
           {CURRENCY} {fmt(tx.amount)}
         </div>

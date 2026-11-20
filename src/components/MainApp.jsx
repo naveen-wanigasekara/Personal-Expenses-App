@@ -73,7 +73,8 @@ import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
 import MoneyForm from "./MoneyForm.jsx";
 import MoneyLentView from "./MoneyLentView.jsx";
-import { moneyTransactions, validateMoneyRecords, validateSavingsChange } from "../utils/money.js";
+import { bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles } from "../utils/borrowers.js";
+import { moneyTransactions, loanSummary, todayLocal, validateMoneyRecords, validateSavingsChange } from "../utils/money.js";
 
 const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
@@ -117,7 +118,9 @@ export default function MainApp({ user }) {
   const [fixedPlan, setFixedPlan] = useState(emptyPlan());
   const [showAdd, setShowAdd] = useState(false);
   const [entryTask,setEntryTask]=useState(null);
-  useEffect(()=>{if(!showAdd) setEntryTask(null);},[showAdd]);
+  const [entryGroup,setEntryGroup]=useState(null);
+  const [entryContext,setEntryContext]=useState({});
+  useEffect(()=>{if(!showAdd) {setEntryTask(null);setEntryGroup(null);setEntryContext({});}},[showAdd]);
   const [editingTx, setEditingTx] = useState(null);
   const [childModalOpen, setChildModalOpen] = useState(false);
   const [showCardForm, setShowCardForm] = useState(null);
@@ -442,11 +445,12 @@ export default function MainApp({ user }) {
 
   const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
   const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
-  const openMoneyForm=(kind,loanId=null)=>{setShowAdd(false);setMoneyForm({kind,loanId});};
-  const chooseEntryTask=task=>{
-    if(['loan','repayment','savings'].includes(task)) {setShowAdd(false);setMoneyForm({kind:task,fromChooser:true});}
-    else setEntryTask(task);
+  const openMoneyForm=(kind,loanId=null,borrowerId=null)=>{
+    const group=['repayment','withdrawal'].includes(kind)?'income':'expense';
+    setEntryGroup(group);setEntryTask(kind);setEntryContext({loanId,borrowerId});setShowAdd(true);
   };
+  const chooseEntryGroup=group=>{setEntryGroup(group);setEntryTask(group==='income'?'income':'expense');setEntryContext({});};
+  const chooseEntryTask=task=>{setEntryTask(task);setEntryContext({});};
   const editEntry=(tx)=>{
     if(tx.moneyRecordId) {const record=moneyRecords.find(r=>r.id===tx.moneyRecordId);if(record) setMoneyForm({kind:record.kind,editing:record});}
     else setEditingTx(tx);
@@ -456,16 +460,41 @@ export default function MainApp({ user }) {
     moneyWriteLock.current=true;
     try {await commitBatch(changes);} finally {moneyWriteLock.current=false;}
   };
+  const newBorrowerId=()=>`borrower_${crypto.randomUUID()}`;
+  const persistMoneySet=async(next)=>{
+    validateMoneyRecords(next,transactions,cards,moneyRecords);
+    const old=new Map(moneyRecords.map(record=>[record.id,record]));
+    const changes=next.filter(record=>JSON.stringify(old.get(record.id))!==JSON.stringify(record)).map(record=>({table:'money_records',op:old.has(record.id)?'update':'insert',id:record.id,data:{data:record}}));
+    if(changes.length) await writeTracked(changes);
+    setMoneyRecords(next);
+  };
   const saveMoneyRecord=async(draft)=>{
     const id=draft.id||`money_${crypto.randomUUID()}`;
-    const record={id,kind:draft.kind,date:draft.date,note:(draft.note||'').trim(),
-      ...(draft.kind==='loan'?{borrower:draft.borrower.trim(),amount:draft.amount,account:draft.account,cardId:draft.account==='card'?draft.cardId:null,rate:draft.rate,ratePeriod:draft.ratePeriod,interestBasis:draft.interestBasis,arrangement:draft.arrangement,installmentMonths:draft.installmentMonths,dueDate:draft.dueDate}:
+    let next=moneyRecords;
+    let identity={};
+    if(draft.kind==='loan') {
+      const bound=bindLoanBorrower(next,draft,newBorrowerId);
+      next=bound.records;identity={borrower:bound.borrower,borrowerId:bound.borrowerId};
+    }
+    const record={...moneyRecords.find(r=>r.id===id),id,kind:draft.kind,date:draft.date,note:(draft.note||'').trim(),
+      ...(draft.kind==='loan'?{...identity,amount:draft.amount,account:draft.account,cardId:draft.account==='card'?draft.cardId:null,rate:draft.rate,ratePeriod:draft.ratePeriod,interestBasis:draft.interestBasis,arrangement:draft.arrangement,installmentMonths:draft.installmentMonths,dueDate:draft.dueDate}:
       draft.kind==='repayment'?{loanId:draft.loanId,principal:draft.principal,interest:draft.interest,account:draft.account}:
       {from:draft.from,to:draft.to,amount:draft.amount})};
-    const next=moneyRecords.some(r=>r.id===id)?moneyRecords.map(r=>r.id===id?record:r):[...moneyRecords,record];
-    validateMoneyRecords(next,transactions,cards,moneyRecords);
-    await writeTracked([{table:'money_records',op:draft.id?'update':'insert',id,data:{data:record}}]);
-    setMoneyRecords(next);setMoneyForm(null);
+    next=next.some(r=>r.id===id)?next.map(r=>r.id===id?record:r):[...next,record];
+    await persistMoneySet(next);setMoneyForm(null);setShowAdd(false);
+  };
+  const saveBorrower=async(draft)=>{
+    const result=saveBorrowerProfile(moneyRecords,draft,newBorrowerId);
+    await persistMoneySet(result.records);return result.profile.id;
+  };
+  const mergeBorrowers=async(source,target)=>{
+    const result=mergeBorrowerProfiles(moneyRecords,source,target,newBorrowerId);
+    await persistMoneySet(result.records);return result.targetId;
+  };
+  const setLoanArchived=async(loan,archived)=>{
+    const summary=loanSummary(loan,moneyRecords);
+    if(archived&&(summary.outstanding>0||summary.interestDue>0)&&!window.confirm('Archive this inactive loan? Any unpaid principal and interest will still count as money owed to you.')) return;
+    await persistMoneySet(moneyRecords.map(record=>record.id===loan.id?{...record,archived,archivedAt:archived?todayLocal():null}:record));
   };
   const deleteMoneyRecord=async(record)=>{
     try {
@@ -1380,7 +1409,7 @@ export default function MainApp({ user }) {
               onCustomChartsChange={updateCustomCharts}
             />
           )}
-          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={()=>openMoneyForm("loan")} onRepay={id=>openMoneyForm("repayment",id)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onOpenMenu={()=>setShowDrawer(true)}/>}
+          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)}/>}
           {tab === "cards" && (
             <CardsView
               cards={cardsWithBalance}
@@ -1583,31 +1612,21 @@ export default function MainApp({ user }) {
 
         {pendingDelete && <div className="undo-snackbar"><span>Transaction deleted</span><button className="undo-btn" onClick={undoDelete}>Undo</button></div>}
 
-        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} initialLoanId={moneyForm.loanId} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)} onBack={moneyForm.fromChooser?()=>{setMoneyForm(null);setShowAdd(true);}:undefined}/>}
+        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)}/>}
 
-        {showAdd && !entryTask && <NewEntryChooser onChoose={chooseEntryTask} onClose={()=>setShowAdd(false)} moneyEnabled={moneyEnabled} hasCards={cards.length>0}/>}
-        {showAdd && entryTask && (
-          <AddModal
-            cards={cardsWithBalance}
-            moneyEnabled={moneyEnabled}
-            initialType={entryTask === "credit-card" ? "card-payment" : entryTask}
-            initialTask={entryTask}
-            onBack={()=>setEntryTask(null)}
+        {showAdd && !entryGroup && <NewEntryChooser onChoose={chooseEntryGroup} onClose={()=>setShowAdd(false)}/>}
+        {showAdd && entryGroup && ['loan','repayment','withdrawal','savings'].includes(entryTask) && <MoneyForm
+          key={entryTask} kind={entryTask} cards={cardsWithBalance} records={moneyRecords} initialLoanId={entryContext.loanId} initialBorrowerId={entryContext.borrowerId}
+          entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)} moneyEnabled={moneyEnabled}
+          onSave={saveMoneyRecord} onClose={()=>setShowAdd(false)}/>}
+        {showAdd && entryGroup && !['loan','repayment','withdrawal','savings'].includes(entryTask) && (
+          <AddModal key={entryTask}
+            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask}
+            entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)}
             onClose={() => setShowAdd(false)}
-            onSave={async(tx) => {
-              await addTx(tx);
-              setShowAdd(false);
-            }}
-            onSaveInstallment={async(plan) => {
-              await saveInstallmentPlan(plan);
-              setShowAdd(false);
-            }}
-            allExpCats={allExpCats}
-            allIncCats={allIncCats}
-            onAddCat={addCat}
-            userId={user.id}
-            installmentPlans={installmentPlans}
-          />
+            onSave={async(tx) => {await addTx(tx);setShowAdd(false);}}
+            onSaveInstallment={async(plan) => {await saveInstallmentPlan(plan);setShowAdd(false);}}
+            allExpCats={allExpCats} allIncCats={allIncCats} onAddCat={addCat} userId={user.id} installmentPlans={installmentPlans}/>
         )}
 
         {editingTx && (

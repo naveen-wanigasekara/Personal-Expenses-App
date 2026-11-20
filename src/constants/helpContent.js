@@ -52,15 +52,15 @@ export const HELP_SECTIONS = [
     items: [
       {
         q: "What transaction types are there?",
-        a: "Choose one task first: Expense, Income, Savings, Money lent, Repayment received, or Credit card. Expense covers Cash / Bank and credit card purchases. Savings covers adding money and withdrawing it. Credit card covers balance payments and interest/fees. Only the selected form is shown.",
+        a: "Choose Income for money received or Expenses for money paid or spent, then choose a type. Income includes regular income, repayments received and savings withdrawals. Expenses includes purchases or bills, lending, adding to savings, credit card payments and card fees. Only the selected form is shown. Income earned and Spending reports still exclude principal repayments and transfers.",
       },
       {
         q: "How do I record a card purchase?",
-        a: "Tap the New button in the navigation bar, choose Expense → Pay with → Credit card, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category.",
+        a: "Tap the New button in the navigation bar, choose Expenses → Purchase or bill → Pay with → Credit card, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category.",
       },
       {
         q: "How do I record paying my credit card bill?",
-        a: "Tap the New button in the navigation bar, choose Credit card → Pay card balance, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals. The amount field suggests your current outstanding balance automatically; double-check it after switching cards, since it updates to match whichever card is selected.",
+        a: "Tap the New button in the navigation bar, choose Expenses → Pay credit card, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals. The amount field suggests your current outstanding balance automatically; double-check it after switching cards, since it updates to match whichever card is selected.",
       },
       {
         q: "What is Split into Installments?",
@@ -95,7 +95,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "How do I filter transactions?",
-        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, Card transactions), or category. The count shown updates to match.",
+        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All types, Money received, Money paid or spent, Loans & transfers, Card transactions), or category. The count shown updates to match.",
       },
       {
         q: "How do I edit a transaction?",
@@ -210,9 +210,11 @@ export const HELP_SECTIONS = [
   {
     id: "money-lent", title: "Savings & Money Lent", icon: "💰",
     items: [
-      {q: "How do I withdraw from savings?", a: "Tap New Entry → Savings → Withdraw from savings. Enter the amount. The receiving balance is Cash / Bank. Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
-      {q: "How do I lend money?", a: "Tap New Entry → Money lent. Choose the borrower, amount, date and source (Cash / Bank, Savings, or a specific credit card). Loans are interest-free by default. Turn on Charge interest to enter a monthly or yearly rate. More options contains repayment arrangements, calculation basis and notes. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
-      {q: "How do I record repayments?", a: "Choose New Entry → Repayment received, select the loan and split the payment into principal returned and interest received. Select Cash / Bank or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Card Payment separately when you pay your bank."},
+      {q: "How do I withdraw from savings?", a: "Tap New Entry → Income → Withdraw from savings. Enter the amount. The receiving balance is Cash / Bank. Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
+      {q: "How do I track several loans to one person?", a: "Open Money Lent → Borrowers to register a person, or choose New borrower when lending. Select the same borrower each time you lend again. View borrower & history shows every loan, repayment, date, funding source and interest term. Each loan keeps its own rate and repayment history. Edit borrower renames the display without rewriting old loans. Manage borrower → Merge duplicate borrower joins histories only when you explicitly select the same person’s other record."},
+      {q: "Where do completed or inactive loans go?", a: "Money Lent shows active loans. Loans move to Archive automatically when principal and accrued interest are settled. Archive inactive loan hides an inactive loan from the main list, but any unpaid debt still appears in Insights and borrower totals. Open Archive to review payment histories or restore an unpaid archived loan. Overdue loans remain active unless you archive them yourself."},
+      {q: "How do I lend money?", a: "Tap New Entry → Expenses → Lend money. Choose the borrower, amount, date and source (Cash / Bank, Savings, or a specific credit card). Loans are interest-free by default. Turn on Charge interest to enter a monthly or yearly rate. More options contains repayment arrangements, calculation basis and notes. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
+      {q: "How do I record repayments?", a: "Choose New Entry → Income → Repayment received, select the borrower and then their dated loan and split the payment into principal returned and interest received. Select Cash / Bank or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Expenses → Pay credit card separately when you pay your bank."},
       {q: "How is loan interest calculated?", a: "Simple interest is due on each completed monthly or yearly anniversary of the lending date. Choose original principal or remaining principal. For remaining principal, repayments on a due date reduce the next period’s charge. There is no automatic compounding or partial-period charge. Unpaid interest stays separate from principal; interest paid early appears as a credit. Bank/card fees are separate expenses."},
       {q: "Where do I see outstanding loans?", a: "Open Money Lent from the menu/sidebar or View people & repayments in Insights. Each loan shows original amount, principal returned and outstanding, interest received and due, funding source, dates, repayment arrangement and payment history. Monthly installments schedule equal principal payments; interest is separate. Loans with repayments cannot be deleted until those repayments are removed."},
       {q: "What do the Insights balances mean?", a: "Cash / Bank combines your available cash and bank money in one balance. Savings is the remaining emergency fund. Owed to You is outstanding loan principal, with unpaid interest shown separately. You Owe is positive credit card balances. Principal repayments and transfers are excluded from Income and Spending. Balances use the selected month, capped at today; card debt is current. Existing Cash and Bank entries remain intact and are included together; no transfer between them is needed."},

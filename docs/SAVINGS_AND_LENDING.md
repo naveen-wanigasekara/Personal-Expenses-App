@@ -2,11 +2,26 @@
 
 ## User flow
 
-**New Entry** first shows six tasks: Expense, Income, Savings, Money lent, Repayment received, and Credit card. No amount or category fields appear until a task is selected.
+**New Entry** shows only **Income** (money received) and **Expenses** (money paid or spent). Each opens a subtype selector and one form:
 
-Expense combines Cash / Bank and credit card purchases using a payment-method selector. Savings combines Add to savings and Withdraw from savings, with fixed directions between Savings and Cash / Bank. Credit card combines balance payments and interest/fees. New entries use Cash / Bank as one funding/receiving balance; there is no separate Bank choice or new internal cash/bank transfer action.
+| Group | Types |
+| --- | --- |
+| Income | Regular income; Repayment received; Withdraw from savings |
+| Expenses | Purchase or bill; Lend money; Add to savings; Pay credit card; Card interest or fees |
 
-Forms use compact category/card selectors. Loans start interest-free; rate fields appear only when Charge interest is enabled. Notes and extra loan terms are optional expandable sections. A separate footer keeps Record visible while fields scroll and the on-screen keyboard is open. Entry types goes back to the task picker.
+Purchase or bill combines Cash / Bank and credit card using one payment-method selector. Savings entries have fixed directions between Savings and Cash / Bank. Contextual lend/repay shortcuts open this same central flow with borrower and loan preselected. Income / Expenses returns to the two-way chooser. Ledger filters Money received and Money paid or spent follow entry direction; the financial reports remain Income earned and Spending, excluding principal and transfers.
+
+Forms use compact category/card selectors. Loans start interest-free; rate fields appear only when Charge interest is enabled. Notes and extra loan terms are optional expandable sections. A separate footer keeps Record visible while fields scroll and the on-screen keyboard is open.
+
+### Borrowers and archive
+
+Borrower profiles have stable IDs and are stored as encrypted `money_records` with kind `borrower`. Multiple dated loans link to the same borrower ID; each keeps its own source, rate, arrangement, principal and repayments. Add borrower also allows registering a person before lending. Repayments choose the borrower first, then the specific dated loan. Borrower details show combined all-loan totals, individual loans and complete dated history.
+
+Legacy loans are grouped by exact stored name (after outside trimming); case and internal-space variants are not silently merged. On first selection/edit, a legacy group is promoted to a stable profile with its exact legacy name as an alias. Renaming and explicit merging update identity metadata, preserving every original loan and repayment row. Merge duplicate borrower is an explicit action for records of the same person. Names are checked against normalized existing names to prevent new duplicates.
+
+Money Lent defaults to active loans. Settled loans (zero principal and zero accrued interest due) move automatically to Archive. An inactive loan can be manually archived and restored. Archiving never forgives debt, changes balances or deletes payment history. Overdue loans remain active. The Borrowers directory includes people with no active loans; details and full history include archived activity. This is the requested Monthly active/archive change, clarified by the user as the Money Lent tab; budget and card installment screens are unchanged.
+
+Received activities have a green tinted background, visible edge and Received text. Settled badges have an explicit label and stronger border. Both themes use foreground/background pairs with at least 4.5:1 normal-text contrast.
 
 Existing entries retain their amounts, dates, categories, IDs, funding identifiers and history. Historical Cash and Bank records are displayed together and summed as one available balance, without rewriting the database. Editing an old Bank entry preserves that source. Legacy internal cash-to-bank transfers remain editable as historical transfers and do not change the combined balance.
 
@@ -14,7 +29,7 @@ Existing entries retain their amounts, dates, categories, IDs, funding identifie
 - A credit-card-funded loan increases that card's debt and principal owed to you, without spending or cash changes.
 - A principal repayment increases the selected Cash / Bank or Savings balance and reduces the loan principal. It is not income.
 - Interest received increases the selected balance and income; it does not reduce principal.
-- A cash repayment never settles a credit card. Record a separate Card Payment.
+- A cash repayment never settles a credit card. Record Expenses → Pay credit card.
 - A transfer only moves balances. Savings withdrawals are Savings → Cash/Bank transfers.
 - Corrections are available in the Ledger and Money Lent history. A repayment with both principal and interest has two linked ledger lines, backed by one saved repayment; editing/deleting either line edits/deletes the whole repayment.
 - Original transaction deletion keeps the existing five-second Undo. Loan/repayment/transfer deletion requires confirmation and reverses its derived effects. A loan with repayments cannot be deleted until those repayments are removed.
@@ -25,7 +40,7 @@ Interest is simple, due on completed monthly or yearly anniversaries from the lo
 
 Repayment arrangements: single, flexible, interest-only, or 1–120 equal monthly principal installments. Interest is additional to scheduled principal. An optional final principal due date can be set. A card's optional next payment date is a manual reminder, not a computed statement/minimum amount; update it for each statement.
 
-Insights shows available cash+bank, remaining savings, principal owed to you, unpaid loan interest, and positive card debt. Income/Spending exclude loan principal and transfers. Cash / Bank, savings and receivables use the selected month capped at today; card debt remains current, matching Cards. Existing saved Insights layouts are retained and the new overview is added as a customizable section. The Ledger includes a Loans & Transfers filter.
+Insights shows available cash+bank, remaining savings, principal owed to you, unpaid loan interest, and positive card debt. Income earned/Spending exclude loan principal and transfers. Cash / Bank, savings and receivables use the selected month capped at today; card debt remains current, matching Cards. Existing saved Insights layouts are retained and the new overview is added as a customizable section. The Ledger includes a Loans & Transfers filter.
 
 ## Persistence and release
 
@@ -51,3 +66,9 @@ Applied the additive migration to the isolated dev database and verified its exi
 Ran the real authenticated database RPCs with synthetic encrypted records inside a transaction that was rolled back. Verified savings-funded lending/repayment, credit-card lending followed by cash repayment and a separate card payment, 5% monthly interest-only repayment, transfers, edits, deletions, stale revisions and atomic rollback. Decrypted the returned ciphertext through the app's encryption functions and reconciled balances using the app's calculation functions. No synthetic users or financial records remained after rollback.
 
 A follow-up `money_lending_cascade_fix.sql` preserves auth-account deletion cascades: child-row deletion must not recreate a revision after its owning auth user is gone. Fresh setups include the same fix in the main migration. The database regression test covers this cleanup.
+
+## Approved workflow update — 20 November 2026
+
+This update needs no additional migration: borrower profiles and archive metadata use the existing encrypted money-record storage and revision-protected atomic saves. Existing financial rows are not rewritten. Profile creation and its first loan are committed together. Renaming, merging and archive operations use the same session, encryption, concurrency and account-isolation protections as lending.
+
+Additional tests cover the two-group subtype routes, repeated loans, borrower selection and loan-specific repayments, standalone registration, rename and explicit merges, exact legacy grouping, unknown references and merge cycles, active/archive/restore behavior, interest outstanding after principal payoff, received ledger filtering and both-theme contrast. Deployment remains dev-only until acceptance testing.

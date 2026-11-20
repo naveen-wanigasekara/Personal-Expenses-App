@@ -56,3 +56,40 @@
 .entry-footer .save-btn { margin:0; width:100%; min-height:46px; }
 .entry-footer .money-error { margin:0 0 10px; max-height:64px; overflow-y:auto; }
 @media(min-width:1024px){.sheet.entry-sheet {max-width:520px;padding-bottom:0}.entry-actions{gap:12px}.entry-action{min-height:112px}.entry-form>fieldset{padding-bottom:22px}.entry-footer{padding-bottom:24px}}
+
+/* Received activity uses readable foregrounds, a visible edge, and a text label. */
+:root { --received-ink:#84efb7; --received-bg:#19372d; --received-edge:#4dbd87; }
+:root[data-theme="light"] { --received-ink:#11633d; --received-bg:#e7f5ec; --received-edge:#258354; }
+.entry-navigation { flex:none; padding:0 2px 15px; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.entry-navigation .entry-intro { margin-bottom:10px; }
+.entry-action-income svg { color:var(--received-ink); }
+.entry-action-expense svg { color:var(--out); }
+.entry-action-income { border-top:3px solid var(--received-edge); }
+.entry-action-expense { border-top:3px solid var(--out); }
+.entry-action:focus-visible,.entry-back:focus-visible,.money-view summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.borrower-toolbar { display:flex; align-items:center; gap:12px 18px; flex-wrap:wrap; margin:18px 0; }
+.borrower-toolbar .text-btn,.archive-button { display:inline-flex; align-items:center; gap:6px; min-height:40px; font-size:12px; }
+.archive-button { margin-left:auto; flex:none; }
+.borrower-search { max-width:360px; margin:20px 0; }
+.borrower-card,.borrower-summary,.borrower-history { padding:18px; margin-bottom:16px; }
+.borrower-card .money-stats { margin:16px 0; }
+.borrower-card .money-actions { margin-bottom:0; }
+.borrower-section-title { font-size:16px; margin:24px 0 14px; }
+.borrower-manage { margin-top:24px; font-size:13px; }
+.borrower-history>summary,.borrower-manage>summary { cursor:pointer; padding:8px 0; font-size:13px; }
+.borrower-event { padding:14px 10px; margin-top:10px; border-top:1px solid var(--border); border-radius:10px; font-size:12px; }
+.borrower-event-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.borrower-event-title>span { margin-left:auto; color:var(--ink-soft); }
+.borrower-event p { line-height:1.6; margin:8px 0; }
+.borrower-event .money-actions { margin:6px 0 0; }
+.money-view .activity-received,.tx.activity-received { background:var(--received-bg); border-left:3px solid var(--received-edge); }
+.tx.activity-received .tx-main { background:var(--received-bg); }
+.tx.activity-received .tx-main:hover { filter:brightness(1.04); }
+.tx-amt.received,.activity-status,.money-status.settled { color:var(--received-ink); }
+.activity-status { font-size:10px; font-weight:700; margin-right:6px; }
+.money-status.settled { background:var(--received-bg); border:1px solid var(--received-edge); font-weight:600; }
+.money-view .loan-settled { border-left:3px solid var(--received-edge); }
+.money-payment.activity-received { padding:12px; border-radius:10px; margin-top:8px; }
+.loan-more { margin-top:6px; }
+@media(max-width:420px) { .money-heading h1 { font-size:21px; } .archive-button { font-size:11px; gap:4px; } .borrower-summary { gap:16px 10px; } }
+@media(max-height:600px) { .entry-navigation { padding-bottom:8px; margin-bottom:8px; } .entry-navigation .entry-intro { display:none; } .entry-back { margin-bottom:3px; } }

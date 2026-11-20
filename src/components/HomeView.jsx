@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, monthKey, monthLabel, shiftMonth } from "../utils/format.js";
-import { getCat, isSpendableExpense } from "../constants/categories.js";
+import { getCat } from "../constants/categories.js";
+import { entryDirection } from "../utils/money.js";
 import TxRow from "./TxRow.jsx";
 
 export default function HomeView({
@@ -88,8 +89,8 @@ export default function HomeView({
           ["card-purchase", "card-payment", "card-interest"].includes(
             t.type,
           )) ||
-        (filterType === "income" && t.type === "income") ||
-        (filterType === "expense" && isSpendableExpense(t,allExpCats,allIncCats));
+        (filterType === "income" && entryDirection(t) === "income") ||
+        (filterType === "expense" && entryDirection(t) === "expense");
       const catMatch = filterCat === "all" || effectiveCatId(t) === filterCat;
       if (!typeMatch || !catMatch) return false;
       if (!q) return true;
@@ -254,8 +255,8 @@ export default function HomeView({
           >
             <option value="all">All types</option>
             <option value="money">Loans & transfers</option>
-            <option value="income">Income</option>
-            <option value="expense">Spending</option>
+            <option value="income">Money received</option>
+            <option value="expense">Money paid or spent</option>
             <option value="card">Card transactions</option>
           </select>
           <select
