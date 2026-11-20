@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { Archive, ArrowLeft, Menu, Plus, Users, ArrowDownLeft, ArrowUpRight, Pencil, Trash2, Bell, RefreshCw, Search, Wallet } from 'lucide-react';
+import { Archive, ArrowLeft, Menu, Users, ArrowDownLeft, ArrowUpRight, Pencil, Trash2, Bell, RefreshCw, Search, Wallet } from 'lucide-react';
 import { CurrencyCtx } from '../context.js';
 import { accountLabel, loanSummary, roundMoney, todayLocal } from '../utils/money.js';
 import { borrowerGroups, borrowerLoanLabel } from '../utils/borrowers.js';
@@ -11,7 +11,7 @@ function Amounts({ items, currency, className = '' }) {
   return <dl className={`money-stats ${className}`}>{items.filter(Boolean).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{currency} {fmt(value)}</dd></div>)}</dl>;
 }
 
-export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, onDelete,
+export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelete,
   onSaveBorrower, onMergeBorrowers, onArchive, onModalChange, onOpenMenu,
   onOpenNotifications, notifCount, showQuickRefresh, onQuickRefresh }) {
   const currency = useContext(CurrencyCtx);
@@ -114,9 +114,8 @@ export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, 
         <button className="tx-edit archive-button" aria-label={mode === 'archive' ? 'Active loans' : 'Archive'} onClick={() => setMode(mode === 'archive' ? 'active' : 'archive')}><Archive size={15} aria-hidden="true" />{mode === 'archive' ? 'Active loans' : `Archive (${archiveCount})`}</button>
       </div>
       {error && <p className="money-error" role="alert">{error}</p>}
-      <div className="borrower-toolbar"><button className="add-card-btn lending-primary" onClick={() => onNew(selected?.id)}><Plus size={16} /> Lend money</button>
+      <div className="borrower-toolbar">
         {!selected && <button className="tx-edit" onClick={() => { setMode(mode === 'directory' ? 'active' : 'directory'); setSearch(''); }}><Users size={16} />{mode === 'directory' ? 'Active loans' : 'Borrowers'}</button>}
-        {!selected && onSaveBorrower && <button className="tx-edit" onClick={() => setForm('new')}><Plus size={15} /> Add borrower</button>}
         {selected && onSaveBorrower && <MoneyActionMenu label="Manage borrower" actions={[
           { label: 'Edit borrower', icon: Pencil, onSelect: () => setForm(selected) },
           onMergeBorrowers && groups.length > 1 && { label: 'Merge duplicate borrower', icon: Users, onSelect: () => setMerge(selected) },
@@ -132,7 +131,7 @@ export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, 
         {selected.note && <p className="money-hint">{selected.note}</p>}
         <div className="section-hd borrower-section-title"><h2>{mode === 'archive' ? 'Archived loans' : mode === 'directory' ? 'All loans' : 'Active loans'}</h2><span className="count">{visibleLoans(selected).length}</span></div>
         {visibleLoans(selected).map(loan => loanCard(loan, selected))}
-        {!visibleLoans(selected).length && <p className="money-hint">{!selected.loans.length ? 'No loans recorded for this borrower yet. Use Lend money to add the first loan.' : <>No {mode === 'archive' ? 'archived' : 'active'} loans. {mode !== 'archive' && 'Previous loans and repayments are available in Archive and the complete history below.'}</>}</p>}
+        {!visibleLoans(selected).length && <p className="money-hint">{!selected.loans.length ? 'No loans recorded for this borrower yet. Use New Entry → Expenses → Lend money to add the first loan.' : <>No {mode === 'archive' ? 'archived' : 'active'} loans. {mode !== 'archive' && 'Previous loans and repayments are available in Archive and the complete history below.'}</>}</p>}
         {selected.loans.length > 0 && fullHistory(selected)}
       </> : <>
         <p className="money-hint lending-intro">{mode === 'archive' ? 'Settled and archived loans. All history is retained.' : mode === 'directory' ? 'One record per person, across all lending dates.' : 'Active loans only. Settled loans move to Archive automatically.'}</p>
@@ -142,10 +141,10 @@ export default function MoneyLentView({ records, cards, onNew, onRepay, onEdit, 
           return <article className="card borrower-card" key={group.id}><div className="lending-loan-heading"><h2>{group.name}</h2><span className="money-status">{visible.length} {mode === 'archive' ? 'archived' : mode === 'directory' ? '' : 'active'} {visible.length === 1 ? 'loan' : 'loans'}</span></div>
             <Amounts currency={currency} items={group.loans.length ? [["Principal outstanding", total.outstanding], total.interestDue > 0 && ['Unpaid interest', total.interestDue]] : []} />
             {group.loans.some(loan => loan.archived && summaryFor(loan).status !== 'Settled') && <p className="money-hint">Includes an archived balance that is still owed.</p>}
-            <div className="money-actions"><button className="tx-edit" aria-label={`Open ${group.name}`} onClick={() => setSelectedId(group.id)}>View borrower & history</button><button className="tx-edit" onClick={() => onNew(group.id)}><Plus size={14} /> Lend again</button></div>
+            <div className="money-actions"><button className="tx-edit" aria-label={`Open ${group.name}`} onClick={() => setSelectedId(group.id)}>View borrower & history</button></div>
           </article>;
         })}</div>
-        {!filteredGroups.length && <div className="empty lending-empty"><div className="empty-icon"><Wallet size={26} strokeWidth={1.5} /></div><div className="empty-title">{search ? 'No matching borrowers' : mode === 'archive' ? 'No archived loans' : mode === 'directory' ? 'No borrowers yet' : 'No active loans'}</div><div className="empty-sub">{search ? 'Try another name or clear your search.' : mode === 'archive' ? 'Settled and inactive loans will appear here.' : 'Lend money or add a borrower to get started.'}</div></div>}
+        {!filteredGroups.length && <div className="empty lending-empty"><div className="empty-icon"><Wallet size={26} strokeWidth={1.5} /></div><div className="empty-title">{search ? 'No matching borrowers' : mode === 'archive' ? 'No archived loans' : mode === 'directory' ? 'No borrowers yet' : 'No active loans'}</div><div className="empty-sub">{search ? 'Try another name or clear your search.' : mode === 'archive' ? 'Settled and inactive loans will appear here.' : 'Use New Entry → Expenses → Lend money to get started.'}</div></div>}
       </>}
     </div></div>
     {form && <BorrowerForm borrower={form === 'new' ? null : form} onClose={() => setForm(null)} onSave={async draft => { const id = await onSaveBorrower(draft); setForm(null); setSelectedId(id); if (!selected) setMode('directory'); }} />}

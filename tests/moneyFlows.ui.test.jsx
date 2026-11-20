@@ -146,8 +146,8 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  const loans=store.records.filter(r=>r.kind==='loan');expect(loans).toHaveLength(2);expect(loans[0].borrowerId).toBe(loans[1].borrowerId);expect(store.records.filter(r=>r.kind==='borrower')).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.getAllByRole('button',{name:'Open Saman'})).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (2)')).toBeTruthy();
- // Contextual lend shortcut uses the same central Expenses screen.
- fireEvent.click(screen.getByRole('button',{name:'Lend money'}));expect(screen.getByRole('dialog',{name:'Expenses'})).toBeTruthy();expect(screen.getByLabelText('Borrower',{exact:true}).value).toBe(loans[0].borrowerId);fireEvent.click(screen.getByRole('button',{name:'Close'}));
+ // Lending remains available through New Entry after page shortcuts are removed.
+ expect(screen.queryByRole('button',{name:'Lend money',exact:true})).toBeNull();await entry('Money lent');change('Borrower',loans[0].borrowerId);expect(screen.getByRole('dialog',{name:'Expenses'})).toBeTruthy();expect(screen.getByLabelText('Borrower',{exact:true}).value).toBe(loans[0].borrowerId);fireEvent.click(screen.getByRole('button',{name:'Close'}));
  const cards=screen.getAllByRole('article');fireEvent.click(within(cards[1]).getByRole('button',{name:'Record repayment'}));
  expect(screen.getByRole('dialog',{name:'Income'})).toBeTruthy();expect(screen.getByLabelText('Loan').value).toBe(loans[1].id);
  change('Principal returned','10000');change('Interest received','1250');change('Date','2026-03-02');await save();
@@ -158,13 +158,10 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();
 });
 
-it('registers and renames borrowers, then explicitly merges their histories without changing balances',async()=>{
+it('renames borrowers and explicitly merges their histories without changing balances',async()=>{
  await mount();await lend({borrower:'Saman',amount:'1000',account:'cash'});await lend({borrower:'S. Silva',amount:'2000',account:'cash'});
  const originalLoans=structuredClone(store.records.filter(r=>r.kind==='loan'));
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Add borrower'}));
- change('Borrower name','New person');change('Borrower note','Friend');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
- expect(screen.getByRole('heading',{name:'New person',exact:true})).toBeTruthy();expect(screen.getByText('Friend')).toBeTruthy();
- fireEvent.click(screen.getByRole('button',{name:'Back to borrowers'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
+ fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
  change('Borrower name','Saman Silva');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(screen.getByRole('heading',{name:'Saman Silva',exact:true})).toBeTruthy();
  fireEvent.click(screen.getByText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Merge duplicate borrower'}));const target=store.records.find(r=>r.kind==='borrower'&&r.name==='S. Silva').id;change('Keep borrower',target);
  fireEvent.click(screen.getByRole('button',{name:'Merge histories'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
