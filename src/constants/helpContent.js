@@ -232,7 +232,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "What is the notification bell?",
-        a: "The bell icon in the top-right of every page shows a red badge with the number of active notifications. Tap it to open the Notifications panel, which has two sections:\nInstallment Payments — installment plans that have a charge due this month, showing the plan name, card, current installment number (e.g. 3/12), and monthly amount.\nRecurring Bills — any recurring reminders set up for this month that haven't been addressed yet.\nTap the checkmark on any notification to mark it as completed — it disappears from the list for the rest of the month, then reappears next month if it's still relevant.",
+        a: "The bell shows the number of active payment reminders. Notifications groups dated overdue and due-today items under Due Payments, with other reminders under Monthly Credit Card (CC) Payments, Installment Payments, and Other Upcoming Payments. It includes saved card payment dates, the remaining active installment schedule, and recurring bills for this month and next. Exact dates are not guessed when missing. Card amounts are current outstanding balances, not bank statement/minimum-payment amounts; installments are part of card payments. The checkmark dismisses only that occurrence on this device and does not record a payment. Existing category-based recurring auto-dismiss still applies per month.",
       },
       {
         q: "What is Cash / Bank?",

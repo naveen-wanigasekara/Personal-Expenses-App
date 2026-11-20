@@ -1,108 +1,41 @@
-import { useContext } from "react";
-import { CreditCard, Bell, Check } from "lucide-react";
-import { CurrencyCtx } from "../context.js";
-import { fmt, ordinal } from "../utils/format.js";
-import Sheet from "./Sheet.jsx";
+import { useContext } from 'react';
+import { CreditCard, Bell, Check, CalendarDays } from 'lucide-react';
+import { CurrencyCtx } from '../context.js';
+import { fmt, monthLabel } from '../utils/format.js';
+import { paymentNotificationSections } from '../utils/paymentNotifications.js';
+import Sheet from './Sheet.jsx';
 
-export default function NotificationsPanel({
-  installmentNotifs,
-  recurringNotifs,
-  cards,
-  currentMk,
-  onClose,
-  onCompleteInstallment,
-  onCompleteRecurring,
-}) {
-  const CURRENCY = useContext(CurrencyCtx);
-
-  const getCardName = (cardId) =>
-    cards.find((c) => c.id === cardId)?.name || "Card";
-
-  const getSeq = (plan) => {
-    const [sy, sm] = plan.startMonth.split("-").map(Number);
-    const [cy, cm] = currentMk.split("-").map(Number);
-    return (cy - sy) * 12 + (cm - sm) + 1;
-  };
-
-  const hasNotifs = installmentNotifs.length > 0 || recurringNotifs.length > 0;
-
-  return (
-    <Sheet title="Notifications" onClose={onClose}>
-      {!hasNotifs && (
-        <div className="empty-sm">No notifications for this month.</div>
-      )}
-
-      {installmentNotifs.length > 0 && (
-        <>
-          <div className="notif-section-label">Installment Payments</div>
-          <div className="notif-list">
-            {installmentNotifs.map((plan) => {
-              const seq = getSeq(plan);
-              return (
-                <div key={plan.id} className="notif-item">
-                  <div className="notif-icon notif-icon-card">
-                    <CreditCard size={14} />
-                  </div>
-                  <div className="notif-body">
-                    <div className="notif-title">{plan.label}</div>
-                    <div className="notif-meta">
-                      {getCardName(plan.cardId)} · Installment {seq}/
-                      {plan.totalMonths}
-                    </div>
-                  </div>
-                  <div className="notif-amt">
-                    {CURRENCY} {fmt(plan.monthlyAmount)}
-                  </div>
-                  <button
-                    className="notif-complete-btn"
-                    onClick={() => onCompleteInstallment(plan.id)}
-                    aria-label="Mark as completed"
-                    title="Mark as completed"
-                  >
-                    <Check size={14} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {recurringNotifs.length > 0 && (
-        <>
-          <div className="notif-section-label">Recurring Bills</div>
-          <div className="notif-list">
-            {recurringNotifs.map((reminder) => (
-              <div key={reminder.id} className="notif-item">
-                <div className="notif-icon notif-icon-bell">
-                  <Bell size={14} />
-                </div>
-                <div className="notif-body">
-                  <div className="notif-title">{reminder.label}</div>
-                  <div className="notif-meta">
-                    Due {ordinal(reminder.dayOfMonth)} of this month
-                  </div>
-                </div>
-                {reminder.amount && (
-                  <div className="notif-amt">
-                    {CURRENCY} {fmt(reminder.amount)}
-                  </div>
-                )}
-                <button
-                  className="notif-complete-btn"
-                  onClick={() => onCompleteRecurring(reminder.id)}
-                  aria-label="Mark as completed"
-                  title="Mark as completed"
-                >
-                  <Check size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <div style={{ height: 20 }} />
-    </Sheet>
-  );
+const TYPE_LABELS = { card: 'Credit card payment', installment: 'Installment payment', other: 'Recurring bill' };
+const STATUS_LABELS = { overdue: 'Overdue', due: 'Due today', upcoming: 'Upcoming', 'date-needed': 'Due date not set', scheduled: 'Schedule reminder' };
+function displayDate(row) {
+  if (!row.date) return `${monthLabel(row.month)} · Exact due date not set`;
+  const [year, month, day] = row.date.split('-').map(Number);
+  return `${row.status === 'overdue' ? 'Was due' : row.status === 'scheduled' ? 'Scheduled for' : 'Due'} ${new Date(year, month - 1, day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+export default function NotificationsPanel({ notifications = [], onClose, onComplete }) {
+  const currency = useContext(CurrencyCtx);
+  return <Sheet title="Notifications" onClose={onClose} className="payment-notifications-sheet">
+    <div className="payment-notifications-scroll">
+      <p className="notif-intro">Saved card payment dates, remaining installments, and recurring bills for this month and next.</p>
+      {!notifications.length && <div className="empty-sm">No upcoming or due payment reminders.</div>}
+      {paymentNotificationSections(notifications).map(section => section.rows.length > 0 && <section key={section.id} className="payment-notif-section" aria-labelledby={`payment-notif-${section.id}`}>
+        <h3 className="notif-section-label" id={`payment-notif-${section.id}`}>{section.title}<span className="count">{section.rows.length}</span></h3>
+        <div className="notif-list">{section.rows.map(row => {
+          const Icon = row.type === 'card' ? CreditCard : row.type === 'installment' ? CalendarDays : Bell;
+          return <article key={row.id} className={`notif-item payment-notif-item ${row.status}`}>
+            <div className={`notif-icon ${row.type === 'other' ? 'notif-icon-bell' : 'notif-icon-card'}`}><Icon size={16} aria-hidden="true" /></div>
+            <div className="notif-body">
+              <div className="payment-notif-heading"><div className="notif-title">{row.title}</div><span className={`payment-notif-status ${row.status}`}>{STATUS_LABELS[row.status]}</span></div>
+              <div className="notif-meta">{TYPE_LABELS[row.type]} · {row.detail}</div>
+              <div className="notif-meta payment-notif-date">{displayDate(row)}</div>
+              {row.amount != null && <div className="notif-amt"><span>{row.amountLabel}: </span>{currency} {fmt(row.amount)}</div>}
+            </div>
+            <button className="notif-complete-btn" onClick={() => onComplete(row.completionId, row.month)} aria-label={`Mark ${row.title} for ${monthLabel(row.month)} as completed`} title="Mark as completed"><Check size={16} /></button>
+          </article>;
+        })}</div>
+      </section>)}
+      <p className="notif-explanation">Card amounts are current outstanding balances, not statement or minimum-payment amounts. Installments are part of card payments, not extra debt.</p>
+      <p className="notif-explanation">Marking completed hides this reminder on this device; it does not record a payment. Past months without tracked payment status are not assumed overdue.</p>
+    </div>
+  </Sheet>;
 }

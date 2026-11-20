@@ -15,7 +15,7 @@ vi.mock('../src/lib/supabase.js',()=>{
     else {const data=c.table==='money_records'?{...c.data.data,id:c.id}:{...c.data,id:c.id};const i=rows.findIndex(r=>r.id===c.id);if(i<0) rows.push(data);else rows[i]={...rows[i],...data};}
    } return ++store.revision;
   }),
-  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:empty,upsertBudget:vi.fn(),fetchInstallmentPlans:empty,fetchRecurringReminders:empty,insertRecurringReminder:vi.fn(),updateRecurringReminder:vi.fn(),deleteRecurringReminder:vi.fn(),fetchInvestments:empty,fetchInvestmentValuations:empty,fetchUserSettings:async()=>null,upsertUserSettings:vi.fn(),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
+  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:empty,upsertBudget:vi.fn(),fetchInstallmentPlans:async()=>structuredClone(store.notificationPlans||[]),fetchRecurringReminders:async()=>structuredClone(store.notificationReminders||[]),insertRecurringReminder:vi.fn(),updateRecurringReminder:vi.fn(),deleteRecurringReminder:vi.fn(),fetchInvestments:empty,fetchInvestmentValuations:empty,fetchUserSettings:async()=>null,upsertUserSettings:vi.fn(),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
  };
 });
 import MainApp from '../src/components/MainApp.jsx';
@@ -31,7 +31,8 @@ const entry=async kind=>{
 const save=async()=>{fireEvent.click(screen.getByRole('button',{name:'Record',exact:true}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());};
 const moneyValue=label=>screen.getByText(label,{exact:true}).closest('div').querySelector('dd').textContent;
 beforeEach(()=>{
- delete store.installment_plans;
+ delete store.installment_plans;delete store.notificationPlans;delete store.notificationReminders;
+ localStorage.removeItem(`completed_notifs_${user.id}_${new Date().toISOString().slice(0,7)}`);
  store.transactions=[{id:'salary',type:'income',category:'fixed',amount:200000,date:'2026-01-01'},{id:'savings',type:'expense',category:'savings-investments',amount:100000,date:'2026-01-01'}];
  store.cards=[{id:'hnb',name:'HNB',credit_limit:500000,opening_balance:0,colors:['#222','#555']}];store.records=[];store.revision=0;store.fail=false;
  window.scrollTo=vi.fn();window.matchMedia=vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));window.confirm=vi.fn(()=>true);sessionStorage.clear();
@@ -42,12 +43,12 @@ async function lend({borrower='Person',amount='50000',account='savings',rate='0'
  await entry('Money lent');const existing=Array.from(screen.getByLabelText('Borrower',{exact:true}).options).find(o=>o.text===borrower);if(existing) change('Borrower',existing.value);else {change('Borrower','__new');change('Borrower name',borrower);}change('Amount lent',amount);change('Funding source',account);if(Number(rate)>0){fireEvent.click(screen.getByLabelText('Charge interest'));change('Interest rate (%)',rate);}change('Date lent',date);await save();
 }
 it('savings loan and linked repayment update Insights, history and saved reload balances',async()=>{
- await mount();await lend();expect(moneyValue('Owed to you · principal')).toContain('50,000');
+ await mount();expect(screen.queryByRole('button',{name:'View people & repayments',exact:true})).toBeNull();expect(screen.queryByRole('button',{name:'Withdraw from savings',exact:true})).toBeNull();await lend();expect(moneyValue('Owed to you · principal')).toContain('50,000');
  expect(screen.getByText('Total Savings').closest('.running-bal').textContent).toContain('50,000');
  await entry('Loan repayment');change('Principal returned','50000');change('Received into','savings');await save();
  expect(moneyValue('Owed to you · principal')).toContain('0');expect(screen.getByText('Total Savings').closest('.running-bal').textContent).toContain('100,000');
  cleanup();await mount();expect(moneyValue('Owed to you · principal')).toContain('0');expect(store.records).toHaveLength(3);
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.queryByRole('button',{name:'Open Person'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Archive'}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(await screen.findByText('Settled',{selector:'span'})).toBeTruthy();expect(screen.getByText('Repayment history (1)')).toBeTruthy();
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);expect(screen.queryByRole('button',{name:'Open Person'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Archive'}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(await screen.findByText('Settled',{selector:'span'})).toBeTruthy();expect(screen.getByText('Repayment history (1)')).toBeTruthy();
 });
 it('HNB-funded loan, cash repayment and separate card payment do not inflate income/spending',async()=>{
  await mount();await lend({amount:'100000',account:'card'});
@@ -62,7 +63,7 @@ it('interest-only receipts show income while keeping the full principal outstand
  await mount();await lend({amount:'100000',account:'cash',rate:'5',date:'2026-01-02'});
  await entry('Loan repayment');change('Interest received','5000');change('Date','2026-02-02');await save();
  expect(moneyValue('Owed to you · principal')).toContain('100,000');expect(moneyValue('Available money · Cash / Bank')).toContain('5,000');
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(screen.getByText('Interest received').closest('div').textContent).toContain('5,000');expect(screen.getByText('Principal outstanding').closest('div').textContent).toContain('100,000');
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));expect(screen.getByText('Interest received').closest('div').textContent).toContain('5,000');expect(screen.getByText('Principal outstanding').closest('div').textContent).toContain('100,000');
 });
 it('withdrawal validation leaves the form open, saves once, and ledger edits reverse correctly',async()=>{
  await mount();await entry('Withdraw from savings');change('Amount','100001');fireEvent.click(screen.getByRole('button',{name:'Record',exact:true}));expect(await screen.findByRole('alert')).toHaveProperty('textContent',expect.stringContaining('Insufficient savings'));expect(store.records).toHaveLength(0);
@@ -144,7 +145,7 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  await mount();await lend({borrower:'Saman',amount:'50000',date:'2026-01-02'});
  await lend({borrower:'Saman',amount:'25000',account:'cash',rate:'5',date:'2026-02-02'});
  const loans=store.records.filter(r=>r.kind==='loan');expect(loans).toHaveLength(2);expect(loans[0].borrowerId).toBe(loans[1].borrowerId);expect(store.records.filter(r=>r.kind==='borrower')).toHaveLength(1);
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));expect(screen.getAllByRole('article')).toHaveLength(2);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getAllByRole('button',{name:'Open Saman'})).toHaveLength(1);
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);expect(screen.getAllByRole('article')).toHaveLength(2);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getAllByRole('button',{name:'Open Saman'})).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (2)')).toBeTruthy();
  // Lending remains available through New Entry after page shortcuts are removed.
  expect(screen.queryByRole('button',{name:'Lend money',exact:true})).toBeNull();await entry('Money lent');change('Borrower',loans[0].borrowerId);expect(screen.getByRole('dialog',{name:'Expenses'})).toBeTruthy();expect(screen.getByLabelText('Borrower',{exact:true}).value).toBe(loans[0].borrowerId);fireEvent.click(screen.getByRole('button',{name:'Close'}));
@@ -155,13 +156,13 @@ it('groups repeated lending under one borrower and allocates repayments to the s
  expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();expect(screen.getByText('Total principal outstanding').closest('div').textContent).toContain('65,000');
  const history=screen.getByText('Complete transaction history (3)').closest('details');fireEvent.click(within(history).getByText('Complete transaction history (3)'));
  expect(history.querySelectorAll('.borrower-event')).toHaveLength(3);expect(within(history).getByText('Repayment received')).toBeTruthy();
- cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));expect(screen.getByText('Complete transaction history (3)')).toBeTruthy();
 });
 
 it('renames borrowers and explicitly merges their histories without changing balances',async()=>{
  await mount();await lend({borrower:'Saman',amount:'1000',account:'cash'});await lend({borrower:'S. Silva',amount:'2000',account:'cash'});
  const originalLoans=structuredClone(store.records.filter(r=>r.kind==='loan'));
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Saman'}));fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Edit borrower'}));
  change('Borrower name','Saman Silva');fireEvent.click(screen.getByRole('button',{name:'Save borrower'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());expect(screen.getByRole('heading',{name:'Saman Silva',exact:true})).toBeTruthy();
  fireEvent.click(screen.getByText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Merge duplicate borrower'}));const target=store.records.find(r=>r.kind==='borrower'&&r.name==='S. Silva').id;change('Keep borrower',target);
  fireEvent.click(screen.getByRole('button',{name:'Merge histories'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
@@ -172,7 +173,7 @@ it('renames borrowers and explicitly merges their histories without changing bal
 
 it('archives inactive loans and restores them without forgiving principal or changing funds',async()=>{
  await mount();await lend({amount:'1000',account:'cash'});
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
  fireEvent.click(screen.getByRole('button',{name:'Archive'}));fireEvent.click(screen.getByRole('button',{name:'Active loans'}));fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Archive inactive loan'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(true));
  expect(screen.queryByRole('button',{name:'Record repayment'})).toBeNull();expect(screen.getByText('Total principal outstanding').closest('div').textContent).toContain('1,000');
  fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Archived · balance still owed')).toBeTruthy();fireEvent.click(screen.getByLabelText(/^Loan actions:/));fireEvent.click(screen.getByRole('button',{name:'Restore to active'}));await waitFor(()=>expect(store.records.find(r=>r.kind==='loan').archived).toBe(false));
@@ -183,7 +184,7 @@ it('archives inactive loans and restores them without forgiving principal or cha
 it('keeps unpaid-interest loans active after principal payoff, then automatically archives on interest settlement',async()=>{
  await mount();await lend({amount:'1000',account:'cash',rate:'5'});
  await entry('Loan repayment');change('Principal returned','1000');change('Date','2026-02-02');await save();
- fireEvent.click(screen.getByRole('button',{name:'View people & repayments'}));fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getByRole('button',{name:'Open Person'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.getByRole('button',{name:'Open Person'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Open Person'}));
  fireEvent.click(screen.getByRole('button',{name:'Record repayment'}));change('Interest received','50');change('Date','2026-02-02');await save();
  expect(screen.queryByRole('button',{name:'Record repayment'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Archive'}));expect(screen.getByText('Settled',{selector:'span'})).toBeTruthy();expect(screen.getByText('Repayment history (2)')).toBeTruthy();
 });
@@ -210,4 +211,20 @@ it('repayment entry retains a borrower until their last loan is paid, then remov
  await entry('Loan repayment');expect(Array.from(screen.getByLabelText('Borrower',{exact:true}).options).filter(o=>!o.disabled).map(o=>o.text)).toEqual(['Repeat borrower']);
  expect(Array.from(screen.getByLabelText('Loan').options).map(o=>o.value)).toEqual([loans[1].id]);change('Principal returned','2000');await save();
  await entry('Loan repayment');expect(screen.queryByLabelText('Borrower',{exact:true})).toBeNull();expect(screen.getByText('No outstanding loans. All recorded loans are fully settled.')).toBeTruthy();expect(screen.getByRole('button',{name:'Record'}).disabled).toBe(true);
+});
+
+it('integrates CC reminders and future installments with occurrence-specific completion and reload',async()=>{
+ const date=new Date();const month=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;const following=new Date(date.getFullYear(),date.getMonth()+1,1);const nextMonth=`${following.getFullYear()}-${String(following.getMonth()+1).padStart(2,'0')}`;
+ localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
+ store.cards[0].opening_balance=100000;store.cards[0].payment_due_date=`${month}-25`;
+ store.notificationPlans=[{id:'notif-plan',card_id:'hnb',label:'Notification laptop',monthly_amount:10000,total_amount:30000,total_months:3,start_month:month,category:'other',active:true}];
+ store.notificationReminders=[{id:'notif-rent',label:'Notification rent',amount:5000,day_of_month:1,active:true}];
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);const dialog=screen.getByRole('dialog',{name:'Notifications'});
+ expect(within(dialog).getByRole('heading',{name:/Monthly Credit Card/})).toBeTruthy();expect(within(dialog).getByRole('heading',{name:/Due Payments/})).toBeTruthy();
+ const before=JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records});
+ const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`}));
+ expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(2);
+ expect(JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records})).toBe(before);
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel} as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(2);
+ localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
 });

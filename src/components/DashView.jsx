@@ -465,7 +465,6 @@ export default function DashView({
         <div><dt>Unpaid loan interest</dt><dd>{CURRENCY} {fmt(interestOwed)}</dd></div>
         <div><dt>You owe · credit cards</dt><dd>{CURRENCY} {fmt(Math.max(0,totalCardDebt))}</dd></div>
       </dl>
-      <div className="money-actions"><button className="text-btn" onClick={onOpenLoans}>View people & repayments</button><button className="text-btn" onClick={onWithdraw}>Withdraw from savings</button></div>
       <details><summary>Upcoming & due payments</summary>
         {lending.filter(s=>s.status!=="Settled").map(s=><p className="money-hint" key={s.loan.id}>{s.loan.borrower}: {s.principalDue>0?`principal due ${CURRENCY} ${fmt(s.principalDue)}. `:""}{s.interestDue>0?`interest due ${CURRENCY} ${fmt(s.interestDue)}. `:""}{s.nextInterestDate?`Next interest ${s.nextInterestDate}. `:""}{s.nextPrincipalDate?`Next principal ${s.nextPrincipalDate}. `:""}{!s.nextInterestDate&&!s.nextPrincipalDate&&s.status!=="Payment due"?"No repayment date agreed.":""}</p>)}
         {cards.filter(c=>c.currentBalance>0).map(c=><p className="money-hint" key={c.id}>{c.name}: balance {CURRENCY} {fmt(c.currentBalance)}{c.paymentDueDate?` · Payment date ${c.paymentDueDate}`:" · Add a payment date in card settings for a reminder."}</p>)}

@@ -94,3 +94,13 @@ Loan Actions holds Edit, Archive/Restore and Delete. Repayment Actions holds Edi
 Interest-free loans omit interest amounts, calculation basis, next-interest dates and zero-interest payment breakdowns. Actual principal/interest received, accrued interest due and any advance credit remain visible when nonzero. Repaid principal appears when a payment exists; optional loan arrangements, notes and dates appear only when applicable. Borrower totals still include archived unpaid debt, and histories, lending terms, repayments and calculations are retained. No schema or stored-record changes are required.
 
 Verification includes the full financial/security/database suite and UI tests for conditional details, secondary action callbacks, Escape/outside dismissal, shared header actions and desktop back navigation, plus browser review at phone/tablet/desktop sizes in both themes using synthetic records.
+
+## Payment notification categories — 20 November 2026
+
+Removed the View people & repayments and Withdraw from savings shortcuts from the Insights overview shown in the reported screenshot. Money Lent remains accessible in navigation, and savings transfers remain available through New Entry. No financial records or calculations are removed.
+
+The notification bell now uses one live reminder list for both its badge and panel. Due Payments contains items with a known date that is overdue or today; upcoming and undated reminders are split into Monthly Credit Card (CC) Payments, Installment Payments and Other Upcoming Payments. Sources are saved card next-payment dates with positive outstanding balances, every remaining month in active finite installment plans (including future-start plans), and this/next month’s active recurring reminders. Completed or cancelled plans are not treated as active schedules.
+
+A monthly installment without a known card deadline remains a month-only reminder, never an assumed first-of-month overdue payment. Card dates are not extrapolated across future months. Card amounts are labeled current outstanding, not bank statement/minimum amounts, and installment amounts are not added to them again. A current installment on a settled card remains a schedule reminder rather than being called overdue. Historical months without tracked payment status are not guessed unpaid.
+
+Completion retains existing per-user/per-month local storage and legacy inst:/rec: IDs. Future occurrences are dismissed in their own billing month, leaving other months visible; card date changes use a distinct completion key. Completion does not create a transaction. Existing recurring category-based auto-dismiss is evaluated separately for each occurrence month. This is presentation/reminder logic only and needs no database migration.

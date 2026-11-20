@@ -46,6 +46,7 @@ import {
   fetchUserSettings,
   upsertUserSettings,
 } from "../lib/supabase.js";
+import { buildPaymentNotifications } from "../utils/paymentNotifications.js";
 import { loadCompletedNotifs, saveCompletedNotifs } from "../utils/storage.js";
 import { monthKey, monthLabel, shiftMonth, emptyPlan } from "../utils/format.js";
 import NavBtn from "./NavBtn.jsx";
@@ -1141,9 +1142,8 @@ export default function MainApp({ user }) {
   }, [cards, allTransactions, currentMk]);
 
   // Notifications are computed live, not stored rows, so "Completed" just
-  // dismisses a specific occurrence for the current month — keyed by month
-  // so it reappears next month if the underlying plan/reminder is still
-  // active, matching how recurring reminders already auto-dismiss.
+  // dismisses a specific occurrence in its billing month. Existing inst:/rec:
+  // keys are retained, and future months are dismissed independently.
   const [completedNotifIds, setCompletedNotifIds] = useState(() =>
     loadCompletedNotifs(user.id, currentMk),
   );
@@ -1151,56 +1151,35 @@ export default function MainApp({ user }) {
     setCompletedNotifIds(loadCompletedNotifs(user.id, currentMk));
   }, [user.id, currentMk]);
 
-  const markNotifCompleted = useCallback(
-    (id) => {
-      setCompletedNotifIds((prev) => {
-        if (prev.includes(id)) return prev;
-        const next = [...prev, id];
-        saveCompletedNotifs(user.id, currentMk, next);
+  const [notificationRefresh, setNotificationRefresh] = useState(0);
+  const markNotifCompleted = useCallback((id, occurrenceMonth = currentMk) => {
+    if (occurrenceMonth === currentMk) {
+      setCompletedNotifIds(previous => {
+        if (previous.includes(id)) return previous;
+        const next = [...previous, id];
+        saveCompletedNotifs(user.id, occurrenceMonth, next);
         return next;
       });
-    },
-    [user.id, currentMk],
-  );
-
-  const installmentNotifs = useMemo(() => {
-    return (installmentPlans || []).filter((plan) => {
-      if (!plan.active) return false;
-      if (completedNotifIds.includes(`inst:${plan.id}`)) return false;
-      const [sy, sm] = plan.startMonth.split("-").map(Number);
-      const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
-      const endMk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return currentMk >= plan.startMonth && currentMk <= endMk;
+    } else {
+      const previous = loadCompletedNotifs(user.id, occurrenceMonth);
+      if (!previous.includes(id)) saveCompletedNotifs(user.id, occurrenceMonth, [...previous, id]);
+      setNotificationRefresh(value => value + 1);
+    }
+  }, [user.id, currentMk]);
+  const notificationDate = todayLocal();
+  const paymentNotifications = useMemo(() => {
+    const completedByMonth = new Map([[currentMk, completedNotifIds]]);
+    return buildPaymentNotifications({
+      cards: cardsWithBalance, installmentPlans, recurringReminders, transactions, today: notificationDate,
+      isCompleted: (month, id) => {
+        if (!completedByMonth.has(month)) completedByMonth.set(month, loadCompletedNotifs(user.id, month));
+        return completedByMonth.get(month).includes(id);
+      },
+      categoryForTransaction: transaction => getCat(transaction.category, transaction.type === 'income' ? 'income' : 'expense', allExpCats, allIncCats).id,
     });
-  }, [installmentPlans, currentMk, completedNotifIds]);
+  }, [cardsWithBalance, installmentPlans, recurringReminders, transactions, notificationDate, currentMk, completedNotifIds, notificationRefresh, user.id, allExpCats, allIncCats]);
 
-  const recurringNotifs = useMemo(() => {
-    const currentMonthTxs = transactions.filter(
-      (t) => monthKey(t.date) === currentMk,
-    );
-    return (recurringReminders || []).filter((reminder) => {
-      if (!reminder.active) return false;
-      if (completedNotifIds.includes(`rec:${reminder.id}`)) return false;
-      if (!reminder.category) return true;
-      const dismissed = currentMonthTxs.some((t) => {
-        const catId =
-          t.type === "income"
-            ? getCat(t.category, "income", allExpCats, allIncCats).id
-            : getCat(t.category, "expense", allExpCats, allIncCats).id;
-        return catId === reminder.category;
-      });
-      return !dismissed;
-    });
-  }, [
-    recurringReminders,
-    transactions,
-    currentMk,
-    allExpCats,
-    allIncCats,
-    completedNotifIds,
-  ]);
-
-  const notifCount = installmentNotifs.length + recurringNotifs.length;
+  const notifCount = paymentNotifications.length;
 
   const getEffectivePlan = useCallback(
     (mKey) => {
@@ -1750,17 +1729,9 @@ export default function MainApp({ user }) {
 
         {showNotifs && (
           <NotificationsPanel
-            installmentNotifs={installmentNotifs}
-            recurringNotifs={recurringNotifs}
-            cards={cardsWithBalance}
-            currentMk={currentMk}
+            notifications={paymentNotifications}
             onClose={() => setShowNotifs(false)}
-            onCompleteInstallment={(planId) =>
-              markNotifCompleted(`inst:${planId}`)
-            }
-            onCompleteRecurring={(reminderId) =>
-              markNotifCompleted(`rec:${reminderId}`)
-            }
+            onComplete={markNotifCompleted}
           />
         )}
 
