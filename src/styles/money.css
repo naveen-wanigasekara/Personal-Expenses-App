@@ -57,6 +57,9 @@
 .entry-help { font-size:12px; color:var(--ink-soft); }.entry-help summary { cursor:pointer; margin-bottom:8px; }
 .entry-footer { flex:none; background:var(--bg-2); border-top:1px solid var(--border); padding:12px 0 max(18px,calc(env(safe-area-inset-bottom) + 10px)); }
 .entry-footer .save-btn { margin:0; width:100%; min-height:46px; }
+/* Entry actions share the sheet surface; keep only the button's own background. */
+.entry-sheet.sheet-wide .entry-footer { background:transparent; border-top:0; }
+.entry-sheet.sheet-wide .entry-footer .save-btn { box-shadow:none; }
 .entry-footer .money-error { margin:0 0 10px; max-height:64px; overflow-y:auto; }
 @media(min-width:1024px){.sheet.entry-sheet {max-width:520px;padding-bottom:0}.entry-actions{gap:12px}.entry-action{min-height:112px}.entry-scroll>fieldset{padding-bottom:22px}.entry-footer{padding-bottom:24px}}
 
