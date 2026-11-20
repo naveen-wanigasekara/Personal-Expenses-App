@@ -1,3 +1,4 @@
+import { validDate } from './dateInput.js';
 import {monthKey} from './format.js';
 export function elapsedInstallments(plan, currentMonth = monthKey(new Date())) {
   const [sy,sm]=plan.startMonth.split('-').map(Number);
@@ -12,4 +13,17 @@ export function validInstallmentMonths(months, billed = 0, existingTotal = 0) {
 // A descriptive edit covers every month unless future rows are being rebuilt.
 export function installmentMetadataTargets(rows, currentMonth, scheduleChanged) {
   return scheduleChanged ? rows.filter(row => monthKey(row.date) <= currentMonth) : rows;
+}
+
+// The existing encrypted start_month text stores a full date for new plans.
+// Legacy YYYY-MM values retain their original first-of-month schedule.
+export function installmentStart(value) {
+  return { startMonth: value.slice(0, 7), startDate: validDate(value) ? value : null };
+}
+export function installmentDate(plan, index) {
+  const anchor = plan.startDate || `${plan.startMonth}-01`;
+  const [year, month, day] = anchor.split('-').map(Number);
+  const target = new Date(Date.UTC(year, month - 1 + index, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${target.toISOString().slice(0, 7)}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
 }

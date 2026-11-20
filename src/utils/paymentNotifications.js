@@ -1,3 +1,4 @@
+import { installmentDate } from './installments.js';
 import { validDate, validMonth } from './dateInput.js';
 
 export function offsetMonth(month, offset) {
@@ -54,7 +55,7 @@ export function buildPaymentNotifications({ cards = [], installmentPlans = [], r
       const date = validDate(card?.paymentDueDate) && card.paymentDueDate.slice(0, 7) === month ? card.paymentDueDate : null;
       const cardSettled = card && Number(card.currentBalance) <= 0 && month === currentMonth;
       add({ type: 'installment', sourceId: plan.id, title: plan.label, amount: installmentAmounts.get(`${plan.id}:${month}`) ?? Number(plan.monthlyAmount), date, month,
-        completionId: `inst:${plan.id}`, status: cardSettled ? 'scheduled' : undefined, detail: `${card?.name || 'Deleted card'} · Installment ${index + 1}/${plan.totalMonths}${cardSettled ? ' · Card balance settled' : ''}`, amountLabel: 'Installment' });
+        completionId: `inst:${plan.id}`, status: cardSettled ? 'scheduled' : undefined, detail: `${card?.name || 'Deleted card'} · Installment ${index + 1}/${plan.totalMonths}${plan.startDate ? ` · Scheduled ${installmentDate(plan, index)}` : ''}${cardSettled ? ' · Card balance settled' : ''}`, amountLabel: 'Installment' });
     }
   }
   for (const reminder of recurringReminders) {

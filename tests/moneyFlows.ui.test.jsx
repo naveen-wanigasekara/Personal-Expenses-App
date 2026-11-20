@@ -15,7 +15,7 @@ vi.mock('../src/lib/supabase.js',()=>{
     else {const data=c.table==='money_records'?{...c.data.data,id:c.id}:{...c.data,id:c.id};const i=rows.findIndex(r=>r.id===c.id);if(i<0) rows.push(data);else rows[i]={...rows[i],...data};}
    } return ++store.revision;
   }),
-  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:empty,upsertBudget:vi.fn(),fetchInstallmentPlans:async()=>structuredClone(store.notificationPlans||[]),fetchRecurringReminders:async()=>structuredClone(store.notificationReminders||[]),insertRecurringReminder:vi.fn(),updateRecurringReminder:vi.fn(),deleteRecurringReminder:vi.fn(),fetchInvestments:empty,fetchInvestmentValuations:empty,fetchUserSettings:async()=>null,upsertUserSettings:vi.fn(),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
+  commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:empty,upsertBudget:vi.fn(),fetchInstallmentPlans:async()=>structuredClone((store.installment_plans||store.notificationPlans||[]).map(p=>({active:true,...p}))),fetchRecurringReminders:async()=>structuredClone(store.notificationReminders||[]),insertRecurringReminder:vi.fn(),updateRecurringReminder:vi.fn(),deleteRecurringReminder:vi.fn(),fetchInvestments:empty,fetchInvestmentValuations:empty,fetchUserSettings:async()=>null,upsertUserSettings:vi.fn(),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
  };
 });
 import MainApp from '../src/components/MainApp.jsx';
@@ -119,10 +119,25 @@ it('hides optional loan terms and does not offer interest input for an interest-
 });
 it('card expenses still create complete installment schedules from the single Expense task',async()=>{
  await mount();await entry('Expense');change('Pay with','card');fireEvent.click(screen.getByLabelText('Split into installments'));
- change('Monthly installment amount','10000');change('Installment description','Synthetic purchase');change('Number of months','3');
+ expect(screen.getByLabelText('Installment start date').value).toBe(new Date().toLocaleDateString('en-CA'));
+ change('Monthly installment amount','10000');change('Installment description','Synthetic purchase');change('Number of months','3');change('Installment start date','2026-11-15');
  fireEvent.click(screen.getByRole('button',{name:'Create plan'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
- expect(store.installment_plans).toHaveLength(1);expect(store.installment_plans[0]).toMatchObject({monthly_amount:10000,total_months:3,total_amount:30000,card_id:'hnb'});
+ expect(store.installment_plans).toHaveLength(1);expect(store.installment_plans[0]).toMatchObject({monthly_amount:10000,total_months:3,total_amount:30000,card_id:'hnb',start_month:'2026-11-15'});
  const planRows=store.transactions.filter(t=>t.installment_id===store.installment_plans[0].id);expect(planRows).toHaveLength(3);expect(planRows.every(t=>t.amount===10000&&t.type==='card-purchase')).toBe(true);
+ expect(planRows.map(t=>t.date)).toEqual(['2026-11-15','2026-12-15','2027-01-15']);
+ cleanup();await mount();
+ expect(store.transactions.filter(t=>t.installment_id===store.installment_plans[0].id).map(t=>t.date)).toEqual(['2026-11-15','2026-12-15','2027-01-15']);
+ fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);
+ fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit Synthetic purchase',exact:true}));
+ expect(screen.getByLabelText('Installment start date').value).toBe('2026-11-15');
+ change('Monthly amount','12000');change('Number of months','4');
+ fireEvent.click(screen.getByRole('button',{name:'Save changes',exact:true}));
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ const updated=store.transactions.filter(t=>t.installment_id===store.installment_plans[0].id).sort((a,b)=>a.date.localeCompare(b.date));
+ expect(updated.map(t=>t.date)).toEqual(['2026-11-15','2026-12-15','2027-01-15','2027-02-15']);
+ expect(updated.map(t=>t.amount)).toEqual([10000,12000,12000,12000]);
+
 });
 
 it('editing an existing bank-funded loan preserves its funding and interest terms',async()=>{

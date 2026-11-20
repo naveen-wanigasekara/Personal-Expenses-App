@@ -104,3 +104,10 @@ The notification bell now uses one live reminder list for both its badge and pan
 A monthly installment without a known card deadline remains a month-only reminder, never an assumed first-of-month overdue payment. Card dates are not extrapolated across future months. Card amounts are labeled current outstanding, not bank statement/minimum amounts, and installment amounts are not added to them again. A current installment on a settled card remains a schedule reminder rather than being called overdue. Historical months without tracked payment status are not guessed unpaid.
 
 Completion retains existing per-user/per-month local storage and legacy inst:/rec: IDs. Future occurrences are dismissed in their own billing month, leaving other months visible; card date changes use a distinct completion key. Completion does not create a transaction. Existing recurring category-based auto-dismiss is evaluated separately for each occurrence month. This is presentation/reminder logic only and needs no database migration.
+
+
+### Installment date anchors — 20 November 2026
+
+New installment plans use an explicit start date, defaulted to the creation date. The first charge is on that date. Each subsequent charge keeps its day of month, clamped to the target month's final day (31 January → 28/29 February → 31 March). The original day is retained when future amounts, cards, or durations are edited.
+
+The existing encrypted `start_month` text stores a full ISO date for new plans; loading separates `startDate` and `startMonth`. Legacy month-only values retain day 1 and are not rewritten. No migration, bulk update, or change to historical transactions is performed. Schedule dates appear in the ledger, card plan details/edit form, and notification schedule metadata. Bank payment deadlines remain independent of purchase/charge dates. Existing monthly balance, edit, and cancellation rules are preserved.

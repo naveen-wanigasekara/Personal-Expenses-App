@@ -64,7 +64,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "What is Split into Installments?",
-        a: "When adding a Card Purchase, you can toggle Split into Installments to break a large purchase into equal monthly payments. Enter a plan label (e.g. \"iPhone 16\"), the number of months, and the start month. The app pre-creates all monthly charge transactions automatically — so your card balance reflects the full amount immediately, but each month's Ledger and budget only shows that month's installment. Each installment transaction displays a badge (e.g. 2/12) showing which payment in the plan it is. You can view and cancel active plans from Card Detail.",
+        a: "When adding a Card Purchase, you can toggle Split into Installments to break a large purchase into equal monthly payments. Enter a plan label (e.g. \"iPhone 16\"), the number of months, and the installment start date (defaults to today). The first installment uses that date; later months use the same day, clamped to the last day in shorter months. Existing month-only plans keep their original dates. The app pre-creates all monthly charge transactions automatically — so your card balance reflects the full amount immediately, but each month's Ledger and budget only shows that month's installment. Each installment transaction displays a badge (e.g. 2/12) showing which payment in the plan it is. You can view and cancel active plans from Card Detail.",
       },
       {
         q: "How do I record an installment payment to my bank?",

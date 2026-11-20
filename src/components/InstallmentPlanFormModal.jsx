@@ -82,12 +82,12 @@ export default function InstallmentPlanFormModal({
           />
         </div>
         <div className="field-group">
-          <label className="field-lbl">Start month</label>
+          <label className="field-lbl">{plan.startDate ? "Installment start date" : "Start month"}</label>
           <input
             type="text"
-            aria-label="Start month"
+            aria-label={plan.startDate ? "Installment start date" : "Start month"}
             className="text-input"
-            value={monthLabel(plan.startMonth)}
+            value={plan.startDate || monthLabel(plan.startMonth)}
             disabled
           />
         </div>

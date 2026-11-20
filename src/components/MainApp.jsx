@@ -80,8 +80,8 @@ import { moneyTransactions, loanSummary, todayLocal, validateMoneyRecords, valid
 const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
-import {validMonth} from "../utils/dateInput.js";
-import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets} from "../utils/installments.js";
+import {validDate} from "../utils/dateInput.js";
+import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets, installmentStart, installmentDate} from "../utils/installments.js";
 
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
@@ -373,7 +373,7 @@ export default function MainApp({ user }) {
             totalAmount: +r.total_amount,
             monthlyAmount: +r.monthly_amount,
             totalMonths: +r.total_months,
-            startMonth: r.start_month,
+            ...installmentStart(r.start_month),
             category: r.category,
             active: r.active,
           })),
@@ -858,7 +858,7 @@ export default function MainApp({ user }) {
 
   const saveInstallmentPlan = useCallback(
     async (planData) => {
-      if (!validInstallmentMonths(+planData.totalMonths) || !validMonth(planData.startMonth) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
+      if (!validInstallmentMonths(+planData.totalMonths) || !validDate(planData.startDate) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
         showError("Enter a valid installment amount and a period from 2 to 120 months.");
         return;
       }
@@ -870,15 +870,14 @@ export default function MainApp({ user }) {
         totalAmount: planData.monthlyAmount * planData.totalMonths,
         monthlyAmount: planData.monthlyAmount,
         totalMonths: planData.totalMonths,
-        startMonth: planData.startMonth,
+        startMonth: planData.startDate.slice(0, 7),
+        startDate: planData.startDate,
         category: planData.category,
         active: true,
       };
       const txs = [];
       for (let i = 0; i < planData.totalMonths; i++) {
-        const [y, m] = planData.startMonth.split("-").map(Number);
-        const d = new Date(y, m - 1 + i, 1);
-        const txDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+        const txDate = installmentDate(newPlan, i);
         txs.push({
           id: `ptx_${planId}_${i}`,
           type: "card-purchase",
@@ -905,7 +904,7 @@ export default function MainApp({ user }) {
           { table: 'installment_plans', op: 'insert', id: planId, data: {
             id: planId, user_id: user.id, card_id: planData.cardId, label: planData.label,
             total_amount: newPlan.totalAmount, monthly_amount: planData.monthlyAmount,
-            total_months: planData.totalMonths, start_month: planData.startMonth, category: planData.category,
+            total_months: planData.totalMonths, start_month: planData.startDate, category: planData.category,
           } },
           ...txs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
             id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
@@ -962,7 +961,6 @@ export default function MainApp({ user }) {
       if (!plan) return;
 
       const currentMk = monthKey(new Date());
-      const [sy, sm] = plan.startMonth.split("-").map(Number);
       const paid = elapsedInstallments(plan, currentMk);
       if (!validInstallmentMonths(+updates.totalMonths, paid, plan.totalMonths) || !Number.isFinite(+updates.monthlyAmount) || +updates.monthlyAmount <= 0) {
         showError("Enter a valid installment amount and duration.");
@@ -986,7 +984,6 @@ export default function MainApp({ user }) {
       const newFutureTxs = [];
       if (scheduleChanged) {
         for (let i = paid; i < newTotalMonths; i++) {
-          const d = new Date(sy, sm - 1 + i, 1);
           newFutureTxs.push({
             id: `ptx_${planId}_${i}`,
             type: "card-purchase",
@@ -994,7 +991,7 @@ export default function MainApp({ user }) {
             category: updates.category,
             cardId: updates.cardId,
             note: updates.label,
-            date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`,
+            date: installmentDate(plan, i),
             installmentId: planId,
           });
         }

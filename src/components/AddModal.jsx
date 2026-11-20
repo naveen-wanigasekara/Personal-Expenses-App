@@ -5,7 +5,7 @@ import { SAVINGS_CATEGORY_ID } from '../constants/categories.js';
 import { todayLocal } from '../utils/money.js';
 import { fmtCompact } from '../utils/format.js';
 import { loadLastCategory, saveLastCategory } from '../utils/storage.js';
-import { validDate, validMonth } from '../utils/dateInput.js';
+import { validDate } from '../utils/dateInput.js';
 import { validInstallmentMonths } from '../utils/installments.js';
 import Sheet from './Sheet.jsx';
 import AmountInput from './AmountInput.jsx';
@@ -25,7 +25,6 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
   const [isInstallment, setIsInstallment] = useState(false);
   const [installLabel, setInstallLabel] = useState('');
   const [installMonths, setInstallMonths] = useState('12');
-  const [installStartMonth, setInstallStartMonth] = useState(date.slice(0, 7));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const savingRef = useRef(false);
@@ -63,7 +62,7 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
     }
   };
   const valid = Number.isFinite(+amount) && +amount > 0 && (isInstallment
-    ? installLabel.trim() && validInstallmentMonths(+installMonths) && validMonth(installStartMonth) && cardId
+    ? installLabel.trim() && validInstallmentMonths(+installMonths) && validDate(date) && cardId
     : validDate(date) && (!isCardType || cardId) && (isCardAction || category));
   const submit = async event => {
     event.preventDefault();
@@ -71,7 +70,7 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
     savingRef.current = true; setSaving(true); setSaveError('');
     try {
       if (isInstallment) {
-        await onSaveInstallment({ label: installLabel.trim(), monthlyAmount: +amount, totalMonths: +installMonths, startMonth: installStartMonth, category, cardId });
+        await onSaveInstallment({ label: installLabel.trim(), monthlyAmount: +amount, totalMonths: +installMonths, startDate: date, category, cardId });
       } else {
         const tx = { type, amount: +amount, note, date, account: isCardType && type !== 'card-payment' ? null : account };
         if (type !== 'card-payment') tx.category = type === 'card-interest' ? 'card-interest' : category;
@@ -104,7 +103,8 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
           {type === 'card-purchase' && !isEditing && <label className="entry-check"><input type="checkbox" checked={isInstallment} onChange={e => setIsInstallment(e.target.checked)} /> Split into installments</label>}
           {isInstallment ? <>
             <label className="money-field"><span>Description</span><input className="text-input" aria-label="Installment description" value={installLabel} onChange={e => setInstallLabel(e.target.value)} required /></label>
-            <div className="money-fields"><label className="money-field"><span>Months</span><input className="text-input" type="number" aria-label="Number of months" value={installMonths} onChange={e => setInstallMonths(e.target.value)} min="2" max="120" required /></label><label className="money-field"><span>Start month</span><input type="month" className="text-input" aria-label="Start month" value={installStartMonth} onChange={e => setInstallStartMonth(e.target.value)} required /></label></div>
+            <div className="money-fields"><label className="money-field"><span>Months</span><input className="text-input" type="number" aria-label="Number of months" value={installMonths} onChange={e => setInstallMonths(e.target.value)} min="2" max="120" required /></label><label className="money-field"><span>Installment start date</span><input type="date" className="text-input" aria-label="Installment start date" value={date} onChange={e => setDate(e.target.value)} required /></label></div>
+            <p className="entry-caption">First installment on this date, then monthly on the same day. Shorter months use their last day.</p>
             {+amount > 0 && <p className="entry-caption">Total: {CURRENCY} {fmtCompact(planTotal)}</p>}
             {selectedCard?.limit && planTotal > availableCredit && <p className="money-error">Plan exceeds available credit of {CURRENCY} {fmtCompact(availableCredit)}.</p>}
           </> : <label className="money-field"><span>Date</span><input className="text-input" type="date" aria-label="Date" value={date} onChange={e => setDate(e.target.value)} required /></label>}
