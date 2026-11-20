@@ -65,50 +65,52 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
   const valid = draft.kind === 'repayment' ? !!selected && (+draft.principal > 0 || +draft.interest > 0)
     : +draft.amount > 0 && (draft.kind !== 'loan' || draft.borrower.trim());
   return <Sheet title={title} className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
-    {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
     <form onSubmit={submit} className="entry-form money-form">
-      <fieldset disabled={saving}>
-        {draft.kind === 'loan' && <>
-          {borrowerPicker(false)}
-          {borrowerSelection === '__new' && field('borrower', 'Borrower name', 'text', { required: true, maxLength: 120 })}
-          {amount('amount', 'Amount lent')}
-          {select('account', 'Funding source', [...accounts, ...(cards.length ? [['card', 'Credit card']] : [])], true)}
-          {draft.account === 'card' && select('cardId', 'Credit card', [...cards.map(c => [c.id, c.name]), ...(draft.cardId && !cards.some(c => c.id === draft.cardId) ? [[draft.cardId, 'Previously selected card (deleted)']] : [])])}
-          <label className="entry-check"><input type="checkbox" checked={hasInterest} onChange={e => { setHasInterest(e.target.checked); if (!e.target.checked) set('rate', 0); }} /> Charge interest</label>
-          {hasInterest && <div className="money-fields">{field('rate', 'Interest rate (%)', 'number', { min: 0.01, max: 100, step: '0.01', required: true })}{select('ratePeriod', 'Rate period', [['monthly', 'Per month'], ['yearly', 'Per year']])}</div>}
-        </>}
-        {draft.kind === 'repayment' && <>
-          {repaymentGroups.length ? <>
-            {borrowerPicker(true)}
-            {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, chosenGroup.loans)]))}
-            {summary && <div className="entry-balance"><span>Principal still owed</span><strong>{currency} {summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {currency} {summary.interestDue.toLocaleString()}</small>}</div>}
-            <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
-            {select('account', 'Received into', accounts, true)}
-            <p className="entry-caption">Only interest counts as income earned.{selected?.account === 'card' && ' Cash received does not pay your credit card. Record Expenses → Pay credit card when you pay the bank.'}</p>
-          </> : <p className="entry-caption">No loans recorded yet. Record Expenses → Lend money first.</p>}
-        </>}
-        {draft.kind === 'transfer' && <>
-          {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p>
-            : !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Savings action" className="text-input" value={draft.from === 'savings' ? 'withdraw' : 'save'} onChange={e => setDraft(previous => ({ ...previous, from: e.target.value === 'withdraw' ? 'savings' : 'cash', to: e.target.value === 'withdraw' ? 'cash' : 'savings' }))}><option value="save">Add to savings</option><option value="withdraw">Withdraw from savings</option></select></label>}
-          {amount('amount', 'Amount')}
-          {!legacyInternal && <p className="entry-caption">Moves your own money; excluded from income earned and spending.</p>}
-          {!legacyInternal && <p className="entry-route">{accountLabel(draft.from)} <span aria-hidden="true">→</span> {accountLabel(draft.to)}</p>}
-        </>}
-        {field('date', draft.kind === 'loan' ? 'Date lent' : 'Date', 'date', { required: true, max: todayLocal() })}
-        <details className="entry-details" open={editing && (draft.note || draft.dueDate || (draft.arrangement !== 'flexible' && draft.kind === 'loan')) ? true : undefined}>
-          <summary>{draft.kind === 'loan' ? 'More options' : 'Add a note'}</summary>
-          <div className="entry-extra">
-            {draft.kind === 'loan' && <>
-              {hasInterest && select('interestBasis', 'Interest calculation', [['original', 'On original amount'], ['remaining', 'On remaining principal']])}
-              {select('arrangement', 'Repayment arrangement', [['flexible', 'Flexible'], ['single', 'Single payment'], ['interest-only', 'Interest only; principal separately'], ['installments', 'Monthly principal installments']])}
-              {draft.arrangement === 'installments' && field('installmentMonths', 'Number of monthly installments', 'number', { min: 1, max: 120, step: 1, required: true })}
-              {field('dueDate', 'Principal due date (optional)', 'date')}
-              {hasInterest && <details className="entry-help"><summary>How interest works</summary><p className="entry-caption">Simple interest, due each completed month or year. No automatic compounding or partial-period charge. Card fees are separate.</p></details>}
-            </>}
-            {field('note', 'Note (optional)', 'text', { maxLength: 1000 })}
-          </div>
-        </details>
-      </fieldset>
+      <div className="entry-scroll" role="region" aria-label="Entry details">
+      {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
+        <fieldset disabled={saving}>
+          {draft.kind === 'loan' && <>
+            {borrowerPicker(false)}
+            {borrowerSelection === '__new' && field('borrower', 'Borrower name', 'text', { required: true, maxLength: 120 })}
+            {amount('amount', 'Amount lent')}
+            {select('account', 'Funding source', [...accounts, ...(cards.length ? [['card', 'Credit card']] : [])], true)}
+            {draft.account === 'card' && select('cardId', 'Credit card', [...cards.map(c => [c.id, c.name]), ...(draft.cardId && !cards.some(c => c.id === draft.cardId) ? [[draft.cardId, 'Previously selected card (deleted)']] : [])])}
+            <label className="entry-check"><input type="checkbox" checked={hasInterest} onChange={e => { setHasInterest(e.target.checked); if (!e.target.checked) set('rate', 0); }} /> Charge interest</label>
+            {hasInterest && <div className="money-fields">{field('rate', 'Interest rate (%)', 'number', { min: 0.01, max: 100, step: '0.01', required: true })}{select('ratePeriod', 'Rate period', [['monthly', 'Per month'], ['yearly', 'Per year']])}</div>}
+          </>}
+          {draft.kind === 'repayment' && <>
+            {repaymentGroups.length ? <>
+              {borrowerPicker(true)}
+              {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, chosenGroup.loans)]))}
+              {summary && <div className="entry-balance"><span>Principal still owed</span><strong>{currency} {summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {currency} {summary.interestDue.toLocaleString()}</small>}</div>}
+              <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
+              {select('account', 'Received into', accounts, true)}
+              <p className="entry-caption">Only interest counts as income earned.{selected?.account === 'card' && ' Cash received does not pay your credit card. Record Expenses → Pay credit card when you pay the bank.'}</p>
+            </> : <p className="entry-caption">No loans recorded yet. Record Expenses → Lend money first.</p>}
+          </>}
+          {draft.kind === 'transfer' && <>
+            {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p>
+              : !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Savings action" className="text-input" value={draft.from === 'savings' ? 'withdraw' : 'save'} onChange={e => setDraft(previous => ({ ...previous, from: e.target.value === 'withdraw' ? 'savings' : 'cash', to: e.target.value === 'withdraw' ? 'cash' : 'savings' }))}><option value="save">Add to savings</option><option value="withdraw">Withdraw from savings</option></select></label>}
+            {amount('amount', 'Amount')}
+            {!legacyInternal && <p className="entry-caption">Moves your own money; excluded from income earned and spending.</p>}
+            {!legacyInternal && <p className="entry-route">{accountLabel(draft.from)} <span aria-hidden="true">→</span> {accountLabel(draft.to)}</p>}
+          </>}
+          {field('date', draft.kind === 'loan' ? 'Date lent' : 'Date', 'date', { required: true, max: todayLocal() })}
+          <details className="entry-details" open={editing && (draft.note || draft.dueDate || (draft.arrangement !== 'flexible' && draft.kind === 'loan')) ? true : undefined}>
+            <summary>{draft.kind === 'loan' ? 'More options' : 'Add a note'}</summary>
+            <div className="entry-extra">
+              {draft.kind === 'loan' && <>
+                {hasInterest && select('interestBasis', 'Interest calculation', [['original', 'On original amount'], ['remaining', 'On remaining principal']])}
+                {select('arrangement', 'Repayment arrangement', [['flexible', 'Flexible'], ['single', 'Single payment'], ['interest-only', 'Interest only; principal separately'], ['installments', 'Monthly principal installments']])}
+                {draft.arrangement === 'installments' && field('installmentMonths', 'Number of monthly installments', 'number', { min: 1, max: 120, step: 1, required: true })}
+                {field('dueDate', 'Principal due date (optional)', 'date')}
+                {hasInterest && <details className="entry-help"><summary>How interest works</summary><p className="entry-caption">Simple interest, due each completed month or year. No automatic compounding or partial-period charge. Card fees are separate.</p></details>}
+              </>}
+              {field('note', 'Note (optional)', 'text', { maxLength: 1000 })}
+            </div>
+          </details>
+        </fieldset>
+      </div>
       <div className="entry-footer">{error && <p className="money-error" role="alert">{error}</p>}<button type="submit" className="save-btn" disabled={saving || !valid}>{saving ? 'Saving…' : editing ? 'Save changes' : 'Record'}</button></div>
     </form>
   </Sheet>;

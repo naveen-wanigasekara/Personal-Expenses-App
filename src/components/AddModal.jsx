@@ -87,30 +87,32 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
   const title = isEditing ? 'Edit entry' : entryGroup ? (entryGroup === 'income' ? 'Income' : 'Expenses') : initialTask === 'credit-card' ? 'Credit card' : type === 'income' ? 'Income' : isCardAction ? 'Credit card' : 'Expense';
   const close = () => { if (!savingRef.current) onClose(); };
   return <Sheet title={title} onClose={close} className="sheet-wide entry-sheet">
-    {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
-    {!entryGroup && onBack && <button className="entry-back" type="button" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Entry types</button>}
     <form className="entry-form" onSubmit={submit}>
-      <fieldset disabled={saving}>
-        {isEditing && <label className="money-field"><span>Entry type</span><select aria-label="Entry type" className="text-input" value={type} onChange={e => changeType(e.target.value)}>
-          <option value="income">Income</option><option value="expense">Expense · Cash / Bank</option>
-          {cards.length > 0 && <><option value="card-purchase">Expense · Credit card</option><option value="card-payment">Card payment</option><option value="card-interest">Card interest & fees</option></>}
-        </select></label>}
-        {isCardAction && !isEditing && !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Card action" className="text-input" value={type} onChange={e => changeType(e.target.value)}><option value="card-payment">Pay card balance</option><option value="card-interest">Add interest or fees</option></select></label>}
-        <label className="money-field"><span>{isInstallment ? 'Monthly installment amount' : 'Amount'}</span><div className="amount-input"><span className="amt-cur">{CURRENCY}</span><AmountInput aria-label={isInstallment ? 'Monthly installment amount' : 'Amount'} value={amount} onChange={v => {amountUserEdited.current = true; setAmount(v);}} placeholder="0.00" /></div></label>
-        {isExpense && <label className="money-field"><span>Pay with</span><select aria-label="Pay with" className="text-input" value={type === 'card-purchase' ? 'card' : 'cash'} onChange={e => changeType(e.target.value === 'card' ? 'card-purchase' : 'expense')}><option value="cash">Cash / Bank</option>{cards.length > 0 && <option value="card">Credit card</option>}</select></label>}
-        {isCardType && <label className="money-field"><span>Credit card</span><select aria-label="Credit card" className="text-input" value={cardId} onChange={e => setCardId(e.target.value)}>{cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}{cardId && !cards.some(c => c.id === cardId) && <option value={cardId}>Previously selected card (deleted)</option>}</select></label>}
-        {!isCardAction && <label className="money-field"><span>Category</span><select aria-label="Category" className="text-input" value={category} onChange={e => setCategory(e.target.value)}>{cats.map(c => <option key={c.id} value={c.id}>{c.id === 'loan' ? `${c.label} (you pay)` : c.label}</option>)}</select></label>}
-        {type === 'card-purchase' && !isEditing && <label className="entry-check"><input type="checkbox" checked={isInstallment} onChange={e => setIsInstallment(e.target.checked)} /> Split into installments</label>}
-        {isInstallment ? <>
-          <label className="money-field"><span>Description</span><input className="text-input" aria-label="Installment description" value={installLabel} onChange={e => setInstallLabel(e.target.value)} required /></label>
-          <div className="money-fields"><label className="money-field"><span>Months</span><input className="text-input" type="number" aria-label="Number of months" value={installMonths} onChange={e => setInstallMonths(e.target.value)} min="2" max="120" required /></label><label className="money-field"><span>Start month</span><input type="month" className="text-input" aria-label="Start month" value={installStartMonth} onChange={e => setInstallStartMonth(e.target.value)} required /></label></div>
-          {+amount > 0 && <p className="entry-caption">Total: {CURRENCY} {fmtCompact(planTotal)}</p>}
-          {selectedCard?.limit && planTotal > availableCredit && <p className="money-error">Plan exceeds available credit of {CURRENCY} {fmtCompact(availableCredit)}.</p>}
-        </> : <label className="money-field"><span>Date</span><input className="text-input" type="date" aria-label="Date" value={date} onChange={e => setDate(e.target.value)} required /></label>}
-        <details className="entry-details" open={note ? true : undefined}><summary>Add a note</summary><label className="money-field"><span>Note (optional)</span><input className="text-input" aria-label="Note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional description" /></label></details>
-        {isCardAction && <p className="entry-caption">{type === 'card-payment' ? 'Paid from Cash / Bank. Reduces your card balance.' : 'Adds to your card balance and spending.'}</p>}
-        {isEditing && editing.installmentId && <p className="entry-caption"><AlertTriangle size={13} /> Updates this entry, not the whole installment plan.</p>}
-      </fieldset>
+      <div className="entry-scroll" role="region" aria-label="Entry details">
+      {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
+      {!entryGroup && onBack && <button className="entry-back" type="button" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Entry types</button>}
+        <fieldset disabled={saving}>
+          {isEditing && <label className="money-field"><span>Entry type</span><select aria-label="Entry type" className="text-input" value={type} onChange={e => changeType(e.target.value)}>
+            <option value="income">Income</option><option value="expense">Expense · Cash / Bank</option>
+            {cards.length > 0 && <><option value="card-purchase">Expense · Credit card</option><option value="card-payment">Card payment</option><option value="card-interest">Card interest & fees</option></>}
+          </select></label>}
+          {isCardAction && !isEditing && !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Card action" className="text-input" value={type} onChange={e => changeType(e.target.value)}><option value="card-payment">Pay card balance</option><option value="card-interest">Add interest or fees</option></select></label>}
+          <label className="money-field"><span>{isInstallment ? 'Monthly installment amount' : 'Amount'}</span><div className="amount-input"><span className="amt-cur">{CURRENCY}</span><AmountInput aria-label={isInstallment ? 'Monthly installment amount' : 'Amount'} value={amount} onChange={v => {amountUserEdited.current = true; setAmount(v);}} placeholder="0.00" /></div></label>
+          {isExpense && <label className="money-field"><span>Pay with</span><select aria-label="Pay with" className="text-input" value={type === 'card-purchase' ? 'card' : 'cash'} onChange={e => changeType(e.target.value === 'card' ? 'card-purchase' : 'expense')}><option value="cash">Cash / Bank</option>{cards.length > 0 && <option value="card">Credit card</option>}</select></label>}
+          {isCardType && <label className="money-field"><span>Credit card</span><select aria-label="Credit card" className="text-input" value={cardId} onChange={e => setCardId(e.target.value)}>{cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}{cardId && !cards.some(c => c.id === cardId) && <option value={cardId}>Previously selected card (deleted)</option>}</select></label>}
+          {!isCardAction && <label className="money-field"><span>Category</span><select aria-label="Category" className="text-input" value={category} onChange={e => setCategory(e.target.value)}>{cats.map(c => <option key={c.id} value={c.id}>{c.id === 'loan' ? `${c.label} (you pay)` : c.label}</option>)}</select></label>}
+          {type === 'card-purchase' && !isEditing && <label className="entry-check"><input type="checkbox" checked={isInstallment} onChange={e => setIsInstallment(e.target.checked)} /> Split into installments</label>}
+          {isInstallment ? <>
+            <label className="money-field"><span>Description</span><input className="text-input" aria-label="Installment description" value={installLabel} onChange={e => setInstallLabel(e.target.value)} required /></label>
+            <div className="money-fields"><label className="money-field"><span>Months</span><input className="text-input" type="number" aria-label="Number of months" value={installMonths} onChange={e => setInstallMonths(e.target.value)} min="2" max="120" required /></label><label className="money-field"><span>Start month</span><input type="month" className="text-input" aria-label="Start month" value={installStartMonth} onChange={e => setInstallStartMonth(e.target.value)} required /></label></div>
+            {+amount > 0 && <p className="entry-caption">Total: {CURRENCY} {fmtCompact(planTotal)}</p>}
+            {selectedCard?.limit && planTotal > availableCredit && <p className="money-error">Plan exceeds available credit of {CURRENCY} {fmtCompact(availableCredit)}.</p>}
+          </> : <label className="money-field"><span>Date</span><input className="text-input" type="date" aria-label="Date" value={date} onChange={e => setDate(e.target.value)} required /></label>}
+          <details className="entry-details" open={note ? true : undefined}><summary>Add a note</summary><label className="money-field"><span>Note (optional)</span><input className="text-input" aria-label="Note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional description" /></label></details>
+          {isCardAction && <p className="entry-caption">{type === 'card-payment' ? 'Paid from Cash / Bank. Reduces your card balance.' : 'Adds to your card balance and spending.'}</p>}
+          {isEditing && editing.installmentId && <p className="entry-caption"><AlertTriangle size={13} /> Updates this entry, not the whole installment plan.</p>}
+        </fieldset>
+      </div>
       <div className="entry-footer">{saveError && <p className="money-error" role="alert">{saveError}</p>}<button className="save-btn" type="submit" disabled={!valid || saving}>{saving ? 'Saving…' : isEditing ? 'Save changes' : isInstallment ? 'Create plan' : 'Record'}</button></div>
     </form>
   </Sheet>;
