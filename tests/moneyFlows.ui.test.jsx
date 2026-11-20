@@ -205,3 +205,12 @@ it('highlights received ledger rows with readable labels and filters repayments 
  const receipt=screen.getByRole('button',{name:/Principal received from Person/}).closest('.tx');expect(receipt.classList.contains('activity-received')).toBe(true);expect(within(receipt).getByText('Received')).toBeTruthy();
  change('Transaction type','expense');expect(screen.queryByRole('button',{name:/Principal received from Person/})).toBeNull();
 });
+
+it('repayment entry retains a borrower until their last loan is paid, then removes them on reopen',async()=>{
+ await mount();await lend({borrower:'Repeat borrower',amount:'1000',account:'cash'});await lend({borrower:'Repeat borrower',amount:'2000',account:'cash',date:'2026-02-02'});
+ const loans=store.records.filter(r=>r.kind==='loan');
+ await entry('Loan repayment');expect(screen.getByLabelText('Loan').options).toHaveLength(2);change('Principal returned','1000');await save();
+ await entry('Loan repayment');expect(Array.from(screen.getByLabelText('Borrower',{exact:true}).options).filter(o=>!o.disabled).map(o=>o.text)).toEqual(['Repeat borrower']);
+ expect(Array.from(screen.getByLabelText('Loan').options).map(o=>o.value)).toEqual([loans[1].id]);change('Principal returned','2000');await save();
+ await entry('Loan repayment');expect(screen.queryByLabelText('Borrower',{exact:true})).toBeNull();expect(screen.getByText('No outstanding loans. All recorded loans are fully settled.')).toBeTruthy();expect(screen.getByRole('button',{name:'Record'}).disabled).toBe(true);
+});

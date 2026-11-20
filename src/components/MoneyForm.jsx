@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import Sheet from './Sheet.jsx';
 import AmountInput from './AmountInput.jsx';
 import EntryNavigation from './EntryNavigation.jsx';
@@ -11,17 +11,28 @@ const displayAccount = account => account === 'bank' ? 'cash' : account;
 export default function MoneyForm({ kind, editing, cards, records, initialLoanId, initialBorrowerId,
   onClose, onSave, onBack, entryGroup, entryTask, onSubtypeChange, moneyEnabled = true }) {
   const currency = useContext(CurrencyCtx);
-  const groups = borrowerGroups(records);
-  const repaymentGroups = groups.filter(g => g.loans.length > 0);
-  const initialGroup = groups.find(g => g.id === initialBorrowerId || g.loans.some(l => l.id === (editing?.kind === 'loan' ? editing.id : editing?.loanId || initialLoanId)))
+  const groups = useMemo(() => borrowerGroups(records), [records]);
+  const balanceDate = todayLocal();
+  const editedLoanId = editing?.kind === 'repayment' ? editing.loanId : null;
+  // Only collect against loans that still owe principal or accrued interest.
+  // Keep the repayment being edited available even when it settled its loan.
+  const repaymentGroups = useMemo(() => groups.map(group => ({ ...group, loans: group.loans.filter(loan => {
+    if (loan.id === editedLoanId) return true;
+    const balance = loanSummary(loan, records, balanceDate);
+    return balance.outstanding > 0 || balance.interestDue > 0;
+  }) })).filter(group => group.loans.length > 0), [groups, records, balanceDate, editedLoanId]);
+  const eligibleGroups = kind === 'repayment' ? repaymentGroups : groups;
+  const requestedLoanId = editing?.kind === 'loan' ? editing.id : editing?.loanId || initialLoanId;
+  const initialGroup = eligibleGroups.find(g => g.id === initialBorrowerId || g.loans.some(l => l.id === requestedLoanId))
     || (kind === 'repayment' ? repaymentGroups[0] : null);
-  const [borrowerSelection, setBorrowerSelection] = useState(initialGroup?.id || (groups.length ? '' : '__new'));
+  const initialRepaymentLoanId = initialGroup?.loans.find(loan => loan.id === requestedLoanId)?.id || initialGroup?.loans[0]?.id || '';
+  const [borrowerSelection, setBorrowerSelection] = useState(initialGroup?.id || (kind === 'repayment' ? '' : groups.length ? '' : '__new'));
   const isSavings = ['savings', 'withdrawal', 'transfer'].includes(kind);
   const legacyInternal = editing?.kind === 'transfer' && editing.from !== 'savings' && editing.to !== 'savings';
   const [draft, setDraft] = useState(() => ({
     borrower: '', amount: '', account: 'cash', cardId: cards[0]?.id || '', rate: 0,
     ratePeriod: 'monthly', interestBasis: 'original', arrangement: 'flexible', installmentMonths: 12,
-    dueDate: '', date: todayLocal(), note: '', loanId: initialLoanId || initialGroup?.loans[0]?.id || '',
+    dueDate: '', date: todayLocal(), note: '', loanId: initialRepaymentLoanId,
     principal: '', interest: '', from: kind === 'withdrawal' ? 'savings' : 'cash', to: kind === 'withdrawal' ? 'cash' : 'savings',
     ...editing, borrower: initialGroup?.name || editing?.borrower || '', borrowerId: initialGroup?.id || editing?.borrowerId || '',
     kind: isSavings ? 'transfer' : kind,
@@ -35,13 +46,21 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
   const amount = (key, label) => <label className="money-field"><span>{label}</span><AmountInput aria-label={label} className="text-input" value={draft[key]} onChange={value => set(key, value)} placeholder="0.00" /></label>;
   const select = (key, label, options, account = false) => <label className="money-field"><span>{label}</span><select className="text-input" aria-label={label} value={account ? displayAccount(draft[key]) : draft[key]} onChange={e => set(key, e.target.value)}>{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select></label>;
   const accounts = ['cash', 'savings'].map(id => [id, accountLabel(id)]);
-  const chosenGroup = groups.find(g => g.id === borrowerSelection);
+  const chosenGroup = eligibleGroups.find(g => g.id === borrowerSelection);
+  const fallbackGroup = chosenGroup || repaymentGroups[0];
+  const fallbackLoanId = fallbackGroup?.loans.find(loan => loan.id === draft.loanId)?.id || fallbackGroup?.loans[0]?.id || '';
+  useEffect(() => {
+    if (kind !== 'repayment' || (borrowerSelection === (fallbackGroup?.id || '') && draft.loanId === fallbackLoanId)) return;
+    // Clear entered amounts if refreshed balances invalidate the selection.
+    setBorrowerSelection(fallbackGroup?.id || '');
+    setDraft(previous => ({ ...previous, borrowerId: fallbackGroup?.id || '', borrower: fallbackGroup?.name || '', loanId: fallbackLoanId, principal: '', interest: '' }));
+  }, [kind, borrowerSelection, draft.loanId, fallbackGroup?.id, fallbackGroup?.name, fallbackLoanId]);
   const selected = records.find(r => r.kind === 'loan' && r.id === draft.loanId);
   const summary = selected ? loanSummary(selected, records.filter(r => r.id !== editing?.id), draft.date) : null;
   const showInterestPayment = Number(selected?.rate) > 0 || Number(draft.interest) > 0;
   const selectBorrower = value => {
     setBorrowerSelection(value);
-    const group = groups.find(g => g.id === value);
+    const group = eligibleGroups.find(g => g.id === value);
     setDraft(previous => ({ ...previous, borrowerId: group?.id || '', borrower: group?.name || '',
       ...(kind === 'repayment' ? { loanId: group?.loans[0]?.id || '', principal: '', interest: '' } : {}) }));
   };
@@ -62,7 +81,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
     } catch (err) { setError(err.message || 'Could not save. Please try again.'); }
     finally { lock.current = false; setSaving(false); }
   };
-  const valid = draft.kind === 'repayment' ? !!selected && (+draft.principal > 0 || +draft.interest > 0)
+  const valid = draft.kind === 'repayment' ? !!chosenGroup?.loans.some(loan => loan.id === selected?.id) && (+draft.principal > 0 || +draft.interest > 0)
     : +draft.amount > 0 && (draft.kind !== 'loan' || draft.borrower.trim());
   return <Sheet title={title} className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
     <form onSubmit={submit} className="entry-form money-form">
@@ -86,7 +105,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
               <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
               {select('account', 'Received into', accounts, true)}
               <p className="entry-caption">Only interest counts as income earned.{selected?.account === 'card' && ' Cash received does not pay your credit card. Record Expenses → Pay credit card when you pay the bank.'}</p>
-            </> : <p className="entry-caption">No loans recorded yet. Record Expenses → Lend money first.</p>}
+            </> : <p className="entry-caption">{records.some(record => record.kind === 'loan') ? 'No outstanding loans. All recorded loans are fully settled.' : 'No loans recorded yet. Record Expenses → Lend money first.'}</p>}
           </>}
           {draft.kind === 'transfer' && <>
             {legacyInternal ? <p className="entry-caption">Existing transfer within Cash / Bank. The combined balance is unchanged.</p>
