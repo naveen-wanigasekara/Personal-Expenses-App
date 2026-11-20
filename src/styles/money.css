@@ -58,8 +58,8 @@
 .entry-footer { flex:none; background:var(--bg-2); border-top:1px solid var(--border); padding:12px 0 max(18px,calc(env(safe-area-inset-bottom) + 10px)); }
 .entry-footer .save-btn { margin:0; width:100%; min-height:46px; }
 /* Entry actions share the sheet surface; keep only the button's own background. */
-.entry-sheet.sheet-wide .entry-footer { background:transparent; border-top:0; }
-.entry-sheet.sheet-wide .entry-footer .save-btn { box-shadow:none; }
+.entry-sheet .entry-footer { background:transparent; border-top:0; }
+.entry-sheet .entry-footer .save-btn { box-shadow:none; }
 .entry-footer .money-error { margin:0 0 10px; max-height:64px; overflow-y:auto; }
 @media(min-width:1024px){.sheet.entry-sheet {max-width:520px;padding-bottom:0}.entry-actions{gap:12px}.entry-action{min-height:112px}.entry-scroll>fieldset{padding-bottom:22px}.entry-footer{padding-bottom:24px}}
 
@@ -142,9 +142,10 @@
 .lending-action-menu { position:relative; flex:none; }
 .lending-action-menu[open] { z-index:4; }
 .money-view .lending-menu-trigger { display:flex; align-items:center; gap:6px; min-height:36px; padding:6px 10px; list-style:none; font-size:12px; cursor:pointer; user-select:none; }
+.money-view .borrower-toolbar .lending-action-list { left:0; right:auto; }
 .lending-menu-trigger::-webkit-details-marker { display:none; }
 .lending-action-list { position:absolute; top:calc(100% + 6px); right:0; width:218px; max-width:calc(100vw - 50px); max-height:min(300px,55dvh); overflow:auto; padding:5px; background:var(--surface); border:1px solid var(--border-2); border-radius:12px; box-shadow:var(--shadow-md); }
-.lending-menu-item { display:flex; align-items:center; gap:9px; width:100%; min-height:40px; padding:9px 10px; border:0; border-radius:8px; background:none; color:var(--ink); font:500 13px/1.4 var(--sans); text-align:left; cursor:pointer; }
+.lending-menu-item { display:flex; align-items:center; gap:9px; width:100%; min-height:40px; padding:9px 10px; border:0; border-radius:8px; background:none; color:var(--ink); white-space:normal; overflow-wrap:anywhere; font:500 13px/1.4 var(--sans); text-align:left; cursor:pointer; }
 .lending-menu-item svg { flex:none; }
 .lending-menu-item.danger { color:var(--danger); }
 .lending-menu-item:hover,.lending-menu-item:focus-visible { background:var(--surface-2); outline:2px solid var(--accent); outline-offset:-2px; }
@@ -190,3 +191,7 @@
 .tx-date-total>span { font-weight:400; text-transform:none; letter-spacing:0; }
 
 .save-fields { border:0; padding:0; margin:0; min-width:0; }
+
+.borrower-delete-message { margin:0; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
+.borrower-delete-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
+.borrower-delete-actions button { min-height:44px; padding:10px 14px; justify-content:center; }

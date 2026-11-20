@@ -4,7 +4,7 @@ import { CurrencyCtx } from '../context.js';
 import { accountLabel, loanSummary, roundMoney, todayLocal } from '../utils/money.js';
 import { borrowerGroups, borrowerLoanLabel } from '../utils/borrowers.js';
 import { fmt } from '../utils/format.js';
-import BorrowerForm, { BorrowerMergeForm } from './BorrowerForm.jsx';
+import BorrowerForm, { BorrowerMergeForm, BorrowerDeleteForm } from './BorrowerForm.jsx';
 import MoneyActionMenu from './MoneyActionMenu.jsx';
 
 function Amounts({ items, currency, className = '' }) {
@@ -12,15 +12,15 @@ function Amounts({ items, currency, className = '' }) {
 }
 
 export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelete,
-  onSaveBorrower, onMergeBorrowers, onArchive, onModalChange, onOpenMenu,
+  onSaveBorrower, onDeleteBorrower, onMergeBorrowers, onArchive, onModalChange, onOpenMenu,
   onOpenNotifications, notifCount, showQuickRefresh, onQuickRefresh }) {
   const currency = useContext(CurrencyCtx);
   const [mode, setMode] = useState('active');
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState(null), [merge, setMerge] = useState(null);
+  const [form, setForm] = useState(null), [merge, setMerge] = useState(null), [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  useEffect(() => { onModalChange?.(!!form || !!merge); return () => onModalChange?.(false); }, [form, merge, onModalChange]);
+  useEffect(() => { onModalChange?.(!!form || !!merge || !!deleting); return () => onModalChange?.(false); }, [form, merge, deleting, onModalChange]);
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -126,6 +126,7 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
         {selected && onSaveBorrower && <MoneyActionMenu label="Manage borrower" actions={[
           { label: 'Edit borrower', icon: Pencil, onSelect: () => setForm(selected) },
           onMergeBorrowers && groups.length > 1 && { label: 'Merge duplicate borrower', icon: Users, onSelect: () => setMerge(selected) },
+          onDeleteBorrower && { label: 'Delete borrower', icon: Trash2, danger: true, onSelect: () => setDeleting(selected) },
         ]} />}
       </div>
       {selected ? <>
@@ -155,6 +156,7 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
       </>}
     </div></div>
     {form && <BorrowerForm borrower={form === 'new' ? null : form} onClose={() => setForm(null)} onSave={async draft => { const id = await onSaveBorrower(draft); setForm(null); setSelectedId(id); if (!selected) setMode('directory'); }} />}
+    {deleting && <BorrowerDeleteForm borrower={deleting} onClose={() => setDeleting(null)} onDelete={async id => { await onDeleteBorrower(id); setDeleting(null); setSelectedId(null); setMode('directory'); }} />}
     {merge && <BorrowerMergeForm source={merge} borrowers={groups} onClose={() => setMerge(null)} onMerge={async (source, target) => { const id = await onMergeBorrowers(source, target); setMerge(null); setSelectedId(id); }} />}
   </div>;
 }

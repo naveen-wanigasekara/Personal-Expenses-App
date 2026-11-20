@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Sheet from './Sheet.jsx';
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 
 export default function BorrowerForm({ borrower, onSave, onClose }) {
   const [name, setName] = useState(borrower?.name || '');
@@ -47,6 +48,31 @@ export function BorrowerMergeForm({ source, borrowers, onMerge, onClose }) {
         </fieldset>
       </div>
       <div className="entry-footer">{error && <p className="money-error" role="alert">{error}</p>}<button className="save-btn" disabled={saving || !target}>{saving ? 'Merging…' : 'Merge histories'}</button></div>
+    </form>
+  </Sheet>;
+}
+
+export function BorrowerDeleteForm({ borrower, onDelete, onClose }) {
+  const { saving, saveError, runSave } = useAsyncSave();
+  const hasHistory = borrower.loans.length > 0;
+  return <Sheet title="Delete borrower" className="entry-sheet" onClose={() => { if (!saving) onClose(); }}>
+    <form className="entry-form" onSubmit={event => {
+      event.preventDefault();
+      if (!hasHistory) runSave(() => onDelete(borrower.id));
+    }}>
+      <div className="entry-scroll" role="region" aria-label="Delete borrower details">
+        <fieldset disabled={saving}>
+          <p className="borrower-delete-message">{hasHistory ? <><strong>{borrower.name}</strong> has loan history and cannot be deleted. This protects your loans, repayments and balances, including settled and archived loans.</> : <>Delete <strong>{borrower.name}</strong>? This borrower has no loan history. This action cannot be undone.</>}</p>
+          {hasHistory && <p className="entry-caption">Use Archive on individual loans to keep inactive loans out of the active list.</p>}
+        </fieldset>
+      </div>
+      <div className="entry-footer">
+        {saveError && <p className="money-error" role="alert">{saveError}</p>}
+        <div className="borrower-delete-actions">
+          <button type="button" className="tx-edit" disabled={saving} onClick={onClose}>{hasHistory ? 'Got it' : 'Cancel'}</button>
+          {!hasHistory && <button type="submit" className="tx-del" disabled={saving}>{saving ? 'Deleting…' : 'Delete borrower'}</button>}
+        </div>
+      </div>
     </form>
   </Sheet>;
 }

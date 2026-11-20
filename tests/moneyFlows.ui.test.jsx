@@ -315,3 +315,36 @@ it('creates, reloads and deletes a recurring reminder through Profile',async()=>
  await waitFor(()=>expect(store.recurring_reminders).toHaveLength(1));cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications',exact:true})[0]);expect(screen.getAllByText('QA recurring')).toHaveLength(2);fireEvent.click(screen.getByRole('button',{name:'Close',exact:true}));
  fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Recurring Reminders',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Delete reminder: QA recurring',exact:true}));await waitFor(()=>expect(store.recurring_reminders).toHaveLength(0));
 });
+
+const openBorrowerForDeletion = async name => {
+ fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);
+ fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:`Open ${name}`}));
+ fireEvent.click(screen.getByLabelText('Manage borrower'));
+ fireEvent.click(screen.getByRole('button',{name:'Delete borrower',exact:true}));
+ return screen.getByRole('dialog',{name:'Delete borrower'});
+};
+it('confirms empty borrower deletion, supports cancellation, and persists removal after reload',async()=>{
+ store.records=[{id:'empty',kind:'borrower',name:'Empty borrower',legacyNames:[]},{id:'other',kind:'borrower',name:'Keep borrower',legacyNames:[]}];
+ await mount();let dialog=await openBorrowerForDeletion('Empty borrower');
+ fireEvent.click(within(dialog).getByRole('button',{name:'Cancel'}));expect(store.records).toHaveLength(2);
+ fireEvent.click(screen.getByLabelText('Manage borrower'));fireEvent.click(screen.getByRole('button',{name:'Delete borrower',exact:true}));
+ dialog=screen.getByRole('dialog',{name:'Delete borrower'});fireEvent.click(within(dialog).getByRole('button',{name:'Delete borrower'}));
+ await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ expect(screen.queryByRole('button',{name:'Open Empty borrower'})).toBeNull();expect(screen.getByRole('button',{name:'Open Keep borrower'})).toBeTruthy();
+ expect(store.records.map(r=>r.id)).toEqual(['other']);
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Money Lent',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Borrowers',exact:true}));expect(screen.queryByRole('button',{name:'Open Empty borrower'})).toBeNull();
+});
+it('does not delete a borrower or financial records when loan history exists',async()=>{
+ await mount();await lend({borrower:'Protected borrower',account:'cash',amount:'1000'});
+ const original=structuredClone(store.records),revision=store.revision;
+ const dialog=await openBorrowerForDeletion('Protected borrower');
+ expect(within(dialog).getByText(/has loan history and cannot be deleted/)).toBeTruthy();expect(within(dialog).queryByRole('button',{name:'Delete borrower'})).toBeNull();
+ fireEvent.click(within(dialog).getByRole('button',{name:'Got it',exact:true}));expect(store.records).toEqual(original);expect(store.revision).toBe(revision);
+});
+it('failed borrower deletion preserves the saved identity and requires refreshed records',async()=>{
+ store.records=[{id:'empty',kind:'borrower',name:'Empty borrower',legacyNames:[]}];
+ await mount();const dialog=await openBorrowerForDeletion('Empty borrower');store.fail=true;
+ fireEvent.click(within(dialog).getByRole('button',{name:'Delete borrower'}));
+ await screen.findByRole('heading',{name:'Refresh your saved records'});expect(store.records).toHaveLength(1);expect(store.records[0].id).toBe('empty');
+});

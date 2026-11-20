@@ -82,6 +82,25 @@ export function mergeBorrowerProfiles(records, sourceId, targetId, createId) {
   return { records: next, targetId: targetProfile.id };
 }
 
+// Delete only identities without financial history, including their merged aliases.
+// Settled and archived loans remain history and must never disappear implicitly.
+export function deleteBorrowerProfile(records, id) {
+  const group = borrowerGroups(records).find(group => group.id === id);
+  if (!group?.profile) throw new Error('Borrower not found. Refresh your records.');
+  if (group.loans.length) throw new Error('This borrower has loan history. Keep the borrower to preserve loans and repayments.');
+  const profiles = new Map(records.filter(record => record.kind === 'borrower').map(record => [record.id, record]));
+  const removed = new Set([id]);
+  for (const profile of profiles.values()) {
+    const seen = new Set();
+    let current = profile.id;
+    while (profiles.has(current) && !seen.has(current)) {
+      if (current === id) { removed.add(profile.id); break; }
+      seen.add(current); current = profiles.get(current).mergedInto;
+    }
+  }
+  return records.filter(record => !removed.has(record.id));
+}
+
 export function validateBorrowerProfiles(records) {
   const profiles = new Map(records.filter(r => r.kind === 'borrower').map(r => [r.id, r]));
   for (const profile of profiles.values()) {

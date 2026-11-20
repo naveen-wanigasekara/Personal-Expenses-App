@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { borrowerGroups, bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles, validateBorrowerProfiles } from '../src/utils/borrowers.js';
+import { borrowerGroups, bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles, deleteBorrowerProfile, validateBorrowerProfiles } from '../src/utils/borrowers.js';
 import { entryDirection, isLoanArchived, loanSummary, moneyBalances, moneyTransactions, validateMoneyRecords } from '../src/utils/money.js';
 const loan = (extra = {}) => ({ id:'loan1',kind:'loan',borrower:'Saman',amount:50000,account:'cash',date:'2026-01-01',rate:0,ratePeriod:'monthly',interestBasis:'original',arrangement:'flexible',...extra });
 const pay = (extra = {}) => ({id:'pay1',kind:'repayment',loanId:'loan1',principal:50000,interest:0,account:'cash',date:'2026-02-01',...extra});
@@ -87,4 +87,23 @@ test('received activity palettes have readable normal text in both themes', () =
    assert.ok(css.includes(`#${ink}`)&&css.includes(`#${bg}`));const a=luminance(ink),b=luminance(bg);assert.ok((Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5);
  }
  assert.match(css,/\.activity-status/);assert.match(css,/border-left:3px solid var\(--received-edge\)/);
+});
+
+test('deletes empty borrowers and merged aliases without changing other records or balances', () => {
+ const rows=[profile(),profile({id:'alias',name:'Alias',mergedInto:'person1'}),profile({id:'alias2',name:'Alias two',mergedInto:'alias'}),profile({id:'other',name:'Other'}),loan({borrowerId:'other',borrower:'Other'})];
+ const next=deleteBorrowerProfile(rows,'person1');
+ validateBorrowerProfiles(next);
+ assert.deepEqual(next,rows.slice(3));
+ assert.deepEqual(projection(next),projection(rows));
+ assert.equal(rows.length,5);
+});
+test('blocks borrower deletion with active, settled, archived or legacy loan history', () => {
+ const base=loan({borrowerId:'person1'});
+ for (const history of [[base],[base,pay()],[{...base,archived:true}],[{...loan(),borrowerId:undefined}]]) {
+  const rows=[profile({legacyNames:['Saman']}),...history];
+  assert.throws(()=>deleteBorrowerProfile(rows,'person1'),/loan history/);
+ }
+ const merged=[profile(),profile({id:'alias',name:'Alias',mergedInto:'person1'}),loan({borrowerId:'alias'})];
+ assert.throws(()=>deleteBorrowerProfile(merged,'person1'),/loan history/);
+ assert.throws(()=>deleteBorrowerProfile([profile()],'missing'),/not found/);
 });

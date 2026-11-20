@@ -75,7 +75,7 @@ import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
 import MoneyForm from "./MoneyForm.jsx";
 import MoneyLentView from "./MoneyLentView.jsx";
-import { bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles } from "../utils/borrowers.js";
+import { bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles, deleteBorrowerProfile } from "../utils/borrowers.js";
 import { moneyTransactions, loanSummary, todayLocal, validateMoneyRecords, validateSavingsChange } from "../utils/money.js";
 
 const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
@@ -479,6 +479,13 @@ export default function MainApp({ user }) {
   const mergeBorrowers=async(source,target)=>{
     const result=mergeBorrowerProfiles(moneyRecords,source,target,newBorrowerId);
     await persistMoneySet(result.records);return result.targetId;
+  };
+  const deleteBorrower=async(id)=>{
+    const next=deleteBorrowerProfile(moneyRecords,id);
+    validateMoneyRecords(next,transactions,cards,moneyRecords);
+    const kept=new Set(next.map(record=>record.id));
+    await writeTracked(moneyRecords.filter(record=>!kept.has(record.id)).map(record=>({table:'money_records',op:'delete',id:record.id})));
+    setMoneyRecords(next);
   };
   const setLoanArchived=async(loan,archived)=>{
     const summary=loanSummary(loan,moneyRecords);
@@ -1362,7 +1369,7 @@ export default function MainApp({ user }) {
               onCustomChartsChange={updateCustomCharts}
             />
           )}
-          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)} onOpenNotifications={()=>setShowNotifs(true)} notifCount={notifCount} showQuickRefresh={isStandalone} onQuickRefresh={handleQuickRefresh}/>}
+          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onDeleteBorrower={deleteBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)} onOpenNotifications={()=>setShowNotifs(true)} notifCount={notifCount} showQuickRefresh={isStandalone} onQuickRefresh={handleQuickRefresh}/>}
           {tab === "cards" && (
             <CardsView
               cards={cardsWithBalance}
