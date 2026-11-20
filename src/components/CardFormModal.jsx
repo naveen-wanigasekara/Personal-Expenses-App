@@ -1,3 +1,4 @@
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 import { useState, useContext } from "react";
 import { Check, CreditCard } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -6,8 +7,10 @@ import { fmt } from "../utils/format.js";
 import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
 
-export default function CardFormModal({ card, onClose, onSave }) {
+export default function CardFormModal({ card, onClose, onSave, moneyEnabled = false }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
+  const [paymentDueDate,setPaymentDueDate]=useState(card?.paymentDueDate || "");
   const [name, setName] = useState(card?.name || "");
   const [limit, setLimit] = useState(card?.limit || "");
   const [openingBalance, setOpeningBalance] = useState(
@@ -21,20 +24,22 @@ export default function CardFormModal({ card, onClose, onSave }) {
 
   const handleSave = () => {
     if (!name.trim() || !limit || +limit <= 0) return;
-    onSave({
+    return runSave(() => onSave({
       id: card?.id,
       name: name.trim(),
       limit: +limit,
       openingBalance: +openingBalance || 0,
       colors: CARD_COLORS[colorIdx],
-    });
+      paymentDueDate,
+    }));
   };
 
   const valid = name.trim() && limit && +limit > 0;
   const [from, to] = CARD_COLORS[colorIdx];
 
   return (
-    <Sheet title={card ? "Edit card" : "New card"} onClose={onClose}>
+    <Sheet title={card ? "Edit card" : "New card"} onClose={() => { if (!saving) onClose(); }}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <div
         className="ct-visual preview"
         style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
@@ -91,6 +96,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
           : "If you already owe money on this card, enter it here. Leave 0 if starting fresh."}
       </div>
 
+      {moneyEnabled && <label className="money-field"><span>Next card payment date (optional)</span><input type="date" aria-label="Next card payment date" className="text-input" value={paymentDueDate} onChange={e=>setPaymentDueDate(e.target.value)}/><span className="money-hint">A reminder date, not a calculated statement amount. Update it for each statement.</span></label>}
       <label className="field-lbl">Color</label>
       <div className="color-grid">
         {CARD_COLORS.map((c, i) => (
@@ -118,6 +124,7 @@ export default function CardFormModal({ card, onClose, onSave }) {
       >
         {card ? "Update card" : "Add card"}
       </button>
+      </fieldset>
     </Sheet>
   );
 }

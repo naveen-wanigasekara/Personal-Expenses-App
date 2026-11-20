@@ -1,3 +1,4 @@
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 import { useState, useContext } from "react";
 import { CurrencyCtx } from "../context.js";
 import Sheet from "./Sheet.jsx";
@@ -11,6 +12,7 @@ export default function InvestmentValueModal({
   onSave,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
   const isEditing = !!valuation;
   const [value, setValue] = useState(() => {
     if (valuation) return String(valuation.value);
@@ -27,14 +29,15 @@ export default function InvestmentValueModal({
 
   const handleSave = () => {
     if (!valid) return;
-    onSave(+value, date, note.trim());
+    return runSave(() => onSave(+value, date, note.trim()));
   };
 
   return (
     <Sheet
       title={`${isEditing ? "Edit value" : "Record value"} — ${investment.name}`}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
     >
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <label className="field-lbl">Current value</label>
       <div className="big-input">
         <span className="big-cur">{CURRENCY}</span>
@@ -71,6 +74,7 @@ export default function InvestmentValueModal({
       >
         {isEditing ? "Save changes" : "Record value"}
       </button>
+      </fieldset>
     </Sheet>
   );
 }

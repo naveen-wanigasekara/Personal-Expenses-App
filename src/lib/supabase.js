@@ -29,8 +29,8 @@ const rememberRows = (table, rows) => financeBatch.remember(table, rows);
 export const clearDataSnapshots = () => financeBatch.clear();
 export const commitFinanceChanges = (changes) => financeBatch.commit(changes);
 
-const TX_ENC = ["amount", "category", "note", "date"];
-const CARD_ENC = ["name", "credit_limit", "opening_balance", "colors"];
+const TX_ENC = ["amount", "category", "note", "date", "account"];
+const CARD_ENC = ["name", "credit_limit", "opening_balance", "colors", "payment_due_date"];
 const BUDGET_ENC = [
   "income_total",
   "income_categories",
@@ -402,4 +402,35 @@ export async function upsertUserSettings(userId, updates) {
   if (error) throw error;
   rememberRows("user_settings", data);
   return decryptFields(data, SETTINGS_ENC);
+}
+
+// One database snapshot keeps the revision and the balances it protects aligned.
+export async function fetchMoneyWorkspace() {
+  const {data,error}=await supabase.rpc('money_workspace');
+  if(error) throw error;
+  rememberRows('transactions',data.transactions);
+  rememberRows('cards',data.cards);
+  rememberRows('money_records',data.records);
+  const [transactions,cards,records]=await Promise.all([
+    Promise.all(data.transactions.map(r=>decryptFields(r,TX_ENC))),
+    Promise.all(data.cards.map(r=>decryptFields(r,CARD_ENC))),
+    Promise.all(data.records.map(r=>decryptFields(r,['data']))),
+  ]);
+  return {transactions,cards,records:records.map(r=>({...r.data,id:r.id})),revision:data.revision};
+}
+export async function commitMoneyChanges(changes,revision) {
+  // Reuse encryption/preconditions, but keep all related writes and the revision
+  // check inside the same database transaction.
+  const client={rpc:async(_name,args)=>{
+    const result=await supabase.rpc('apply_money_changes',{changes:args.changes,expected_revision:revision});
+    if(result.error) return result;
+    return {data:result.data.results,error:null,revision:result.data.revision};
+  }};
+  let nextRevision;
+  const original=client.rpc;
+  client.rpc=async(...args)=>{const result=await original(...args);nextRevision=result.revision;return result;};
+  // A temporary adapter uses the SAME saved snapshots via the batch store's
+  // optional RPC override; snapshots only change after confirmed success.
+  await financeBatch.commit(changes,client);
+  return nextRevision;
 }

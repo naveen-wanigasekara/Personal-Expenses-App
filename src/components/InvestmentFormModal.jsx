@@ -1,3 +1,4 @@
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 import { useState, useContext } from "react";
 import { LineChart } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
@@ -21,6 +22,7 @@ const INVESTMENT_TYPES = [
 
 export default function InvestmentFormModal({ investment, onClose, onSave }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
   const [name, setName] = useState(investment?.name || "");
   const [type, setType] = useState(investment?.type || INVESTMENT_TYPES[0]);
   const [initialAmount, setInitialAmount] = useState(
@@ -58,7 +60,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
 
   const handleSave = () => {
     if (!valid) return;
-    onSave({
+    return runSave(() => onSave({
       id: investment?.id,
       name: name.trim(),
       type,
@@ -69,14 +71,15 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       interestRate: isFd ? +interestRate : null,
       payoutFrequency: isFd ? payoutFrequency : null,
       tenureMonths: isFd ? +tenureMonths : null,
-    });
+    }));
   };
 
   return (
     <Sheet
       title={investment ? "Edit investment" : "New investment"}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
     >
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <div className="ct-visual preview inv-visual">
         <div className="ct-vis-top">
           <span className="ct-bank">{name || "Investment Name"}</span>
@@ -227,6 +230,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
       >
         {investment ? "Save changes" : "Add investment"}
       </button>
+      </fieldset>
     </Sheet>
   );
 }

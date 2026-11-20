@@ -1,0 +1,197 @@
+.money-view { padding: 22px 18px 110px; max-width: 1000px; margin: 0 auto; }
+.money-heading { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.money-heading h1,.money-heading h2 { flex:1; min-width:0; overflow-wrap:anywhere; margin:0; }
+.money-heading h1 {font-size:24px}.money-heading h2 {font-size:19px}
+.money-form fieldset {border:0;padding:0;margin:0;min-width:0;display:grid;gap:16px;}
+.money-field {display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600;min-width:0;}
+.money-field .text-input {width:100%;min-width:0;box-sizing:border-box;}
+.money-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.money-hint {font-size:12px;line-height:1.7;color:var(--ink-soft);overflow-wrap:anywhere;}
+.money-error {font-size:13px;color:var(--out);line-height:1.6;}
+.money-form .save-btn {margin-top:18px}.money-view>.money-field {margin-bottom:18px}
+.money-stats {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:20px 0;}
+.money-stats dt {font-size:11px;color:var(--ink-soft);margin-bottom:5px}.money-stats dd {margin:0;font-size:16px;font-weight:600;overflow-wrap:anywhere;}
+.money-actions {display:flex;gap:14px;flex-wrap:wrap;margin:14px 0;}.money-actions .text-btn {font-size:12px;}
+.money-status {padding:5px 9px;border-radius:20px;background:var(--surface);font-size:11px;}.money-status.due {color:var(--out)}
+.money-payment {border-top:1px solid var(--border);padding:12px 0;font-size:12px;line-height:1.6;}
+.money-loan {margin-bottom:18px}.money-loan summary {cursor:pointer;font-size:12px;padding:10px 0;}
+.money-overview {display:grid;gap:12px}.money-overview .money-stats {margin:0;}.money-overview .money-actions {margin:0;}
+.money-choice {display:grid;gap:10px;margin:18px 0;}.money-choice button {text-align:left;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;}
+@media(min-width:1024px){.money-view {padding:26px 30px}.money-stats {grid-template-columns:repeat(3,minmax(0,1fr));}.money-overview .money-stats{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:360px){.money-fields {grid-template-columns:1fr}.money-stats dd{font-size:14px}}
+
+/* Entry screens show one task at a time; the action stays above the keyboard. */
+.sheet.entry-sheet { display:flex; flex-direction:column; overflow:hidden; padding-bottom:0; max-height:min(92dvh,calc(var(--sheet-viewport-height,100dvh) - env(safe-area-inset-top) - 8px)); }
+.entry-sheet .sheet-handle { flex:none; }
+.entry-sheet .sheet-hd { flex:none; margin-bottom:14px; }
+.entry-intro { margin:0 0 16px; font-size:13px; color:var(--ink-soft); }
+.entry-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; min-height:0; overflow-y:auto; padding:2px 2px 22px; }
+.entry-action { display:flex; flex-direction:column; gap:10px; align-items:flex-start; min-width:0; min-height:104px; padding:15px; border:1px solid var(--border); border-radius:14px; background:var(--surface); color:var(--ink); text-align:left; cursor:pointer; font:inherit; }
+.entry-action svg { color:var(--accent); flex:none; }
+.entry-action span { display:grid; gap:4px; min-width:0; }
+.entry-action strong { font-size:14px; line-height:1.35; font-weight:600; overflow-wrap:anywhere; }
+.entry-action small { color:var(--ink-soft); font-size:11px; line-height:1.45; }
+.entry-action:hover,.entry-action:focus-visible { border-color:var(--accent); background:var(--bg-2); }
+.entry-action:disabled { opacity:.45; cursor:default; }
+.entry-back { display:inline-flex; align-self:flex-start; align-items:center; gap:6px; border:0; background:none; color:var(--ink-soft); font:inherit; font-size:12px; min-height:32px; margin:-4px 0 10px; padding:0 3px; cursor:pointer; }
+.entry-form { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; }
+/* Fieldsets use an anonymous inner box in browsers: scroll a normal block instead. */
+.entry-scroll { flex:1 1 auto; min-height:0; min-width:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; scroll-padding-block:12px; padding:2px 3px 0; }
+.entry-scroll>fieldset { display:grid; min-width:0; gap:15px; align-content:start; border:0; margin:0; padding:2px 3px 18px; }
+.entry-sheet .money-field { font-size:12px; font-weight:500; gap:7px; }
+.entry-sheet .text-input { min-height:46px; padding:11px 12px; font-size:16px; border-radius:11px; }
+.entry-sheet .amount-input { margin:0; padding:13px 14px; border-radius:12px; }
+.entry-sheet .amount-input input,.entry-sheet .amount-input input:focus,.entry-sheet .amount-input input:focus-visible { border:0; outline:0; box-shadow:none; padding:0; margin:0; background:none; font-size:28px; }
+.entry-check { display:flex; align-items:center; gap:10px; min-height:34px; font-size:13px; color:var(--ink); }
+.entry-check input { width:18px; height:18px; accent-color:var(--accent); flex:none; }
+.entry-details { padding-top:2px; border-top:1px solid var(--border); }
+.entry-details>summary { padding:12px 0; cursor:pointer; color:var(--ink-soft); font-size:12px; }
+.entry-details>label { margin-bottom:8px; }
+.entry-extra { display:grid; gap:14px; padding:2px 0 8px; }
+.entry-caption { margin:0; font-size:12px; line-height:1.6; color:var(--ink-soft); }
+.entry-chooser>.entry-caption { flex:none; padding-bottom:16px; }
+.entry-route { margin:0; padding:11px 12px; border-radius:10px; background:var(--surface); font-size:13px; color:var(--ink-soft); }
+.entry-route span { margin:0 8px; color:var(--accent); }
+.entry-balance { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; padding:11px 12px; border-radius:10px; background:var(--surface); font-size:12px; color:var(--ink-soft); }
+.entry-balance strong { color:var(--ink); font-size:16px; margin-left:auto; }.entry-balance small { flex-basis:100%; font-size:11px; }
+.entry-help { font-size:12px; color:var(--ink-soft); }.entry-help summary { cursor:pointer; margin-bottom:8px; }
+.entry-footer { flex:none; background:var(--bg-2); border-top:1px solid var(--border); padding:12px 0 max(18px,calc(env(safe-area-inset-bottom) + 10px)); }
+.entry-footer .save-btn { margin:0; width:100%; min-height:46px; }
+/* Entry actions share the sheet surface; keep only the button's own background. */
+.entry-sheet .entry-footer { background:transparent; border-top:0; }
+.entry-sheet .entry-footer .save-btn { box-shadow:none; }
+.entry-footer .money-error { margin:0 0 10px; max-height:64px; overflow-y:auto; }
+@media(min-width:1024px){.sheet.entry-sheet {max-width:520px;padding-bottom:0}.entry-actions{gap:12px}.entry-action{min-height:112px}.entry-scroll>fieldset{padding-bottom:22px}.entry-footer{padding-bottom:24px}}
+
+/* Received activity uses readable foregrounds, a visible edge, and a text label. */
+:root { --received-ink:#84efb7; --received-bg:#19372d; --received-edge:#4dbd87; }
+:root[data-theme="light"] { --received-ink:#11633d; --received-bg:#e7f5ec; --received-edge:#258354; }
+.entry-navigation { flex:none; padding:0 2px 15px; border-bottom:1px solid var(--border); margin-bottom:14px; }
+.entry-navigation .entry-intro { margin-bottom:10px; }
+.entry-action-income svg { color:var(--received-ink); }
+.entry-action-expense svg { color:var(--out); }
+.entry-action-income { border-top:3px solid var(--received-edge); }
+.entry-action-expense { border-top:3px solid var(--out); }
+.entry-action:focus-visible,.entry-back:focus-visible,.money-view summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.borrower-toolbar { display:flex; align-items:center; gap:12px 18px; flex-wrap:wrap; margin:18px 0; }
+.borrower-toolbar .text-btn,.archive-button { display:inline-flex; align-items:center; gap:6px; min-height:40px; font-size:12px; }
+.archive-button { margin-left:auto; flex:none; }
+.borrower-search { max-width:360px; margin:20px 0; }
+.borrower-card,.borrower-summary,.borrower-history { padding:18px; margin-bottom:16px; }
+.borrower-card .money-stats { margin:16px 0; }
+.borrower-card .money-actions { margin-bottom:0; }
+.borrower-section-title { font-size:16px; margin:24px 0 14px; }
+.borrower-manage { margin-top:24px; font-size:13px; }
+.borrower-history>summary,.borrower-manage>summary { cursor:pointer; padding:8px 0; font-size:13px; }
+.borrower-event { padding:14px 10px; margin-top:10px; border-top:1px solid var(--border); border-radius:10px; font-size:12px; }
+.borrower-event-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.borrower-event-title>span { margin-left:auto; color:var(--ink-soft); }
+.borrower-event p { line-height:1.6; margin:8px 0; }
+.borrower-event .money-actions { margin:6px 0 0; }
+.money-view .activity-received,.tx.activity-received { background:var(--received-bg); border-left:3px solid var(--received-edge); }
+.tx.activity-received .tx-main { background:var(--received-bg); }
+.tx.activity-received .tx-main:hover { filter:brightness(1.04); }
+.tx-amt.received,.activity-status,.money-status.settled { color:var(--received-ink); }
+.activity-status { font-size:10px; font-weight:700; margin-right:6px; }
+.money-status.settled { background:var(--received-bg); border:1px solid var(--received-edge); font-weight:600; }
+.money-view .loan-settled { border-left:3px solid var(--received-edge); }
+.money-payment.activity-received { padding:12px; border-radius:10px; margin-top:8px; }
+.loan-more { margin-top:6px; }
+@media(max-width:420px) { .money-heading h1 { font-size:21px; } .archive-button { font-size:11px; gap:4px; } .borrower-summary { gap:16px 10px; } }
+@media(max-height:600px) { .entry-navigation { padding-bottom:8px; margin-bottom:8px; } .entry-navigation .entry-intro { display:none; } .entry-back { margin-bottom:3px; } }
+
+
+/* Lending uses the same topbar, page titles, cards and action tokens as other tabs. */
+.view.money-view { display:flex; flex-direction:column; height:100dvh; overflow:hidden; padding:0; max-width:none; margin:0; }
+.money-view>.dash-topbar { flex:none; margin:0; }
+.lending-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:20px 18px max(120px,calc(env(safe-area-inset-bottom) + 100px)); }
+.lending-content { max-width:1040px; margin:0 auto; }
+.lending-page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.lending-page-heading .page-hd { min-width:0; flex:1; }
+.lending-page-heading .page-title { overflow-wrap:anywhere; }
+.money-view .archive-button { margin:0; flex:none; font-size:12px; }
+.money-view .borrower-toolbar { gap:8px; margin:0 0 18px; }
+.money-view .lending-primary { width:auto; margin:0; min-height:40px; padding:9px 14px; font-size:13px; border-radius:12px; }
+.money-view .tx-edit,.money-view .tx-del { min-height:36px; max-width:100%; line-height:1.4; }
+.money-view .tx-edit svg,.money-view .tx-del svg { flex:none; }
+.money-view .tx-edit:focus-visible,.money-view .tx-del:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.lending-intro { margin:0 0 16px; }
+.money-view .borrower-search { max-width:440px; margin:0 0 18px; }
+.lending-borrower-grid { display:grid; gap:16px; }
+.lending-borrower-grid .borrower-card { margin:0; }
+.lending-loan-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.lending-loan-heading h2,.lending-loan-heading h3 { min-width:0; margin:0; font-family:var(--sans); font-weight:600; font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+.lending-meta>span { min-width:0; overflow-wrap:anywhere; }
+.lending-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:12px; color:var(--ink-soft); margin:10px 0 0; }
+.money-view .money-stats { margin:16px 0; gap:14px 18px; }
+.money-view .money-stats:empty { display:none; }
+.money-view .money-stats dt { font-size:12px; line-height:1.5; }
+.money-view .money-stats dd { font-family:var(--sans); font-size:18px; line-height:1.3; font-variant-numeric:tabular-nums; }
+.money-view .borrower-summary { margin:0 0 20px; }
+.money-view .borrower-section-title { margin:20px 0 12px; }
+.lending-terms { display:flex; flex-wrap:wrap; column-gap:16px; color:var(--ink-soft); font-size:12px; line-height:1.6; }
+.lending-terms:empty { display:none; }
+.lending-terms p { margin:0 0 6px; }
+.lending-note { font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.lending-history { border-top:1px solid var(--border); margin-top:12px; padding-top:4px; }
+.lending-history>summary,.borrower-history>summary { min-height:40px; display:list-item; align-content:center; font-size:13px; color:var(--ink-soft); cursor:pointer; }
+.lending-payment-heading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px 10px; }
+.lending-payment-heading>p { flex:1; margin:0; line-height:1.6; }
+.lending-payment-heading>.lending-action-menu { margin-left:auto; }
+.borrower-event-title>time { margin-left:auto; color:var(--ink-soft); font-size:12px; }
+.lending-action-menu { position:relative; flex:none; }
+.lending-action-menu[open] { z-index:4; }
+.money-view .lending-menu-trigger { display:flex; align-items:center; gap:6px; min-height:36px; padding:6px 10px; list-style:none; font-size:12px; cursor:pointer; user-select:none; }
+.money-view .borrower-toolbar .lending-action-list { left:0; right:auto; }
+.lending-menu-trigger::-webkit-details-marker { display:none; }
+.lending-action-list { position:absolute; top:calc(100% + 6px); right:0; width:218px; max-width:calc(100vw - 50px); max-height:min(300px,55dvh); overflow:auto; padding:5px; background:var(--surface); border:1px solid var(--border-2); border-radius:12px; box-shadow:var(--shadow-md); }
+.lending-menu-item { display:flex; align-items:center; gap:9px; width:100%; min-height:40px; padding:9px 10px; border:0; border-radius:8px; background:none; color:var(--ink); white-space:normal; overflow-wrap:anywhere; font:500 13px/1.4 var(--sans); text-align:left; cursor:pointer; }
+.lending-menu-item svg { flex:none; }
+.lending-menu-item.danger { color:var(--danger); }
+.lending-menu-item:hover,.lending-menu-item:focus-visible { background:var(--surface-2); outline:2px solid var(--accent); outline-offset:-2px; }
+.lending-menu-item.danger:hover { background:var(--danger-soft); }
+.lending-menu-item:disabled { opacity:.5; cursor:default; }
+.lending-empty { padding:36px 14px; }
+@media(min-width:1024px) {
+  .view.money-view { height:calc(100dvh - 76px); }
+  .lending-scroll { padding:28px 30px 48px; }
+  .lending-borrower-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:1023px),(any-pointer:coarse) {
+  .money-view .tx-edit,.money-view .tx-del,.money-view .lending-primary,.money-view .lending-menu-trigger,.lending-menu-item { min-height:44px; }
+}
+
+/* The view switch uses the existing action styling with a clear selected state. */
+.money-view .lending-view-button[aria-pressed="false"] { background:var(--surface); color:var(--ink-soft); border-color:var(--border-2); }
+
+/* Categorized reminders use the existing notification rows and theme tokens. */
+.sheet.payment-notifications-sheet { display:flex; flex-direction:column; overflow:hidden; }
+.payment-notifications-sheet>.sheet-hd,.payment-notifications-sheet>.sheet-handle { flex:none; }
+.payment-notifications-scroll { min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:0 3px 6px; }
+.notif-intro,.notif-explanation { color:var(--ink-soft); font-size:.8125rem; line-height:1.6; }
+.notif-intro { margin:0 0 16px; }
+.notif-explanation { margin:18px 0 0; }
+.payment-notif-section { margin-bottom:20px; }
+.payment-notif-section .notif-section-label { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.04em; color:var(--ink-soft); line-height:1.5; }
+.payment-notif-item { align-items:flex-start; padding:12px; gap:10px; }
+.payment-notif-heading { display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; margin-bottom:4px; }
+.payment-notif-heading .notif-title { overflow-wrap:anywhere; margin:0; font-size:14px; }
+.payment-notif-item .notif-meta { font-size:.875rem; line-height:1.6; overflow-wrap:anywhere; }
+.payment-notif-date { margin:4px 0; }
+.payment-notif-item .notif-amt { margin-top:6px; font-size:14px; white-space:normal; overflow-wrap:anywhere; }
+.payment-notif-item .notif-amt>span { font-size:.8125rem; color:var(--ink-soft); font-weight:500; }
+.payment-notif-item .notif-complete-btn { width:36px; height:36px; }
+.payment-notif-status { font-size:.75rem; font-weight:600; padding:3px 7px; border-radius:20px; background:var(--neutral-soft); color:var(--neutral); }
+.payment-notif-status.overdue,.payment-notif-status.due { background:var(--danger-soft); color:var(--danger); }
+.payment-notif-status.date-needed { background:var(--warn-soft); color:var(--warn); }
+.payment-notif-item.overdue,.payment-notif-item.due { border-left:3px solid var(--danger); }
+@media(max-width:1023px),(any-pointer:coarse) { .payment-notif-item .notif-complete-btn { width:44px; height:44px; } }
+
+.payment-notif-month { margin:8px 0 2px; font-size:.875rem; font-weight:600; color:var(--ink-soft); }
+.tx-date-total>span { font-weight:400; text-transform:none; letter-spacing:0; }
+
+.save-fields { border:0; padding:0; margin:0; min-width:0; }
+
+.borrower-delete-message { margin:0; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
+.borrower-delete-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
+.borrower-delete-actions button { min-height:44px; padding:10px 14px; justify-content:center; }

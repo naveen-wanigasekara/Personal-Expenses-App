@@ -252,7 +252,7 @@ export default function CardDetailView({
                     <div className="ipr-label">{plan.label}</div>
                     <div className="ipr-meta">
                       {CURRENCY} {fmtCompact(plan.monthlyAmount)}/mo · {paid}/
-                      {plan.totalMonths} months
+                      {plan.totalMonths} months{plan.startDate && <> · Starts {plan.startDate}</>}
                     </div>
                     <div className="ipr-bar">
                       <div

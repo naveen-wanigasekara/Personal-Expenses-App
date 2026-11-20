@@ -52,19 +52,19 @@ export const HELP_SECTIONS = [
     items: [
       {
         q: "What transaction types are there?",
-        a: "Expense — cash or bank debit purchase.\nIncome — salary, bonus, passive income, etc.\nCard Purchase — something bought on credit.\nCard Payment — paying off your credit card bill.\nCard Interest — interest or fees charged by the bank.",
+        a: "Choose Income for money received or Expenses for money paid or spent, then choose a type. Income includes regular income, repayments received and savings withdrawals. Expenses includes purchases or bills, lending, adding to savings, credit card payments and card fees. Only the selected form is shown. Income earned and Spending reports still exclude principal repayments and transfers.",
       },
       {
         q: "How do I record a card purchase?",
-        a: "Tap the New button in the navigation bar, choose Card Purchase, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category.",
+        a: "Tap the New button in the navigation bar, choose Expenses → Purchase or bill → Pay with → Credit card, enter the amount, select which card was used, then pick a category. This adds to your card balance and counts as an expense in that category.",
       },
       {
         q: "How do I record paying my credit card bill?",
-        a: "Tap the New button in the navigation bar, choose Card Payment, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals. The amount field suggests your current outstanding balance automatically; double-check it after switching cards, since it updates to match whichever card is selected.",
+        a: "Tap the New button in the navigation bar, choose Expenses → Pay credit card, enter the amount paid, and select the card. This reduces your card balance — it is NOT counted as a new expense, so it won't inflate your spending totals. The amount field suggests your current outstanding balance automatically; double-check it after switching cards, since it updates to match whichever card is selected.",
       },
       {
         q: "What is Split into Installments?",
-        a: "When adding a Card Purchase, you can toggle Split into Installments to break a large purchase into equal monthly payments. Enter a plan label (e.g. \"iPhone 16\"), the number of months, and the start month. The app pre-creates all monthly charge transactions automatically — so your card balance reflects the full amount immediately, but each month's Ledger and budget only shows that month's installment. Each installment transaction displays a badge (e.g. 2/12) showing which payment in the plan it is. You can view and cancel active plans from Card Detail.",
+        a: "When adding a Card Purchase, you can toggle Split into Installments to break a large purchase into equal monthly payments. Enter a plan label (e.g. \"iPhone 16\"), the number of months, and the installment start date (defaults to today). The first installment uses that date; later months use the same day, clamped to the last day in shorter months. Existing month-only plans keep their original dates. The app pre-creates all monthly charge transactions automatically — so each month's Ledger and budget show that month's scheduled installment. Current outstanding includes billed months; future installments are shown separately and reserve your available credit. Each installment transaction displays a badge (e.g. 2/12) showing which payment in the plan it is. You can view and cancel active plans from Card Detail.",
       },
       {
         q: "How do I record an installment payment to my bank?",
@@ -95,7 +95,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "How do I filter transactions?",
-        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All, Income, Cash Purchase, Card transactions), or category. The count shown updates to match.",
+        a: "Use the search bar and the dropdowns at the top to filter by month, transaction type (All types, Money received, Money paid or spent, Loans & transfers, Card transactions), or category. The count shown updates to match.",
       },
       {
         q: "How do I edit a transaction?",
@@ -122,7 +122,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "What can I see in Card Detail?",
-        a: "Tap any card to view its details, including the Current Outstanding Balance, this month's purchases, payments, interest, active installment plans with progress bars, and a full activity list.\n\nThe Current Outstanding Balance shown on each credit card in the Cards tab represents your total outstanding balance, including all active installment plans and any existing outstanding balance.\n\nAfter opening a card, the Current Outstanding Balance shown in Card Detail includes only the outstanding amounts up to the current month. Future scheduled installment charges are not included until their month arrives."},
+        a: "Tap any card to view its details, including the Current Outstanding Balance, this month's purchases, payments, interest, active installment plans with progress bars, and a full activity list.\n\nThe Current Outstanding Balance in both the Cards list and Card Detail includes the starting balance plus charges through the current month, minus recorded card payments. Future installment charges are shown separately and reduce available credit.\n\nAfter opening a card, the Current Outstanding Balance shown in Card Detail includes only the outstanding amounts up to the current month. Future scheduled installment charges are not included until their month arrives."},
       {
         q: "What are Active Plans in Card Detail?",
         a: "When you have installment plans running on a card, an Active Plans section appears at the top of Card Detail. Each plan shows the label, monthly amount, how many installments have been paid vs. the total, and a progress bar. You can cancel a plan from here.",
@@ -208,25 +208,39 @@ export const HELP_SECTIONS = [
     ],
   },
   {
+    id: "money-lent", title: "Savings & Money Lent", icon: "💰",
+    items: [
+      {q: "How do I withdraw from savings?", a: "Tap New Entry → Income → Withdraw from savings. Enter the amount. The receiving balance is Cash. Savings decreases and the receiving balance increases, without income or spending. Edit or delete the entry from the Ledger to correct it. Withdrawals cannot exceed the savings available on that date."},
+      {q: "How do I track several loans to one person?", a: "Open Money Lent → Borrowers to register a person, or choose New borrower when lending. Select the same borrower each time you lend again. View borrower & history shows every loan, repayment, date, funding source and interest term. Each loan keeps its own rate and repayment history. Manage borrower → Edit borrower renames the display without rewriting old loans. Manage borrower → Merge duplicate borrower joins histories only when you explicitly select the same person’s other record."},
+      {q: "Where do completed or inactive loans go?", a: "Money Lent shows active loans. Loans move to Archive automatically when principal and accrued interest are settled. Loan Actions → Archive inactive loan hides an inactive loan from the main list, but any unpaid debt still appears in Insights and borrower totals. Open Archive to review payment histories or restore an unpaid archived loan. Overdue loans remain active unless you archive them yourself."},
+      {q: "How do I lend money?", a: "Tap New Entry → Expenses → Lend money. Choose the borrower, amount, date and source (Cash, Savings, or a specific credit card). Loans are interest-free by default. Turn on Charge interest to enter a monthly or yearly rate. More options contains repayment arrangements, calculation basis and notes. Lending is not ordinary spending. A credit card loan increases card debt; a savings loan reduces savings directly."},
+      {q: "How do I record repayments?", a: "Choose New Entry → Income → Repayment received, select the borrower and then their dated loan and split the payment into principal returned and interest received. Select Cash or Savings as the destination. Only interest is income. Cash received does not reduce credit card debt: record Expenses → Pay credit card separately when you pay your bank."},
+      {q: "How is loan interest calculated?", a: "Simple interest is due on each completed monthly or yearly anniversary of the lending date. Choose original principal or remaining principal. For remaining principal, repayments on a due date reduce the next period’s charge. There is no automatic compounding or partial-period charge. Unpaid interest stays separate from principal; interest paid early appears as a credit. Bank/card fees are separate expenses."},
+      {q: "Where do I see outstanding loans?", a: "Open Money Lent from the menu or desktop sidebar. Each loan shows original amount, principal returned and outstanding, interest received and due, funding source, dates, repayment arrangement and payment history. Monthly installments schedule equal principal payments; interest is separate. Loans with repayments cannot be deleted until those repayments are removed."},
+      {q: "What do the Insights balances mean?", a: "Cash combines your available cash and bank money in one balance. Savings is the remaining emergency fund. Owed to You is outstanding loan principal, with unpaid interest shown separately. You Owe is positive credit card balances. Principal repayments and transfers are excluded from Income and Spending. Balances use the selected month, capped at today; card debt is current. Existing Cash and Bank entries remain intact and are included together; no transfer between them is needed."},
+      {q: "How do card payment reminders work?", a: "Edit a card to enter its next payment date. Insights lists that reminder alongside your current card balance; this is not an automatically calculated statement amount or minimum payment. Update the date for each statement. Money Lent separately shows loan principal and interest due from people."},
+    ],
+  },
+  {
     id: "insights",
     title: "Insights Tab",
     icon: "📊",
     items: [
       {
         q: "What does the Insights tab show?",
-        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash in Hand, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
+        a: "Everything on the Insights tab is customisable, including charts you build yourself (see Custom Charts). By default you see: Net This Month, In, Out, Cash, Total Savings, Card Debt, Total Investments, Cash Balance Trend, Budget Progress, Plan vs. Actual, Cashflow, Income Breakdown, and Expense Breakdown. You can hide, show, or reorder any section — built-in or custom — from one Customise sheet.",
       },
       {
         q: "What is the notification bell?",
-        a: "The bell icon in the top-right of every page shows a red badge with the number of active notifications. Tap it to open the Notifications panel, which has two sections:\nInstallment Payments — installment plans that have a charge due this month, showing the plan name, card, current installment number (e.g. 3/12), and monthly amount.\nRecurring Bills — any recurring reminders set up for this month that haven't been addressed yet.\nTap the checkmark on any notification to mark it as completed — it disappears from the list for the rest of the month, then reappears next month if it's still relevant.",
+        a: "The bell shows the number of active payment reminders. Notifications groups dated overdue and due-today items under Due Payments, with other reminders under Monthly Credit Card (CC) Payments, Installment Payments, and Other Upcoming Payments. It includes saved card payment dates, upcoming installments within 20 days of today (inclusive), current-month due installments, and recurring bills for this month and next. Installment reminders use their recorded transaction dates, falling back to the plan schedule, independently of card payment deadlines. Installment reminders retain each saved charge's date, amount, and identity when edited. Exact card payment dates are not guessed when missing. Card amounts are current outstanding balances, not bank statement/minimum-payment amounts; installments are part of card payments. The checkmark dismisses only that occurrence on this device and does not record a payment. Existing category-based recurring auto-dismiss still applies per month.",
       },
       {
-        q: "What is Cash in Hand?",
+        q: "What is Cash?",
         a: "The cumulative cash actually available to you. It adds up all income and subtracts cash expenses and card payments — but does NOT subtract card purchases, since no cash leaves your hand when you buy on credit. Paying off your card does reduce it, because that cash goes to the bank.",
       },
       {
         q: "What is the Cash Balance Trend?",
-        a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash in Hand — plotted month by month so you can see whether it's trending up or down.",
+        a: "A 12-month chart of your cumulative cash balance — the same balance shown in Cash — plotted month by month so you can see whether it's trending up or down.",
       },
       {
         q: "What is Total Investments?",
@@ -377,7 +391,7 @@ export const HELP_SECTIONS = [
       },
       {
         q: "Number formatting",
-        a: "Key amounts — Net this month, Cash in Hand, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
+        a: "Key amounts — Net this month, Cash, In, and Out — always display as full numbers (e.g. Rs. 87,800.00) so nothing is hidden at a glance. Compact K/M notation is used only in secondary places like chart labels and budget summaries where space is limited. When entering amounts, just type the digits and the app formats them automatically.",
       },
     ],
   },

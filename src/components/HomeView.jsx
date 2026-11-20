@@ -12,6 +12,7 @@ import {
 import { CurrencyCtx } from "../context.js";
 import { fmt, monthKey, monthLabel, shiftMonth } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
+import { entryDirection } from "../utils/money.js";
 import TxRow from "./TxRow.jsx";
 
 export default function HomeView({
@@ -71,6 +72,7 @@ export default function HomeView({
 
   // Resolve a transaction's effective category via getCat (same logic as TxRow)
   const effectiveCatId = (t) => {
+    if(t.moneyRecordId) return t.isLoanInterest?"loan-interest":"money-movement";
     if (t.type === "card-payment") return "card-payment";
     if (t.type === "income")
       return getCat(t.category, "income", allExpCats, allIncCats).id;
@@ -82,12 +84,13 @@ export default function HomeView({
     return transactions.filter((t) => {
       const typeMatch =
         filterType === "all" ||
+        (filterType === "money" && !!t.moneyRecordId) ||
         (filterType === "card" &&
           ["card-purchase", "card-payment", "card-interest"].includes(
             t.type,
           )) ||
-        (filterType === "income" && t.type === "income") ||
-        (filterType === "expense" && t.type === "expense");
+        (filterType === "income" && entryDirection(t) === "income") ||
+        (filterType === "expense" && entryDirection(t) === "expense");
       const catMatch = filterCat === "all" || effectiveCatId(t) === filterCat;
       if (!typeMatch || !catMatch) return false;
       if (!q) return true;
@@ -107,7 +110,7 @@ export default function HomeView({
     // Build a map of effective category IDs → category objects (mirrors how TxRow resolves cats)
     const catMap = new Map();
     transactions.forEach((t) => {
-      if (t.type === "card-payment") return;
+      if (t.type === "card-payment" || (t.moneyRecordId&&!t.isLoanInterest)) return;
       const cat =
         t.type === "income"
           ? getCat(t.category, "income", allExpCats, allIncCats)
@@ -251,8 +254,9 @@ export default function HomeView({
             }}
           >
             <option value="all">All types</option>
-            <option value="income">Income</option>
-            <option value="expense">Cash Purchase</option>
+            <option value="money">Loans & transfers</option>
+            <option value="income">Money received</option>
+            <option value="expense">Money paid or spent</option>
             <option value="card">Card transactions</option>
           </select>
           <select
@@ -293,6 +297,7 @@ export default function HomeView({
             {grouped.map(([date, items]) => {
               const dayTotal = items.reduce((s, t) => {
                 if (t.type === "income") return s - +t.amount;
+                if (t.moneyRecordId && !t.isLoanInterest) return s;
                 if (t.type === "card-payment") return s;
                 return s + +t.amount;
               }, 0);
@@ -306,7 +311,7 @@ export default function HomeView({
                   <div className="tx-date">
                     <span>{dateLabel}</span>
                     <span className="tx-date-total">
-                      {CURRENCY} {fmt(dayTotal)}
+                      <span>Net spending </span>{CURRENCY} {fmt(dayTotal)}
                     </span>
                   </div>
                   <div className="tx-stack">

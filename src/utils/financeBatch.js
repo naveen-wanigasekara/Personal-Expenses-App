@@ -6,7 +6,7 @@ export function createFinanceBatchStore(client, encryptFields, encryptedFields) 
     remember(table, rows) {
       for (const row of Array.isArray(rows) ? rows : rows ? [rows] : []) snapshots.set(`${table}:${keyFor(table, row)}`, row);
     },
-    async commit(changes) {
+    async commit(changes, rpcClient = client) {
       // Capture every precondition before yielding to encryption/network work.
       const prepared = changes.map((change) => {
         if (!encryptedFields[change.table]) throw new Error('Unsupported financial record.');
@@ -19,7 +19,7 @@ export function createFinanceBatchStore(client, encryptFields, encryptedFields) 
         return item;
       });
       for (const item of prepared) if (item.data) item.data = await encryptFields(item.data, encryptedFields[item.table]);
-      const { data, error } = await client.rpc('apply_finance_changes', { changes: prepared });
+      const { data, error } = await rpcClient.rpc('apply_finance_changes', { changes: prepared });
       if (error) throw error;
       if (!Array.isArray(data) || data.length !== prepared.length || data.some((result, i) => result.table !== prepared[i].table || result.id !== prepared[i].id || (prepared[i].op !== 'delete' && !result.row))) throw new Error('The save could not be confirmed. Refresh your records.');
       for (const result of data) {

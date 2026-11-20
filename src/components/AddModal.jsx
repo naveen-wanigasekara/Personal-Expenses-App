@@ -1,431 +1,119 @@
-import { useState, useEffect, useContext, useRef } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  CreditCard,
-  Percent,
-  LucideDollarSign,
-  Repeat,
-  AlertTriangle,
-} from "lucide-react";
-import { CurrencyCtx } from "../context.js";
-import { CARD_COLORS } from "../constants/currencies.js";
-import { getCat } from "../constants/categories.js";
-import { fmtCompact } from "../utils/format.js";
-import { loadLastCategory, saveLastCategory } from "../utils/storage.js";
-import Sheet from "./Sheet.jsx";
-import {validDate, validMonth} from "../utils/dateInput.js";
-import {validInstallmentMonths} from "../utils/installments.js";
-import AmountInput from "./AmountInput.jsx";
+import { useContext, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { CurrencyCtx } from '../context.js';
+import { SAVINGS_CATEGORY_ID } from '../constants/categories.js';
+import { todayLocal } from '../utils/money.js';
+import { fmtCompact } from '../utils/format.js';
+import { loadLastCategory, saveLastCategory } from '../utils/storage.js';
+import { validDate } from '../utils/dateInput.js';
+import { validInstallmentMonths } from '../utils/installments.js';
+import Sheet from './Sheet.jsx';
+import AmountInput from './AmountInput.jsx';
+import EntryNavigation from './EntryNavigation.jsx';
 
-export default function AddModal({
-  cards,
-  onClose,
-  onSave,
-  onSaveInstallment,
-  allExpCats,
-  allIncCats,
-  onAddCat,
-  editing,
-  userId,
-  installmentPlans,
-}) {
-  const isEditing = !!editing;
+export default function AddModal({ cards, onClose, onSave, onSaveInstallment, allExpCats, allIncCats,
+  editing, userId, initialType = 'expense', initialTask, onBack, moneyEnabled = false, entryGroup, entryTask, onSubtypeChange }) {
   const CURRENCY = useContext(CurrencyCtx);
-  const amountUserEdited = useRef(false);
-
-  const [type, setType] = useState(editing?.type || "expense");
-  const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
-  const [category, setCategory] = useState(editing?.category || allExpCats[0]?.id || "other");
-  const [note, setNote] = useState(editing?.note || "");
-  const [date, setDate] = useState(() => {
-    if (editing?.date) return editing.date;
-    const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-  });
-  const [cardId, setCardId] = useState(editing?.cardId || cards[0]?.id || "");
+  const isEditing = !!editing;
+  const [type, setType] = useState(editing?.type || initialType);
+  const [account] = useState(editing?.account || 'cash');
+  const [amount, setAmount] = useState(editing ? String(editing.amount) : '');
+  const [category, setCategory] = useState(editing?.category || '');
+  const [note, setNote] = useState(editing?.note || '');
+  const [date, setDate] = useState(() => editing?.date || todayLocal());
+  const [cardId, setCardId] = useState(editing?.cardId || cards[0]?.id || '');
   const [isInstallment, setIsInstallment] = useState(false);
-  const [installLabel, setInstallLabel] = useState("");
-  const [installMonths, setInstallMonths] = useState("12");
-  const [installStartMonth, setInstallStartMonth] = useState(() => {
-    const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [installLabel, setInstallLabel] = useState('');
+  const [installMonths, setInstallMonths] = useState('12');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const savingRef = useRef(false);
+  const amountUserEdited = useRef(false);
+  const isCardType = type.startsWith('card-');
+  const isExpense = type === 'expense' || type === 'card-purchase';
+  const isCardAction = type === 'card-payment' || type === 'card-interest';
+  const cats = (type === 'income' ? allIncCats : allExpCats).filter(c =>
+    // Saving has its own entry, but existing categorized savings remain editable.
+    isEditing || (c.id !== SAVINGS_CATEGORY_ID && c.id !== 'loan-interest'));
 
-  const isCardType =
-    type === "card-purchase" ||
-    type === "card-payment" ||
-    type === "card-interest";
-
-  const cats =
-    type === "income"
-      ? allIncCats
-      : type === "card-interest"
-        ? [getCat("card-interest", "expense")]
-        : type === "card-payment"
-          ? []
-          : allExpCats;
-
-  // Restore last-used category when type changes; auto-suggest card-payment amount
   useEffect(() => {
     if (isEditing) return;
-    amountUserEdited.current = false;
-
-    if (type === "card-payment") {
-      setCategory("");
-      if (type !== "card-purchase") setIsInstallment(false);
-      return;
-    }
-    if (type === "card-interest") {
-      setCategory("card-interest");
-      setIsInstallment(false);
-      return;
-    }
-
-    const validCats = type === "income" ? allIncCats : allExpCats;
+    if (type === 'card-interest') { setCategory('card-interest'); return; }
+    if (type === 'card-payment') { setCategory(''); return; }
     const last = userId ? loadLastCategory(userId, type) : null;
-    const isValid = last && validCats.some((c) => c.id === last);
-    setCategory(isValid ? last : validCats[0]?.id || (type === "income" ? "other-income" : "other"));
-
-    if (type !== "card-purchase") setIsInstallment(false);
-  }, [type]);
-
-  // Auto-suggest outstanding balance when card-payment is selected or card changes
+    setCategory(current => cats.some(c => c.id === current) ? current : cats.some(c => c.id === last) ? last : cats[0]?.id || 'other');
+  }, [type, isEditing, allExpCats, allIncCats, userId]);
   useEffect(() => {
-    if (type !== "card-payment" || isEditing || amountUserEdited.current)
-      return;
-    const card = cards.find((c) => c.id === cardId);
-    if (!card || card.currentBalance <= 0) return;
-    setAmount(card.currentBalance.toFixed(2));
-  }, [type, cardId]);
-
+    if (!isEditing && category && !isCardAction && userId) saveLastCategory(userId, type, category);
+  }, [category, type, userId, isEditing, isCardAction]);
   useEffect(() => {
-    if (isCardType && cards.length > 0 && !cardId) setCardId(cards[0].id);
-  }, [type, cards, cardId, isCardType]);
+    if (type !== 'card-payment' || isEditing || amountUserEdited.current) return;
+    const card = cards.find(c => c.id === cardId);
+    if (card?.currentBalance > 0) setAmount(card.currentBalance.toFixed(2));
+  }, [type, cardId, cards, isEditing]);
 
-  // Persist last-used category when it changes
-  useEffect(() => {
-    if (
-      !isEditing &&
-      userId &&
-      category &&
-      type !== "card-payment" &&
-      type !== "card-interest"
-    ) {
-      saveLastCategory(userId, type, category);
+  const changeType = next => {
+    setType(next); setIsInstallment(false); amountUserEdited.current = false;
+    if (next === 'card-payment') setCategory('');
+    else if (next === 'card-interest') setCategory('card-interest');
+    else {
+      const options = (next === 'income' ? allIncCats : allExpCats).filter(c => isEditing || (c.id !== SAVINGS_CATEGORY_ID && c.id !== 'loan-interest'));
+      setCategory(current => options.some(c => c.id === current) ? current : options[0]?.id || 'other');
     }
-  }, [category]);
-
-  const handleSave = () => {
-    if (isInstallment) {
-      if (
-        !amount ||
-        !Number.isFinite(+amount) ||
-        +amount <= 0 ||
-        !installLabel.trim() ||
-        !validInstallmentMonths(+installMonths) ||
-        !validMonth(installStartMonth) ||
-        !cardId
-      )
-        return;
-      onSaveInstallment({
-        label: installLabel.trim(),
-        monthlyAmount: +amount,
-        totalMonths: +installMonths,
-        startMonth: installStartMonth,
-        category,
-        cardId,
-      });
-      return;
-    }
-    if (!amount || !Number.isFinite(+amount) || +amount <= 0 || !validDate(date)) return;
-    if (isCardType && !cardId) return;
-    const tx = { type, amount: +amount, note, date };
-    if (type === "income") tx.category = category;
-    else if (type === "expense") tx.category = category;
-    else if (type === "card-purchase") {
-      tx.category = category;
-      tx.cardId = cardId;
-    } else if (type === "card-interest") {
-      tx.category = "card-interest";
-      tx.cardId = cardId;
-    } else if (type === "card-payment") {
-      tx.cardId = cardId;
-    }
-    onSave(tx);
   };
-
-  const valid = isInstallment
-    ? amount &&
-      +amount > 0 &&
-      installLabel.trim() &&
-      validInstallmentMonths(+installMonths) &&
-      validMonth(installStartMonth) &&
-      cardId
-    : amount && +amount > 0 && validDate(date) && (!isCardType || cardId);
-
-  // Installment limit warning
-  const selectedCard = cards.find((c) => c.id === cardId);
-  const planTotal =
-    isInstallment && +amount > 0 && +installMonths > 0
-      ? +amount * +installMonths
-      : 0;
-  const availableCredit = selectedCard
-    ? (+selectedCard.limit || 0) -
-      selectedCard.currentBalance -
-      (selectedCard.futureInstallmentTotal || 0)
-    : 0;
-  const exceedsLimit =
-    isInstallment &&
-    planTotal > 0 &&
-    selectedCard?.limit &&
-    planTotal > availableCredit;
-
-  const typeOptions = [
-    { id: "income", label: "Income", icon: ArrowDown },
-    { id: "expense", label: "Cash Purchase", icon: LucideDollarSign },
-    {
-      id: "card-purchase",
-      label: "Card Purchase",
-      icon: CreditCard,
-      needCard: true,
-    },
-    {
-      id: "card-payment",
-      label: "Card Payment",
-      icon: CreditCard,
-      needCard: true,
-    },
-    {
-      id: "card-interest",
-      label: "Card Interest",
-      icon: Percent,
-      needCard: true,
-    },
-  ];
-  const availableTypes = typeOptions.filter(
-    (t) => !t.needCard || cards.length > 0,
-  );
-
-  return (
-    <Sheet
-      title={isEditing ? "Edit entry" : "New entry"}
-      onClose={onClose}
-      className="sheet-wide"
-    >
-      <div className="type-chips">
-        {availableTypes.map((t) => {
-          const Ic = t.icon;
-          return (
-            <button
-              key={t.id}
-              className={`type-chip ${type === t.id ? "active" : ""} ${t.id.startsWith("card") ? "card" : ""}`}
-              onClick={() => setType(t.id)}
-            >
-              <Ic size={12} strokeWidth={2.5} />
-              {t.label}
-            </button>
-          );
-        })}
+  const valid = Number.isFinite(+amount) && +amount > 0 && (isInstallment
+    ? installLabel.trim() && validInstallmentMonths(+installMonths) && validDate(date) && cardId
+    : validDate(date) && (!isCardType || cardId) && (isCardAction || category));
+  const submit = async event => {
+    event.preventDefault();
+    if (!valid || savingRef.current) return;
+    savingRef.current = true; setSaving(true); setSaveError('');
+    try {
+      if (isInstallment) {
+        await onSaveInstallment({ label: installLabel.trim(), monthlyAmount: +amount, totalMonths: +installMonths, startDate: date, category, cardId });
+      } else {
+        const tx = { type, amount: +amount, note, date, account: isCardType && type !== 'card-payment' ? null : account };
+        if (type !== 'card-payment') tx.category = type === 'card-interest' ? 'card-interest' : category;
+        if (isCardType) tx.cardId = cardId;
+        await onSave(tx);
+      }
+    } catch (error) { setSaveError(error.message || 'Could not save. Please try again.'); }
+    finally { savingRef.current = false; setSaving(false); }
+  };
+  const selectedCard = cards.find(c => c.id === cardId);
+  const planTotal = +amount * +installMonths;
+  const availableCredit = selectedCard ? +selectedCard.limit - selectedCard.currentBalance - (selectedCard.futureInstallmentTotal || 0) : 0;
+  const title = isEditing ? 'Edit entry' : entryGroup ? (entryGroup === 'income' ? 'Income' : 'Expenses') : initialTask === 'credit-card' ? 'Credit card' : type === 'income' ? 'Income' : isCardAction ? 'Credit card' : 'Expense';
+  const close = () => { if (!savingRef.current) onClose(); };
+  return <Sheet title={title} onClose={close} className="sheet-wide entry-sheet">
+    <form className="entry-form" onSubmit={submit}>
+      <div className="entry-scroll" role="region" aria-label="Entry details">
+      {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
+      {!entryGroup && onBack && <button className="entry-back" type="button" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Entry types</button>}
+        <fieldset disabled={saving}>
+          {isEditing && <label className="money-field"><span>Entry type</span><select aria-label="Entry type" className="text-input" value={type} onChange={e => changeType(e.target.value)}>
+            <option value="income">Income</option><option value="expense">Expense · Cash</option>
+            {cards.length > 0 && <><option value="card-purchase">Expense · Credit card</option><option value="card-payment">Card payment</option><option value="card-interest">Card interest & fees</option></>}
+          </select></label>}
+          {isCardAction && !isEditing && !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Card action" className="text-input" value={type} onChange={e => changeType(e.target.value)}><option value="card-payment">Pay card balance</option><option value="card-interest">Add interest or fees</option></select></label>}
+          <label className="money-field"><span>{isInstallment ? 'Monthly installment amount' : 'Amount'}</span><div className="amount-input"><span className="amt-cur">{CURRENCY}</span><AmountInput aria-label={isInstallment ? 'Monthly installment amount' : 'Amount'} value={amount} onChange={v => {amountUserEdited.current = true; setAmount(v);}} placeholder="0.00" /></div></label>
+          {isExpense && <label className="money-field"><span>Pay with</span><select aria-label="Pay with" className="text-input" value={type === 'card-purchase' ? 'card' : 'cash'} onChange={e => changeType(e.target.value === 'card' ? 'card-purchase' : 'expense')}><option value="cash">Cash</option>{cards.length > 0 && <option value="card">Credit card</option>}</select></label>}
+          {isCardType && <label className="money-field"><span>Credit card</span><select aria-label="Credit card" className="text-input" value={cardId} onChange={e => setCardId(e.target.value)}>{cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}{cardId && !cards.some(c => c.id === cardId) && <option value={cardId}>Previously selected card (deleted)</option>}</select></label>}
+          {!isCardAction && <label className="money-field"><span>Category</span><select aria-label="Category" className="text-input" value={category} onChange={e => setCategory(e.target.value)}>{cats.map(c => <option key={c.id} value={c.id}>{c.id === 'loan' ? `${c.label} (you pay)` : c.label}</option>)}</select></label>}
+          {type === 'card-purchase' && !isEditing && <label className="entry-check"><input type="checkbox" checked={isInstallment} onChange={e => setIsInstallment(e.target.checked)} /> Split into installments</label>}
+          {isInstallment ? <>
+            <label className="money-field"><span>Description</span><input className="text-input" aria-label="Installment description" value={installLabel} onChange={e => setInstallLabel(e.target.value)} required /></label>
+            <div className="money-fields"><label className="money-field"><span>Months</span><input className="text-input" type="number" aria-label="Number of months" value={installMonths} onChange={e => setInstallMonths(e.target.value)} min="2" max="120" required /></label><label className="money-field"><span>Installment start date</span><input type="date" className="text-input" aria-label="Installment start date" value={date} onChange={e => setDate(e.target.value)} required /></label></div>
+            <p className="entry-caption">First installment on this date, then monthly on the same day. Shorter months use their last day.</p>
+            {+amount > 0 && <p className="entry-caption">Total: {CURRENCY} {fmtCompact(planTotal)}</p>}
+            {selectedCard?.limit && planTotal > availableCredit && <p className="money-error">Plan exceeds available credit of {CURRENCY} {fmtCompact(availableCredit)}.</p>}
+          </> : <label className="money-field"><span>Date</span><input className="text-input" type="date" aria-label="Date" value={date} onChange={e => setDate(e.target.value)} required /></label>}
+          <details className="entry-details" open={note ? true : undefined}><summary>Add a note</summary><label className="money-field"><span>Note (optional)</span><input className="text-input" aria-label="Note" value={note} onChange={e => setNote(e.target.value)} placeholder="Optional description" /></label></details>
+          {isCardAction && <p className="entry-caption">{type === 'card-payment' ? 'Paid from Cash. Reduces your card balance.' : 'Adds to your card balance and spending.'}</p>}
+          {isEditing && editing.installmentId && <p className="entry-caption"><AlertTriangle size={13} /> Updates this entry, not the whole installment plan.</p>}
+        </fieldset>
       </div>
-
-      {cards.length === 0 && (
-        <div className="hint" style={{ marginBottom: 12 }}>
-          Add a card in the Cards tab to record card transactions.
-        </div>
-      )}
-
-      {isEditing && editing?.installmentId && (
-        <div className="hint warn-hint">
-          <AlertTriangle size={13} /> This transaction is part of an
-          installment plan — editing it here won't update the plan's monthly
-          amount.
-        </div>
-      )}
-
-      {type === "card-purchase" && !isEditing && (
-        <button
-          className={`installment-toggle ${isInstallment ? "active" : ""}`}
-          onClick={() => setIsInstallment(!isInstallment)}
-        >
-          <Repeat size={13} strokeWidth={2.5} />
-          Split into installments
-        </button>
-      )}
-
-      {isInstallment && <label className="field-lbl">Monthly installment amount</label>}
-      <div className="amount-input">
-        <span className="amt-cur">{CURRENCY}</span>
-        <AmountInput
-          aria-label={isInstallment ? "Monthly installment amount" : "Amount"}
-          value={amount}
-          onChange={(v) => {
-            amountUserEdited.current = true;
-            setAmount(v);
-          }}
-          placeholder="0.00"
-          autoFocus
-        />
-      </div>
-
-      {type === "card-payment" && (
-        <div className="hint" style={{ marginTop: 8 }}>
-          This reduces your card balance — it's not a new expense (the
-          purchases were already recorded).
-        </div>
-      )}
-
-      {isInstallment && (
-        <>
-          <label className="field-lbl">What is this for?</label>
-          <input
-            type="text"
-            className="text-input"
-            aria-label="Installment description"
-            value={installLabel}
-            onChange={(e) => setInstallLabel(e.target.value)}
-            placeholder="e.g. Samsung TV"
-            autoFocus
-          />
-          <label className="field-lbl">Number of months</label>
-          <input
-            type="number"
-            className="text-input"
-            aria-label="Number of months"
-            value={installMonths}
-            onChange={(e) => setInstallMonths(e.target.value)}
-            min="2"
-            max="120"
-            placeholder="12"
-          />
-          <label className="field-lbl">Start month</label>
-          <input
-            type="month"
-            className="text-input"
-            aria-label="Start month"
-            value={installStartMonth}
-            onChange={(e) => setInstallStartMonth(e.target.value)}
-          />
-          {amount && installMonths && +installMonths > 0 && (
-            <div className="installment-total">
-              Total: {CURRENCY} {fmtCompact(+amount * +installMonths)}
-            </div>
-          )}
-          {exceedsLimit && (
-            <div className="hint warn-hint">
-              <AlertTriangle size={13} /> Plan total ({CURRENCY}{" "}
-              {fmtCompact(planTotal)}) exceeds available credit ({CURRENCY}{" "}
-              {fmtCompact(availableCredit)}).
-            </div>
-          )}
-        </>
-      )}
-
-      {isCardType && cards.length > 0 && (
-        <>
-          <label className="field-lbl">Card</label>
-          <div className="card-picker">
-            {cards.map((c) => {
-              const [from, to] = c.colors || CARD_COLORS[0];
-              return (
-                <button
-                  key={c.id}
-                  className={`cp-btn ${cardId === c.id ? "active" : ""}`}
-                  onClick={() => setCardId(c.id)}
-                  style={{
-                    borderColor: cardId === c.id ? to : "transparent",
-                  }}
-                >
-                  <div
-                    className="cp-swatch"
-                    style={{
-                      background: `linear-gradient(135deg, ${from}, ${to})`,
-                    }}
-                  />
-                  <div className="cp-info">
-                    <div className="cp-name">{c.name}</div>
-                    <div className="cp-bal">
-                      {CURRENCY} {fmtCompact(c.currentBalance)}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {cats.length > 0 &&
-        type !== "card-interest" &&
-        type !== "card-payment" && (
-          <>
-            <label className="field-lbl">Category</label>
-            <div className="cat-grid">
-              {cats.map((c) => {
-                const Icon = c.icon;
-                const active = category === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    className={`cat-btn ${active ? "active" : ""}`}
-                    onClick={() => setCategory(c.id)}
-                    style={
-                      active
-                        ? { borderColor: c.color, background: `${c.color}14` }
-                        : {}
-                    }
-                  >
-                    <div
-                      className="cb-btn-icon"
-                      style={{ background: `${c.color}26`, color: c.color }}
-                    >
-                      <Icon size={14} strokeWidth={2} />
-                    </div>
-                    <span>{c.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-      {!isInstallment && (
-        <div className="field-row">
-          <div className="field-group">
-            <label className="field-lbl">Note</label>
-            <input
-              type="text"
-              className="text-input"
-              aria-label="Note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional description"
-            />
-          </div>
-          <div className="field-group">
-            <label className="field-lbl">Date</label>
-            <input
-              type="date"
-              className="text-input"
-              aria-label="Date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
-
-      <button
-        className={`save-btn ${!valid ? "disabled" : ""}`}
-        onClick={handleSave}
-        disabled={!valid}
-      >
-        {isInstallment
-          ? "Create Plan"
-          : isEditing
-            ? "Save changes"
-            : "Record"}
-      </button>
-    </Sheet>
-  );
+      <div className="entry-footer">{saveError && <p className="money-error" role="alert">{saveError}</p>}<button className="save-btn" type="submit" disabled={!valid || saving}>{saving ? 'Saving…' : isEditing ? 'Save changes' : isInstallment ? 'Create plan' : 'Record'}</button></div>
+    </form>
+  </Sheet>;
 }

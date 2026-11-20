@@ -1,11 +1,12 @@
+import { useAsyncSave } from '../hooks/useAsyncSave.js';
 import { useContext, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { CARD_COLORS } from "../constants/currencies.js";
-import { fmtCompact, monthLabel } from "../utils/format.js";
+import { fmtCompact, monthLabel, monthKey } from "../utils/format.js";
 import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
-import {elapsedInstallments, validInstallmentMonths} from "../utils/installments.js";
+import {elapsedInstallments, validInstallmentMonths, revisedInstallments} from "../utils/installments.js";
 
 // How many of the plan's months are already billed (this month included) —
 // mirrors CardDetailView's planElapsed. Total months can never be edited
@@ -15,11 +16,13 @@ import {elapsedInstallments, validInstallmentMonths} from "../utils/installments
 export default function InstallmentPlanFormModal({
   plan,
   cards,
+  transactions = [],
   allExpCats,
   onClose,
   onSave,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
   const paid = elapsedInstallments(plan);
 
   const [label, setLabel] = useState(plan.label);
@@ -36,21 +39,22 @@ export default function InstallmentPlanFormModal({
     cardId;
 
   const planTotal =
-    +amount > 0 && +totalMonths > 0 ? +amount * +totalMonths : 0;
+    +amount > 0 && +totalMonths > 0 ? revisedInstallments(plan, { monthlyAmount: +amount, totalMonths: +totalMonths, label, category, cardId }, transactions, monthKey(new Date())).total : 0;
 
   const handleSave = () => {
     if (!valid) return;
-    onSave(plan.id, {
+    return runSave(() => onSave(plan.id, {
       label: label.trim(),
       monthlyAmount: +amount,
       totalMonths: +totalMonths,
       category,
       cardId,
-    });
+    }));
   };
 
   return (
-    <Sheet title="Edit installment plan" onClose={onClose}>
+    <Sheet title="Edit installment plan" onClose={() => { if (!saving) onClose(); }}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <label className="field-lbl">What is this for?</label>
       <input
         type="text"
@@ -82,12 +86,12 @@ export default function InstallmentPlanFormModal({
           />
         </div>
         <div className="field-group">
-          <label className="field-lbl">Start month</label>
+          <label className="field-lbl">{plan.startDate ? "Installment start date" : "Start month"}</label>
           <input
             type="text"
-            aria-label="Start month"
+            aria-label={plan.startDate ? "Installment start date" : "Start month"}
             className="text-input"
-            value={monthLabel(plan.startMonth)}
+            value={plan.startDate || monthLabel(plan.startMonth)}
             disabled
           />
         </div>
@@ -170,6 +174,7 @@ export default function InstallmentPlanFormModal({
       >
         Save changes
       </button>
+      </fieldset>
     </Sheet>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { latestValuationValue } from '../utils/investmentValues.js';
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plus,
   BarChart3,
@@ -17,6 +18,7 @@ import { CurrencyCtx } from "../context.js";
 import { usePWA } from "../hooks/usePWA.js";
 import {
   getCat,
+  INCOME_CATEGORIES,
   isSpendableExpense,
   getProtectedCategory,
   getDefaultUserCats,
@@ -24,6 +26,8 @@ import {
 } from "../constants/categories.js";
 import {
   commitFinanceChanges,
+  fetchMoneyWorkspace,
+  commitMoneyChanges,
   fetchTransactions,
   insertTransaction,
   updateTransaction,
@@ -43,6 +47,7 @@ import {
   fetchUserSettings,
   upsertUserSettings,
 } from "../lib/supabase.js";
+import { buildPaymentNotifications } from "../utils/paymentNotifications.js";
 import { loadCompletedNotifs, saveCompletedNotifs } from "../utils/storage.js";
 import { monthKey, monthLabel, shiftMonth, emptyPlan } from "../utils/format.js";
 import NavBtn from "./NavBtn.jsx";
@@ -58,6 +63,7 @@ import UserView from "./UserView.jsx";
 import NavDrawer from "./NavDrawer.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
 import AddModal from "./AddModal.jsx";
+import NewEntryChooser from "./NewEntryChooser.jsx";
 import CardFormModal from "./CardFormModal.jsx";
 import InvestmentFormModal from "./InvestmentFormModal.jsx";
 import InvestmentValueModal from "./InvestmentValueModal.jsx";
@@ -67,11 +73,16 @@ import CategoriesModal from "./CategoriesModal.jsx";
 import RecurringRemindersModal from "./RecurringRemindersModal.jsx";
 import InstallmentPlanFormModal from "./InstallmentPlanFormModal.jsx";
 
-const VALID_TABS = ["dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
+import MoneyForm from "./MoneyForm.jsx";
+import MoneyLentView from "./MoneyLentView.jsx";
+import { bindLoanBorrower, saveBorrowerProfile, mergeBorrowerProfiles, deleteBorrowerProfile } from "../utils/borrowers.js";
+import { moneyTransactions, loanSummary, todayLocal, validateMoneyRecords, validateSavingsChange } from "../utils/money.js";
+
+const VALID_TABS = ["money-lent","dashboard", "home", "cards", "investments", "budget", "user", "loan-calculator", "bank-details"];
 const LAST_TAB_KEY = "quick_refresh_last_tab";
 
-import {validMonth} from "../utils/dateInput.js";
-import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets} from "../utils/installments.js";
+import {validDate} from "../utils/dateInput.js";
+import {elapsedInstallments, validInstallmentMonths, installmentMetadataTargets, installmentStart, installmentDate, revisedInstallments} from "../utils/installments.js";
 
 export default function MainApp({ user }) {
   // Quick Refresh (installed-PWA header button) does a real page reload —
@@ -82,10 +93,25 @@ export default function MainApp({ user }) {
     const saved = sessionStorage.getItem(LAST_TAB_KEY);
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
+  const moneyRevision = useRef(null);
+  const moneyWriteLock = useRef(false);
+  const [moneyRecords,setMoneyRecords]=useState([]);
+  const [moneyEnabled,setMoneyEnabled]=useState(false);
+  const [moneyForm,setMoneyForm]=useState(null);
+  const [pendingDelete,setPendingDelete]=useState(null);
+  const deleteTimer=useRef(null);
+  useEffect(()=>()=>clearTimeout(deleteTimer.current),[]);
+  const [loadFailed,setLoadFailed]=useState(false);
   const [loaded, setLoaded] = useState(false);
   const [mustReload, setMustReload] = useState(false);
   const commitBatch = useCallback(async (changes) => {
-    try { return await commitFinanceChanges(changes); }
+    try {
+      if(moneyRevision.current !== null) {
+        moneyRevision.current=await commitMoneyChanges(changes,moneyRevision.current);
+        return;
+      }
+      return await commitFinanceChanges(changes);
+    }
     catch (error) { setMustReload(true); throw error; }
   }, []);
   const [transactions, setTransactions] = useState([]);
@@ -93,6 +119,10 @@ export default function MainApp({ user }) {
   const [monthPlans, setMonthPlans] = useState({});
   const [fixedPlan, setFixedPlan] = useState(emptyPlan());
   const [showAdd, setShowAdd] = useState(false);
+  const [entryTask,setEntryTask]=useState(null);
+  const [entryGroup,setEntryGroup]=useState(null);
+  const [entryContext,setEntryContext]=useState({});
+  useEffect(()=>{if(!showAdd) {setEntryTask(null);setEntryGroup(null);setEntryContext({});}},[showAdd]);
   const [editingTx, setEditingTx] = useState(null);
   const [childModalOpen, setChildModalOpen] = useState(false);
   const [showCardForm, setShowCardForm] = useState(null);
@@ -125,7 +155,6 @@ export default function MainApp({ user }) {
   const [customCharts, setCustomCharts] = useState([]);
   const [installmentPlans, setInstallmentPlans] = useState([]);
   const [recurringReminders, setRecurringReminders] = useState([]);
-  const [pendingDelete, setPendingDelete] = useState(null);
   const [showNotifs, setShowNotifs] = useState(false);
   const [investments, setInvestments] = useState([]);
   const [investmentValuations, setInvestmentValuations] = useState([]);
@@ -189,16 +218,13 @@ export default function MainApp({ user }) {
   );
 
   const allExpCats = userCats.expense;
-  const allIncCats = userCats.income;
+  const allIncCats = useMemo(()=>userCats.income.some(c=>c.id==="loan-interest") ? userCats.income : [...userCats.income,INCOME_CATEGORIES.find(c=>c.id==="loan-interest")],[userCats.income]);
 
   const addCat = useCallback(
     async (type, cat) => {
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = { ...prev, [type]: [...prev[type], cat] };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: [...prevCats[type], cat] };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -206,7 +232,7 @@ export default function MainApp({ user }) {
         showError("Couldn't save category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   const editCat = useCallback(
@@ -221,17 +247,9 @@ export default function MainApp({ user }) {
         const { label: _droppedLabel, ...rest } = updates;
         safeUpdates = rest;
       }
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = {
-          ...prev,
-          [type]: prev[type].map((c) =>
-            c.id === id ? { ...c, ...safeUpdates } : c,
-          ),
-        };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: prevCats[type].map(c => c.id === id ? { ...c, ...safeUpdates } : c) };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -239,18 +257,15 @@ export default function MainApp({ user }) {
         showError("Couldn't save category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   const deleteCat = useCallback(
     async (type, id) => {
       if (getProtectedCategory(type, id)) return;
-      let prevCats, nextCats;
-      setUserCats((prev) => {
-        prevCats = prev;
-        nextCats = { ...prev, [type]: prev[type].filter((c) => c.id !== id) };
-        return nextCats;
-      });
+      const prevCats = userCats;
+      const nextCats = { ...prevCats, [type]: prevCats[type].filter(c => c.id !== id) };
+      setUserCats(nextCats);
       try {
         await upsertUserSettings(user.id, { categories: nextCats });
       } catch (e) {
@@ -258,7 +273,7 @@ export default function MainApp({ user }) {
         showError("Couldn't delete category. Try again.");
       }
     },
-    [user.id],
+    [user.id, userCats],
   );
 
   useEffect(() => {
@@ -268,6 +283,11 @@ export default function MainApp({ user }) {
   useEffect(() => {
     (async () => {
       try {
+        let workspace=null;
+        try { workspace=await fetchMoneyWorkspace(); } catch(error) {
+          if(!["PGRST202","42883"].includes(error.code)) throw error;
+        }
+        if(workspace) {setMoneyRecords(workspace.records);moneyRevision.current=workspace.revision;setMoneyEnabled(true);}
         const [
           txRows,
           cardRows,
@@ -278,8 +298,8 @@ export default function MainApp({ user }) {
           valuationRows,
           settingsRow,
         ] = await Promise.all([
-          fetchTransactions(user.id),
-          fetchCards(user.id),
+          workspace ? Promise.resolve(workspace.transactions) : fetchTransactions(user.id),
+          workspace ? Promise.resolve(workspace.cards) : fetchCards(user.id),
           fetchBudgets(user.id),
           fetchInstallmentPlans(user.id),
           fetchRecurringReminders(user.id),
@@ -298,6 +318,7 @@ export default function MainApp({ user }) {
             note: r.note || "",
             date: r.date,
             installmentId: r.installment_id || null,
+            account:r.account || "cash",
           })),
         );
 
@@ -307,6 +328,7 @@ export default function MainApp({ user }) {
             name: r.name,
             limit: +r.credit_limit,
             openingBalance: +r.opening_balance,
+            paymentDueDate:r.payment_due_date||"",
             colors: r.colors,
           })),
         );
@@ -338,7 +360,7 @@ export default function MainApp({ user }) {
             totalAmount: +r.total_amount,
             monthlyAmount: +r.monthly_amount,
             totalMonths: +r.total_months,
-            startMonth: r.start_month,
+            ...installmentStart(r.start_month),
             category: r.category,
             active: r.active,
           })),
@@ -376,6 +398,7 @@ export default function MainApp({ user }) {
             investmentId: r.investment_id,
             value: +r.value,
             recordedDate: r.recorded_date,
+            createdAt: r.created_at || "",
             note: r.note || "",
           })),
         );
@@ -396,6 +419,7 @@ export default function MainApp({ user }) {
         setCustomCharts(settingsRow?.custom_charts ?? []);
       } catch (e) {
         console.error(e);
+        setLoadFailed(true);
         setErrorBanner("Couldn't load your data. Please refresh.");
       } finally {
         setLoaded(true);
@@ -408,87 +432,116 @@ export default function MainApp({ user }) {
     setTimeout(() => setErrorBanner(null), 4000);
   };
 
-  const addTx = useCallback(
-    async (tx) => {
-      const id = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const dbRow = {
-        id,
-        user_id: user.id,
-        type: tx.type,
-        amount: tx.amount,
-        category: tx.category || null,
-        card_id: tx.cardId || null,
-        note: tx.note || "",
-        date: tx.date,
-      };
-      setTransactions((p) => [{ ...tx, id }, ...p]);
-      try {
-        await insertTransaction(dbRow);
-      } catch (e) {
-        setTransactions((p) => p.filter((t) => t.id !== id));
-        showError("Couldn't save transaction. Try again.");
-      }
-    },
-    [user.id],
-  );
-
-  const deleteTx = useCallback(
-    (id) => {
-      const tx = transactions.find((t) => t.id === id);
-      if (!tx) return;
-      // Flush any previous pending delete immediately
-      setPendingDelete((prev) => {
-        if (prev) {
-          clearTimeout(prev.timer);
-          deleteTransaction(prev.tx.id).catch(() => {});
-        }
-        return null;
-      });
-      setTransactions((p) => p.filter((t) => t.id !== id));
-      const timer = setTimeout(async () => {
-        setPendingDelete(null);
-        try {
-          await deleteTransaction(id);
-        } catch {
-          showError("Couldn't delete transaction.");
-        }
-      }, 5000);
-      setPendingDelete({ tx, timer });
-    },
-    [transactions],
-  );
-
-  const undoDelete = useCallback(() => {
-    setPendingDelete((prev) => {
-      if (!prev) return null;
-      clearTimeout(prev.timer);
-      setTransactions((p) => [prev.tx, ...p]);
-      return null;
-    });
-  }, []);
-
-  const editTx = useCallback(
-    async (id, updates) => {
-      const prev = transactions;
-      setTransactions((p) =>
-        p.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-      );
-      try {
-        await updateTransaction(id, {
-          type: updates.type,
-          amount: updates.amount,
-          category: updates.category || null,
-          card_id: updates.cardId || null,
-          note: updates.note || "",
-          date: updates.date,
-        });
-      } catch (e) {
-        setTransactions(prev);
-        showError("Couldn't update transaction.");
-      }
-    },
-    [transactions],
-  );
+  const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
+  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
+  const openMoneyForm=(kind,loanId=null,borrowerId=null)=>{
+    const group=['repayment','withdrawal'].includes(kind)?'income':'expense';
+    setEntryGroup(group);setEntryTask(kind);setEntryContext({loanId,borrowerId});setShowAdd(true);
+  };
+  const chooseEntryGroup=group=>{setEntryGroup(group);setEntryTask(group==='income'?'income':'expense');setEntryContext({});};
+  const chooseEntryTask=task=>{setEntryTask(task);setEntryContext({});};
+  const editEntry=(tx)=>{
+    if(tx.moneyRecordId) {const record=moneyRecords.find(r=>r.id===tx.moneyRecordId);if(record) setMoneyForm({kind:record.kind,editing:record});}
+    else setEditingTx(tx);
+  };
+  const writeTracked = async (changes) => {
+    if(moneyWriteLock.current) throw new Error('A save is already in progress. Please wait.');
+    moneyWriteLock.current=true;
+    try {await commitBatch(changes);} finally {moneyWriteLock.current=false;}
+  };
+  const newBorrowerId=()=>`borrower_${crypto.randomUUID()}`;
+  const persistMoneySet=async(next)=>{
+    validateMoneyRecords(next,transactions,cards,moneyRecords);
+    const old=new Map(moneyRecords.map(record=>[record.id,record]));
+    const changes=next.filter(record=>JSON.stringify(old.get(record.id))!==JSON.stringify(record)).map(record=>({table:'money_records',op:old.has(record.id)?'update':'insert',id:record.id,data:{data:record}}));
+    if(changes.length) await writeTracked(changes);
+    setMoneyRecords(next);
+  };
+  const saveMoneyRecord=async(draft)=>{
+    const id=draft.id||`money_${crypto.randomUUID()}`;
+    let next=moneyRecords;
+    let identity={};
+    if(draft.kind==='loan') {
+      const bound=bindLoanBorrower(next,draft,newBorrowerId);
+      next=bound.records;identity={borrower:bound.borrower,borrowerId:bound.borrowerId};
+    }
+    const record={...moneyRecords.find(r=>r.id===id),id,kind:draft.kind,date:draft.date,note:(draft.note||'').trim(),
+      ...(draft.kind==='loan'?{...identity,amount:draft.amount,account:draft.account,cardId:draft.account==='card'?draft.cardId:null,rate:draft.rate,ratePeriod:draft.ratePeriod,interestBasis:draft.interestBasis,arrangement:draft.arrangement,installmentMonths:draft.installmentMonths,dueDate:draft.dueDate}:
+      draft.kind==='repayment'?{loanId:draft.loanId,principal:draft.principal,interest:draft.interest,account:draft.account}:
+      {from:draft.from,to:draft.to,amount:draft.amount})};
+    next=next.some(r=>r.id===id)?next.map(r=>r.id===id?record:r):[...next,record];
+    await persistMoneySet(next);setMoneyForm(null);setShowAdd(false);
+  };
+  const saveBorrower=async(draft)=>{
+    const result=saveBorrowerProfile(moneyRecords,draft,newBorrowerId);
+    await persistMoneySet(result.records);return result.profile.id;
+  };
+  const mergeBorrowers=async(source,target)=>{
+    const result=mergeBorrowerProfiles(moneyRecords,source,target,newBorrowerId);
+    await persistMoneySet(result.records);return result.targetId;
+  };
+  const deleteBorrower=async(id)=>{
+    const next=deleteBorrowerProfile(moneyRecords,id);
+    validateMoneyRecords(next,transactions,cards,moneyRecords);
+    const kept=new Set(next.map(record=>record.id));
+    await writeTracked(moneyRecords.filter(record=>!kept.has(record.id)).map(record=>({table:'money_records',op:'delete',id:record.id})));
+    setMoneyRecords(next);
+  };
+  const setLoanArchived=async(loan,archived)=>{
+    const summary=loanSummary(loan,moneyRecords);
+    if(archived&&(summary.outstanding>0||summary.interestDue>0)&&!window.confirm('Archive this inactive loan? Any unpaid principal and interest will still count as money owed to you.')) return;
+    await persistMoneySet(moneyRecords.map(record=>record.id===loan.id?{...record,archived,archivedAt:archived?todayLocal():null}:record));
+  };
+  const deleteMoneyRecord=async(record)=>{
+    try {
+      const next=moneyRecords.filter(r=>r.id!==record.id);
+      validateMoneyRecords(next,transactions,cards,moneyRecords);
+      if(!window.confirm(`Delete this ${record.kind}? Its balance effects will be reversed.`)) return;
+      await writeTracked([{table:'money_records',op:'delete',id:record.id}]);setMoneyRecords(next);
+    } catch(error) {showError(error.message);}
+  };
+  const transactionRow=tx=>({type:tx.type,amount:tx.amount,category:tx.category||null,card_id:tx.cardId||null,note:tx.note||'',date:tx.date,...(moneyEnabled?{account:tx.account||'cash'}:{})});
+  const addTx = async(tx)=>{
+    const id=`tx_${crypto.randomUUID()}`;
+    validateSavingsChange(allTransactions,[...allTransactions,{...tx,id}]);
+    if(moneyEnabled) await writeTracked([{table:'transactions',op:'insert',id,data:transactionRow(tx)}]);
+    else await insertTransaction({id,user_id:user.id,...transactionRow(tx)});
+    setTransactions(p=>[{...tx,id},...p]);
+  };
+  const editTx = async(id,updates)=>{
+    const next=transactions.map(t=>t.id===id?{...t,...updates}:t);
+    validateSavingsChange(allTransactions,[...next,...projectedMoney]);
+    if(moneyEnabled) await writeTracked([{table:'transactions',op:'update',id,data:transactionRow(updates)}]);
+    else await updateTransaction(id,transactionRow(updates));
+    setTransactions(next);
+  };
+  const finalizeDelete=async(tx)=>{
+    try {
+      if(moneyEnabled) await writeTracked([{table:'transactions',op:'delete',id:tx.id}]);
+      else await deleteTransaction(tx.id);
+    } catch(error) {
+      setTransactions(rows=>rows.some(t=>t.id===tx.id)?rows:[tx,...rows]);
+      showError(error.message||'Could not delete transaction.');
+      throw error;
+    }
+  };
+  const undoDelete=()=>{
+    clearTimeout(deleteTimer.current);
+    if(pendingDelete) setTransactions(rows=>[pendingDelete.tx,...rows]);
+    setPendingDelete(null);
+  };
+  const deleteTx = async(id)=>{
+    const virtual=allTransactions.find(t=>t.id===id&&t.moneyRecordId);
+    if(virtual) return deleteMoneyRecord(moneyRecords.find(r=>r.id===virtual.moneyRecordId));
+    try {
+      const next=transactions.filter(t=>t.id!==id);
+      validateSavingsChange(allTransactions,[...next,...projectedMoney]);
+      if(pendingDelete) {clearTimeout(deleteTimer.current);setPendingDelete(null);await finalizeDelete(pendingDelete.tx);}
+      const tx=transactions.find(t=>t.id===id);if(!tx) return;
+      setTransactions(next);setPendingDelete({tx});
+      deleteTimer.current=setTimeout(()=>{setPendingDelete(null);void finalizeDelete(tx).catch(()=>{});},5000);
+    } catch(error) {showError(error.message||'Could not delete transaction.');}
+  };
 
   const saveCard = useCallback(
     async (card) => {
@@ -500,9 +553,11 @@ export default function MainApp({ user }) {
         credit_limit: +card.limit || 0,
         opening_balance: +card.openingBalance || 0,
         colors: card.colors,
+        ...(moneyEnabled ? {payment_due_date:card.paymentDueDate || null} : {}),
       };
       try {
-        await upsertCard(dbRow);
+        if(moneyEnabled) {const {id: _id,user_id: _user,...data}=dbRow;await commitBatch([{table:"cards",op:cards.some(c=>c.id===id)?"update":"insert",id,data}]);}
+        else await upsertCard(dbRow);
         setCards((prev) => {
           const exists = prev.find((c) => c.id === id);
           const next = {
@@ -511,6 +566,7 @@ export default function MainApp({ user }) {
             limit: +card.limit,
             openingBalance: +card.openingBalance || 0,
             colors: card.colors,
+            paymentDueDate:card.paymentDueDate||"",
           };
           return exists
             ? prev.map((c) => (c.id === id ? next : c))
@@ -518,23 +574,26 @@ export default function MainApp({ user }) {
         });
       } catch (e) {
         showError("Couldn't save card.");
+        throw new Error("Couldn't save card.");
       }
     },
-    [user.id],
+    [user.id, moneyEnabled, cards, commitBatch],
   );
 
   const removeCard = useCallback(
     async (id) => {
+      if(moneyRecords.some(r=>r.kind==="loan"&&r.account==="card"&&r.cardId===id)) {showError("This card funds a recorded loan. Keep it to preserve the debt history.");return;}
       const prev = cards;
       setCards((p) => p.filter((c) => c.id !== id));
       try {
-        await deleteCard(id);
+        if(moneyEnabled) await commitBatch([{table:"cards",op:"delete",id}]);
+        else await deleteCard(id);
       } catch (e) {
         setCards(prev);
         showError("Couldn't delete card.");
       }
     },
-    [cards],
+    [cards, moneyRecords, moneyEnabled, commitBatch],
   );
 
   const saveInvestment = useCallback(
@@ -593,11 +652,13 @@ export default function MainApp({ user }) {
               investmentId: id,
               value: +investment.initialAmount,
               recordedDate: investment.startDate,
+              createdAt: new Date().toISOString(),
             },
           ]);
         }
       } catch (e) {
         showError("Couldn't save investment.");
+        throw new Error("Couldn't save investment.");
       }
     },
     [user.id],
@@ -627,12 +688,7 @@ export default function MainApp({ user }) {
   // the value of whichever remaining valuation has the latest recorded date.
   // Used after every add/edit/delete of a valuation so current_value never
   // drifts out of sync with the actual history.
-  const latestValuationValue = (valuationsForInvestment) => {
-    if (!valuationsForInvestment.length) return null;
-    return valuationsForInvestment.reduce((latest, v) =>
-      v.recordedDate >= latest.recordedDate ? v : latest,
-    ).value;
-  };
+
 
   const recordInvestmentValue = useCallback(
     async (investmentId, value, date, note) => {
@@ -642,13 +698,13 @@ export default function MainApp({ user }) {
 
       const nextForInvestment = [
         ...investmentValuations.filter((v) => v.investmentId === investmentId),
-        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, createdAt: new Date().toISOString(), note: note || "" },
       ];
       const newCurrentValue = latestValuationValue(nextForInvestment);
 
       setInvestmentValuations((p) => [
         ...p,
-        { id: valuationId, investmentId, value: +value, recordedDate: date, note: note || "" },
+        { id: valuationId, investmentId, value: +value, recordedDate: date, createdAt: new Date().toISOString(), note: note || "" },
       ]);
       setInvestments((p) =>
         p.map((i) =>
@@ -666,6 +722,7 @@ export default function MainApp({ user }) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
         showError("Couldn't record value. Try again.");
+        throw new Error("Couldn't record value. Try again.");
       }
     },
     [investments, investmentValuations, user.id],
@@ -707,6 +764,7 @@ export default function MainApp({ user }) {
         setInvestments(prevInvestments);
         setInvestmentValuations(prevValuations);
         showError("Couldn't update value. Try again.");
+        throw new Error("Couldn't update value. Try again.");
       }
     },
     [investments, investmentValuations],
@@ -795,7 +853,7 @@ export default function MainApp({ user }) {
 
   const saveInstallmentPlan = useCallback(
     async (planData) => {
-      if (!validInstallmentMonths(+planData.totalMonths) || !validMonth(planData.startMonth) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
+      if (!validInstallmentMonths(+planData.totalMonths) || !validDate(planData.startDate) || !Number.isFinite(+planData.monthlyAmount) || +planData.monthlyAmount <= 0) {
         showError("Enter a valid installment amount and a period from 2 to 120 months.");
         return;
       }
@@ -807,15 +865,14 @@ export default function MainApp({ user }) {
         totalAmount: planData.monthlyAmount * planData.totalMonths,
         monthlyAmount: planData.monthlyAmount,
         totalMonths: planData.totalMonths,
-        startMonth: planData.startMonth,
+        startMonth: planData.startDate.slice(0, 7),
+        startDate: planData.startDate,
         category: planData.category,
         active: true,
       };
       const txs = [];
       for (let i = 0; i < planData.totalMonths; i++) {
-        const [y, m] = planData.startMonth.split("-").map(Number);
-        const d = new Date(y, m - 1 + i, 1);
-        const txDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+        const txDate = installmentDate(newPlan, i);
         txs.push({
           id: `ptx_${planId}_${i}`,
           type: "card-purchase",
@@ -842,7 +899,7 @@ export default function MainApp({ user }) {
           { table: 'installment_plans', op: 'insert', id: planId, data: {
             id: planId, user_id: user.id, card_id: planData.cardId, label: planData.label,
             total_amount: newPlan.totalAmount, monthly_amount: planData.monthlyAmount,
-            total_months: planData.totalMonths, start_month: planData.startMonth, category: planData.category,
+            total_months: planData.totalMonths, start_month: planData.startDate, category: planData.category,
           } },
           ...txs.map((t) => ({ table: 'transactions', op: 'insert', id: t.id, data: {
             id: t.id, user_id: user.id, type: t.type, amount: t.amount, category: t.category,
@@ -852,6 +909,7 @@ export default function MainApp({ user }) {
       } catch {
         rollbackLocal();
         showError("Couldn't confirm the installment save. Refresh your records.");
+        throw new Error("Couldn't confirm the installment save. Refresh your records.");
       }
     },
     [user.id],
@@ -899,7 +957,6 @@ export default function MainApp({ user }) {
       if (!plan) return;
 
       const currentMk = monthKey(new Date());
-      const [sy, sm] = plan.startMonth.split("-").map(Number);
       const paid = elapsedInstallments(plan, currentMk);
       if (!validInstallmentMonths(+updates.totalMonths, paid, plan.totalMonths) || !Number.isFinite(+updates.monthlyAmount) || +updates.monthlyAmount <= 0) {
         showError("Enter a valid installment amount and duration.");
@@ -920,22 +977,8 @@ export default function MainApp({ user }) {
       const planTxs = transactions.filter((t) => t.installmentId === planId);
       const oldFutureTxs = planTxs.filter((t) => monthKey(t.date) > currentMk);
 
-      const newFutureTxs = [];
-      if (scheduleChanged) {
-        for (let i = paid; i < newTotalMonths; i++) {
-          const d = new Date(sy, sm - 1 + i, 1);
-          newFutureTxs.push({
-            id: `ptx_${planId}_${i}`,
-            type: "card-purchase",
-            amount: +updates.monthlyAmount,
-            category: updates.category,
-            cardId: updates.cardId,
-            note: updates.label,
-            date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`,
-            installmentId: planId,
-          });
-        }
-      }
+      const revised = revisedInstallments(plan, updates, transactions, currentMk);
+      const newFutureTxs = scheduleChanged ? revised.future : [];
 
       const updatedPlan = {
         ...plan,
@@ -943,7 +986,7 @@ export default function MainApp({ user }) {
         category: updates.category,
         monthlyAmount: +updates.monthlyAmount,
         totalMonths: newTotalMonths,
-        totalAmount: +updates.monthlyAmount * newTotalMonths,
+        totalAmount: scheduleChanged ? revised.total : (planTxs.length ? planTxs.reduce((sum, row) => sum + Number(row.amount), 0) : plan.totalAmount),
         cardId: updates.cardId,
       };
 
@@ -986,6 +1029,7 @@ export default function MainApp({ user }) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
         showError("Couldn't update installment plan. Try again.");
+        throw new Error("Couldn't update installment plan. Try again.");
       }
     },
     [transactions, installmentPlans, user.id],
@@ -1065,7 +1109,7 @@ export default function MainApp({ user }) {
     return cards.map((card) => {
       let balance = card.openingBalance || 0;
       let futureInstallmentTotal = 0;
-      transactions.forEach((t) => {
+      allTransactions.forEach((t) => {
         if (t.cardId !== card.id) return;
         const isFutureInstallment =
           t.installmentId && monthKey(t.date) > currentMk;
@@ -1076,12 +1120,11 @@ export default function MainApp({ user }) {
       });
       return { ...card, currentBalance: balance, futureInstallmentTotal };
     });
-  }, [cards, transactions, currentMk]);
+  }, [cards, allTransactions, currentMk]);
 
   // Notifications are computed live, not stored rows, so "Completed" just
-  // dismisses a specific occurrence for the current month — keyed by month
-  // so it reappears next month if the underlying plan/reminder is still
-  // active, matching how recurring reminders already auto-dismiss.
+  // dismisses a specific occurrence in its billing month. Existing inst:/rec:
+  // keys are retained, and future months are dismissed independently.
   const [completedNotifIds, setCompletedNotifIds] = useState(() =>
     loadCompletedNotifs(user.id, currentMk),
   );
@@ -1089,56 +1132,35 @@ export default function MainApp({ user }) {
     setCompletedNotifIds(loadCompletedNotifs(user.id, currentMk));
   }, [user.id, currentMk]);
 
-  const markNotifCompleted = useCallback(
-    (id) => {
-      setCompletedNotifIds((prev) => {
-        if (prev.includes(id)) return prev;
-        const next = [...prev, id];
-        saveCompletedNotifs(user.id, currentMk, next);
+  const [notificationRefresh, setNotificationRefresh] = useState(0);
+  const markNotifCompleted = useCallback((id, occurrenceMonth = currentMk) => {
+    if (occurrenceMonth === currentMk) {
+      setCompletedNotifIds(previous => {
+        if (previous.includes(id)) return previous;
+        const next = [...previous, id];
+        saveCompletedNotifs(user.id, occurrenceMonth, next);
         return next;
       });
-    },
-    [user.id, currentMk],
-  );
-
-  const installmentNotifs = useMemo(() => {
-    return (installmentPlans || []).filter((plan) => {
-      if (!plan.active) return false;
-      if (completedNotifIds.includes(`inst:${plan.id}`)) return false;
-      const [sy, sm] = plan.startMonth.split("-").map(Number);
-      const d = new Date(sy, sm - 1 + plan.totalMonths - 1, 1);
-      const endMk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return currentMk >= plan.startMonth && currentMk <= endMk;
+    } else {
+      const previous = loadCompletedNotifs(user.id, occurrenceMonth);
+      if (!previous.includes(id)) saveCompletedNotifs(user.id, occurrenceMonth, [...previous, id]);
+      setNotificationRefresh(value => value + 1);
+    }
+  }, [user.id, currentMk]);
+  const notificationDate = todayLocal();
+  const paymentNotifications = useMemo(() => {
+    const completedByMonth = new Map([[currentMk, completedNotifIds]]);
+    return buildPaymentNotifications({
+      cards: cardsWithBalance, installmentPlans, recurringReminders, transactions, today: notificationDate,
+      isCompleted: (month, id) => {
+        if (!completedByMonth.has(month)) completedByMonth.set(month, loadCompletedNotifs(user.id, month));
+        return completedByMonth.get(month).includes(id);
+      },
+      categoryForTransaction: transaction => getCat(transaction.category, transaction.type === 'income' ? 'income' : 'expense', allExpCats, allIncCats).id,
     });
-  }, [installmentPlans, currentMk, completedNotifIds]);
+  }, [cardsWithBalance, installmentPlans, recurringReminders, transactions, notificationDate, currentMk, completedNotifIds, notificationRefresh, user.id, allExpCats, allIncCats]);
 
-  const recurringNotifs = useMemo(() => {
-    const currentMonthTxs = transactions.filter(
-      (t) => monthKey(t.date) === currentMk,
-    );
-    return (recurringReminders || []).filter((reminder) => {
-      if (!reminder.active) return false;
-      if (completedNotifIds.includes(`rec:${reminder.id}`)) return false;
-      if (!reminder.category) return true;
-      const dismissed = currentMonthTxs.some((t) => {
-        const catId =
-          t.type === "income"
-            ? getCat(t.category, "income", allExpCats, allIncCats).id
-            : getCat(t.category, "expense", allExpCats, allIncCats).id;
-        return catId === reminder.category;
-      });
-      return !dismissed;
-    });
-  }, [
-    recurringReminders,
-    transactions,
-    currentMk,
-    allExpCats,
-    allIncCats,
-    completedNotifIds,
-  ]);
-
-  const notifCount = installmentNotifs.length + recurringNotifs.length;
+  const notifCount = paymentNotifications.length;
 
   const getEffectivePlan = useCallback(
     (mKey) => {
@@ -1164,7 +1186,7 @@ export default function MainApp({ user }) {
   );
 
   const monthStats = useMemo(() => {
-    const inMonth = transactions.filter((t) => monthKey(t.date) === viewMonth);
+    const inMonth = allTransactions.filter((t) => monthKey(t.date) === viewMonth);
     const income = inMonth
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + +t.amount, 0);
@@ -1188,9 +1210,9 @@ export default function MainApp({ user }) {
       byIncCat,
       list: inMonth,
     };
-  }, [transactions, viewMonth, allExpCats, allIncCats]);
+  }, [allTransactions, viewMonth, allExpCats, allIncCats]);
 
-  if (mustReload) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
+  if (mustReload || loadFailed) return <div className="auth-page"><div className="auth-box"><h1 className="auth-title">Refresh your saved records</h1><p role="alert">A save could not be confirmed, or these records changed on another device. Refresh before making more changes.</p><button className="save-btn" onClick={() => window.location.reload()}>Reload saved data</button></div></div>;
 
   if (!loaded) {
     return (
@@ -1232,6 +1254,7 @@ export default function MainApp({ user }) {
   }
 
   const navVisible =
+    !moneyForm &&
     !showAdd &&
     !editingTx &&
     !showCardForm &&
@@ -1307,7 +1330,7 @@ export default function MainApp({ user }) {
               setViewMonth={setViewMonth}
               transactions={monthStats.list}
               onDelete={deleteTx}
-              onEdit={setEditingTx}
+              onEdit={editEntry}
               cards={cardsWithBalance}
               allExpCats={allExpCats}
               allIncCats={allIncCats}
@@ -1321,10 +1344,14 @@ export default function MainApp({ user }) {
           )}
           {tab === "dashboard" && (
             <DashView
-              transactions={transactions}
+              transactions={allTransactions}
               getEffectivePlan={getEffectivePlan}
               cards={cardsWithBalance}
               investments={investments}
+              moneyRecords={moneyRecords}
+              moneyEnabled={moneyEnabled}
+              onOpenLoans={()=>setTab("money-lent")}
+              onWithdraw={()=>openMoneyForm("withdrawal")}
               viewMonth={viewMonth}
               setViewMonth={setViewMonth}
               user={user}
@@ -1342,15 +1369,16 @@ export default function MainApp({ user }) {
               onCustomChartsChange={updateCustomCharts}
             />
           )}
+          {tab === "money-lent" && <MoneyLentView records={moneyRecords} cards={cardsWithBalance} onNew={borrowerId=>openMoneyForm("loan",null,borrowerId)} onRepay={(id,borrowerId)=>openMoneyForm("repayment",id,borrowerId)} onEdit={r=>setMoneyForm({kind:r.kind,editing:r})} onDelete={deleteMoneyRecord} onSaveBorrower={saveBorrower} onDeleteBorrower={deleteBorrower} onMergeBorrowers={mergeBorrowers} onArchive={setLoanArchived} onModalChange={setChildModalOpen} onOpenMenu={()=>setShowDrawer(true)} onOpenNotifications={()=>setShowNotifs(true)} notifCount={notifCount} showQuickRefresh={isStandalone} onQuickRefresh={handleQuickRefresh}/>}
           {tab === "cards" && (
             <CardsView
               cards={cardsWithBalance}
-              transactions={transactions}
+              transactions={allTransactions}
               onEdit={(c) => setShowCardForm(c)}
               onNew={() => setShowCardForm("new")}
               onDelete={removeCard}
               onDeleteTx={deleteTx}
-              onEditTx={setEditingTx}
+              onEditTx={editEntry}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
               onEditPlan={setEditingPlan}
@@ -1513,6 +1541,7 @@ export default function MainApp({ user }) {
                 active={tab === "cards"}
                 onClick={() => setTab("cards")}
               />
+              {moneyEnabled && <NavBtn icon={Wallet} label="Money Lent" active={tab === "money-lent"} onClick={()=>setTab("money-lent")}/>}
               <NavBtn
                 icon={LineChart}
                 label="Investments"
@@ -1541,42 +1570,33 @@ export default function MainApp({ user }) {
           </nav>
         )}
 
-        {pendingDelete && (
-          <div className="undo-snackbar">
-            <span>Transaction deleted</span>
-            <button className="undo-btn" onClick={undoDelete}>
-              Undo
-            </button>
-          </div>
-        )}
+        {pendingDelete && <div className="undo-snackbar"><span>Transaction deleted</span><button className="undo-btn" onClick={undoDelete}>Undo</button></div>}
 
-        {showAdd && (
-          <AddModal
-            cards={cardsWithBalance}
+        {moneyForm && <MoneyForm key={moneyForm.editing?.id || moneyForm.kind} kind={moneyForm.kind} editing={moneyForm.editing} cards={cardsWithBalance} records={moneyRecords} onSave={saveMoneyRecord} onClose={()=>setMoneyForm(null)}/>}
+
+        {showAdd && !entryGroup && <NewEntryChooser onChoose={chooseEntryGroup} onClose={()=>setShowAdd(false)}/>}
+        {showAdd && entryGroup && ['loan','repayment','withdrawal','savings'].includes(entryTask) && <MoneyForm
+          key={entryTask} kind={entryTask} cards={cardsWithBalance} records={moneyRecords} initialLoanId={entryContext.loanId} initialBorrowerId={entryContext.borrowerId}
+          entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)} moneyEnabled={moneyEnabled}
+          onSave={saveMoneyRecord} onClose={()=>setShowAdd(false)}/>}
+        {showAdd && entryGroup && !['loan','repayment','withdrawal','savings'].includes(entryTask) && (
+          <AddModal key={entryTask}
+            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask}
+            entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)}
             onClose={() => setShowAdd(false)}
-            onSave={(tx) => {
-              addTx(tx);
-              setShowAdd(false);
-            }}
-            onSaveInstallment={(plan) => {
-              saveInstallmentPlan(plan);
-              setShowAdd(false);
-            }}
-            allExpCats={allExpCats}
-            allIncCats={allIncCats}
-            onAddCat={addCat}
-            userId={user.id}
-            installmentPlans={installmentPlans}
-          />
+            onSave={async(tx) => {await addTx(tx);setShowAdd(false);}}
+            onSaveInstallment={async(plan) => {await saveInstallmentPlan(plan);setShowAdd(false);}}
+            allExpCats={allExpCats} allIncCats={allIncCats} onAddCat={addCat} userId={user.id} installmentPlans={installmentPlans}/>
         )}
 
         {editingTx && (
           <AddModal
             editing={editingTx}
+            moneyEnabled={moneyEnabled}
             cards={cardsWithBalance}
             onClose={() => setEditingTx(null)}
-            onSave={(tx) => {
-              editTx(editingTx.id, tx);
+            onSave={async(tx) => {
+              await editTx(editingTx.id, tx);
               setEditingTx(null);
             }}
             allExpCats={allExpCats}
@@ -1589,10 +1609,11 @@ export default function MainApp({ user }) {
 
         {showCardForm && (
           <CardFormModal
+            moneyEnabled={moneyEnabled}
             card={showCardForm === "new" ? null : showCardForm}
             onClose={() => setShowCardForm(null)}
-            onSave={(c) => {
-              saveCard(c);
+            onSave={async(c) => {
+              await saveCard(c);
               setShowCardForm(null);
             }}
           />
@@ -1601,11 +1622,12 @@ export default function MainApp({ user }) {
         {editingPlan && (
           <InstallmentPlanFormModal
             plan={editingPlan}
+            transactions={transactions}
             cards={cardsWithBalance}
             allExpCats={allExpCats}
             onClose={() => setEditingPlan(null)}
-            onSave={(planId, updates) => {
-              updateInstallmentPlanDetails(planId, updates);
+            onSave={async(planId, updates) => {
+              await updateInstallmentPlanDetails(planId, updates);
               setEditingPlan(null);
             }}
           />
@@ -1617,8 +1639,8 @@ export default function MainApp({ user }) {
               showInvestmentForm === "new" ? null : showInvestmentForm
             }
             onClose={() => setShowInvestmentForm(null)}
-            onSave={(inv) => {
-              saveInvestment(inv);
+            onSave={async(inv) => {
+              await saveInvestment(inv);
               setShowInvestmentForm(null);
             }}
           />
@@ -1628,8 +1650,8 @@ export default function MainApp({ user }) {
           <InvestmentValueModal
             investment={recordingValueFor}
             onClose={() => setRecordingValueFor(null)}
-            onSave={(value, date, note) => {
-              recordInvestmentValue(recordingValueFor.id, value, date, note);
+            onSave={async(value, date, note) => {
+              await recordInvestmentValue(recordingValueFor.id, value, date, note);
               setRecordingValueFor(null);
             }}
           />
@@ -1640,8 +1662,8 @@ export default function MainApp({ user }) {
             investment={editingValuation.investment}
             valuation={editingValuation.valuation}
             onClose={() => setEditingValuation(null)}
-            onSave={(value, date, note) => {
-              updateInvestmentValueEntry(
+            onSave={async(value, date, note) => {
+              await updateInvestmentValueEntry(
                 editingValuation.investment.id,
                 editingValuation.valuation.id,
                 value,
@@ -1676,6 +1698,7 @@ export default function MainApp({ user }) {
 
         {showDrawer && (
           <NavDrawer
+            moneyEnabled={moneyEnabled}
             onClose={() => setShowDrawer(false)}
             onNavigate={(destination) => {
               setTab(destination);
@@ -1688,17 +1711,9 @@ export default function MainApp({ user }) {
 
         {showNotifs && (
           <NotificationsPanel
-            installmentNotifs={installmentNotifs}
-            recurringNotifs={recurringNotifs}
-            cards={cardsWithBalance}
-            currentMk={currentMk}
+            notifications={paymentNotifications}
             onClose={() => setShowNotifs(false)}
-            onCompleteInstallment={(planId) =>
-              markNotifCompleted(`inst:${planId}`)
-            }
-            onCompleteRecurring={(reminderId) =>
-              markNotifCompleted(`rec:${reminderId}`)
-            }
+            onComplete={markNotifCompleted}
           />
         )}
 

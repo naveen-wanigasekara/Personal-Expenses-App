@@ -1,7 +1,9 @@
+import { installmentOccurrences } from '../utils/installments.js';
 import { useState, useContext, useRef, memo } from "react";
-import { Edit2, Trash2, CreditCard, ChevronDown } from "lucide-react";
+import { Edit2, Trash2, CreditCard, ChevronDown, Wallet, ArrowLeftRight } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { getCat } from "../constants/categories.js";
+import { accountLabel, entryDirection } from "../utils/money.js";
 import { fmt } from "../utils/format.js";
 
 const SWIPE_THRESHOLD = 60;
@@ -22,7 +24,11 @@ function TxRow({
   const touchStartY = useRef(null);
 
   let cat, sign, color;
-  if (tx.type === "income") {
+  if(tx.moneyRecordId) {
+    const label=tx.isLoan?"Money lent":tx.type==="transfer"?"Transfer":tx.isLoanInterest?"Loan interest received":"Principal repayment";
+    cat={label,icon:tx.type==="transfer"?ArrowLeftRight:Wallet,color:"#4a9b7a"};
+    sign=tx.isLoan?"−":tx.type==="transfer"?"↔":"+";color=tx.isLoanInterest?"income":"neutral";
+  } else if (tx.type === "income") {
     cat = getCat(tx.category, "income", allExpCats, allIncCats);
     sign = "+";
     color = "income";
@@ -43,13 +49,13 @@ function TxRow({
     sign = "−";
     color = "expense";
   }
+  const received = entryDirection(tx) === 'income';
   const Icon = cat.icon;
 
   let installmentSeq = null;
   if (installmentPlan && tx.installmentId) {
-    const [sy, sm] = installmentPlan.startMonth.split("-").map(Number);
-    const [ty, tm] = tx.date.slice(0, 7).split("-").map(Number);
-    installmentSeq = (ty - sy) * 12 + (tm - sm) + 1;
+    const occurrence = installmentOccurrences(installmentPlan, [tx])[0];
+    installmentSeq = occurrence ? occurrence.index + 1 : null;
   }
 
   // Desktop-only date column (hidden on mobile/tablet via CSS). Built from
@@ -96,7 +102,7 @@ function TxRow({
 
   return (
     <div
-      className={`tx ${open ? "tx-open" : ""} ${swiped ? "tx-swiped" : ""}`}
+      className={`tx ${received ? "activity-received" : ""} ${open ? "tx-open" : ""} ${swiped ? "tx-swiped" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -111,7 +117,7 @@ function TxRow({
       <button className="tx-main" onClick={handleRowClick}>
         <div
           className="tx-icon"
-          style={{ background: `${cat.color}1a`, color: cat.color }}
+          style={received ? { background: "var(--received-bg)", color: "var(--received-ink)" } : { background: `${cat.color}1a`, color: cat.color }}
         >
           <Icon size={17} strokeWidth={2} />
         </div>
@@ -130,17 +136,18 @@ function TxRow({
             )}
           </div>
           <div className="tx-sub">
+            {received && <span className="activity-status">Received</span>}
             {tx.type === "card-payment"
               ? `Payment → ${cardName}`
               : tx.type === "card-interest"
                 ? `Interest/fees · ${cardName}`
                 : tx.type === "card-purchase" && cardName
                   ? `${cat.label} · ${cardName}`
-                  : cat.label}
+                  : `${cat.label}${tx.account && tx.account !== "card" ? ` · ${accountLabel(tx.account)}` : ""}`}
           </div>
         </div>
         <div className="tx-date-col">{dateLabel}</div>
-        <div className={`tx-amt ${color}`}>
+        <div className={`tx-amt ${received ? "received" : color}`}>
           <span className="tx-amt-sign">{sign}</span>
           {CURRENCY} {fmt(tx.amount)}
         </div>

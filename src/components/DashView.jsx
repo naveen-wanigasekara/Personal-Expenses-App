@@ -37,7 +37,10 @@ import Sheet from "./Sheet.jsx";
 import ChartFormModal from "./ChartFormModal.jsx";
 import CustomChartCard from "./charts/CustomChartCard.jsx";
 
+import { moneyBalances, loanSummary, todayLocal } from "../utils/money.js";
+
 const SECTION_DEFS = [
+  {id:"money_overview",label:"Your Money",desc:"Available money, savings and money owed"},
   {
     id: "net_this_month",
     label: "Net This Month",
@@ -47,13 +50,13 @@ const SECTION_DEFS = [
   { id: "expense_out", label: "Out", desc: "Total expenses spent this month" },
   {
     id: "cash_in_hand",
-    label: "Cash in Hand",
+    label: "Cash",
     desc: "Cumulative cash balance across all time",
   },
   {
     id: "total_savings",
     label: "Total Savings",
-    desc: "Cumulative amount tagged as savings, all-time",
+    desc: "Savings remaining after withdrawals and loans",
   },
   {
     id: "card_debt",
@@ -121,6 +124,10 @@ function mergeLayout(saved, extraDefs = []) {
 
 export default function DashView({
   transactions,
+  moneyRecords = [],
+  moneyEnabled = false,
+  onOpenLoans,
+  onWithdraw,
   getEffectivePlan,
   cards,
   investments,
@@ -177,6 +184,12 @@ export default function DashView({
   const isCurrentMonth = viewMonth === monthKey(new Date());
   const [mLbl, yLbl] = monthLabel(viewMonth).split(" ");
   const greeting = getTimeOfDay();
+
+  const through = viewMonth < todayLocal().slice(0,7) ? `${viewMonth}-31` : todayLocal();
+  const balances = useMemo(()=>moneyBalances(transactions,through),[transactions,through]);
+  const lending = useMemo(()=>moneyRecords.filter(r=>r.kind==="loan"&&r.date<=through).map(loan=>({loan,...loanSummary(loan,moneyRecords,through)})),[moneyRecords,through]);
+  const moneyOwed = lending.reduce((sum,s)=>sum+s.outstanding,0);
+  const interestOwed = lending.reduce((sum,s)=>sum+s.interestDue,0);
 
   const last6 = useMemo(() => {
     const out = [];
@@ -259,14 +272,7 @@ export default function DashView({
     return Array.from({ length: 12 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
       const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const balance = transactions
-        .filter((t) => monthKey(t.date) <= mk)
-        .reduce((sum, t) => {
-          if (t.type === "income") return sum + +t.amount;
-          if (t.type === "expense" || t.type === "card-payment")
-            return sum - +t.amount;
-          return sum;
-        }, 0);
+      const balance = moneyBalances(transactions,`${mk}-31`).available;
       return {
         mk,
         balance,
@@ -279,16 +285,7 @@ export default function DashView({
   // Total Savings dashboard stat. Uses getCat (not a raw string compare) to
   // resolve the transaction's effective category, consistent with the rest
   // of this file.
-  const totalSavings = useMemo(() => {
-    return transactions
-      .filter(
-        (t) =>
-          t.type === "expense" &&
-          getCat(t.category, "expense", allExpCats, allIncCats).id ===
-            SAVINGS_CATEGORY_ID,
-      )
-      .reduce((s, t) => s + +t.amount, 0);
-  }, [transactions, allExpCats, allIncCats]);
+  const totalSavings = balances.savings;
 
   const expCatSpend = useMemo(() => {
     const inMonth = transactions.filter(
@@ -389,16 +386,7 @@ export default function DashView({
 
   // Deliberately NOT excluding Savings-tagged transactions here — this is
   // cash position, not spending (see the netWorthTrend comment above).
-  const runningBalance = useMemo(() => {
-    return transactions
-      .filter((t) => monthKey(t.date) <= viewMonth)
-      .reduce((sum, t) => {
-        if (t.type === "income") return sum + +t.amount;
-        if (t.type === "expense" || t.type === "card-payment")
-          return sum - +t.amount;
-        return sum;
-      }, 0);
-  }, [transactions, viewMonth]);
+  const runningBalance = balances.available;
 
   const budgetProgress = currentPlan?.expense?.total
     ? (thisStats.expenses / currentPlan.expense.total) * 100
@@ -409,7 +397,7 @@ export default function DashView({
   const hasPlan =
     currentPlan?.income?.total > 0 || currentPlan?.expense?.total > 0;
 
-  const totalCardDebt = cards.reduce((s, c) => s + (c.currentBalance || 0), 0);
+  const totalCardDebt = cards.reduce((s, c) => s + Math.max(0,c.currentBalance || 0), 0);
   const totalLimit = cards.reduce((s, c) => s + (+c.limit || 0), 0);
   const totalUtil = totalLimit ? (totalCardDebt / totalLimit) * 100 : 0;
 
@@ -469,6 +457,18 @@ export default function DashView({
   };
 
   const sectionContent = {
+    money_overview: moneyEnabled ? <div className="card money-overview">
+      <div className="card-hd"><h3>Your Money</h3><span className="card-sub">As of {through}</span></div>
+      <dl className="money-stats">
+        <div><dt>Available money · Cash</dt><dd>{CURRENCY} {fmt(balances.available)}</dd></div>
+        <div><dt>Owed to you · principal</dt><dd>{CURRENCY} {fmt(moneyOwed)}</dd></div>
+        <div><dt>Unpaid loan interest</dt><dd>{CURRENCY} {fmt(interestOwed)}</dd></div>
+        <div><dt>You owe · credit cards</dt><dd>{CURRENCY} {fmt(Math.max(0,totalCardDebt))}</dd></div>
+      </dl>
+
+      <p className="money-hint">Savings and money lent are separate from Cash.</p>
+    </div> : null,
+
     net_this_month: (
       <div className="summary-net">
         <div className="balance-label">Net this month</div>
@@ -486,7 +486,7 @@ export default function DashView({
           <ArrowUp size={12} strokeWidth={3} />
         </div>
         <div className="io-text">
-          <div className="io-label">In</div>
+          <div className="io-label">Income earned</div>
           <div className="io-val">
             {CURRENCY} {fmt(thisStats.income)}
           </div>
@@ -500,7 +500,7 @@ export default function DashView({
           <ArrowDown size={12} strokeWidth={3} />
         </div>
         <div className="io-text">
-          <div className="io-label">Out</div>
+          <div className="io-label">Spending</div>
           <div className="io-val">
             {CURRENCY} {fmt(thisStats.expenses)}
           </div>
@@ -516,7 +516,7 @@ export default function DashView({
 
     cash_in_hand: (
       <div className="running-bal">
-        <span className="running-bal-label">Cash in Hand</span>
+        <span className="running-bal-label">Cash</span>
         <span className={`running-bal-amt ${runningBalance < 0 ? "neg" : ""}`}>
           {runningBalance < 0 ? "−" : "+"}
           {CURRENCY} {fmt(Math.abs(runningBalance))}
@@ -845,7 +845,7 @@ export default function DashView({
     cashflow: (
       <div className="card">
         <div className="card-hd">
-          <h3>Cashflow</h3>
+          <h3>Income earned & Spending</h3>
           <div className="legend">
             <span>
               <span className="dot in" />
@@ -906,7 +906,7 @@ export default function DashView({
         <div className="card">
           <div className="card-hd">
             <h3>Where it came from</h3>
-            <span className="card-sub">Income · This month</span>
+            <span className="card-sub">Income earned · This month</span>
           </div>
           <div className="cat-list-v2">
             {incCatEarn.map((c) => {
@@ -1267,14 +1267,14 @@ export default function DashView({
                     <button
                       onClick={() => moveSection(s.id, -1)}
                       disabled={i === 0}
-                      aria-label="Move up"
+                      aria-label={`Move ${s.label} up`}
                     >
                       <ChevronUp size={14} />
                     </button>
                     <button
                       onClick={() => moveSection(s.id, 1)}
                       disabled={i === sections.length - 1}
-                      aria-label="Move down"
+                      aria-label={`Move ${s.label} down`}
                     >
                       <ChevronDown size={14} />
                     </button>
@@ -1288,7 +1288,7 @@ export default function DashView({
                       <button
                         className="section-chart-btn"
                         onClick={() => setEditingChart(chart)}
-                        aria-label="Edit chart"
+                        aria-label={`Edit ${chart.name} chart`}
                       >
                         <Edit2 size={14} />
                       </button>
@@ -1298,7 +1298,7 @@ export default function DashView({
                           if (confirm(`Delete the "${chart.name}" chart?`))
                             deleteChart(chart.id);
                         }}
-                        aria-label="Delete chart"
+                        aria-label={`Delete ${chart.name} chart`}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -1307,7 +1307,7 @@ export default function DashView({
                   <button
                     className={`section-toggle ${s.visible ? "on" : "off"}`}
                     onClick={() => toggleSection(s.id)}
-                    aria-label={s.visible ? "Hide section" : "Show section"}
+                    aria-label={`${s.visible ? "Hide" : "Show"} ${s.label} section`}
                   >
                     {s.visible ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
