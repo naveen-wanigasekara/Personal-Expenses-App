@@ -7,6 +7,16 @@ import CategoriesModal from '../src/components/CategoriesModal.jsx';
 import ChartFormModal from '../src/components/ChartFormModal.jsx';
 import CustomChartCard from '../src/components/charts/CustomChartCard.jsx';
 afterEach(cleanup);
+it('uses a unitless whole-number target for count charts and preserves currency targets for amount charts',()=>{
+ const onSave=vi.fn();
+ render(<ChartFormModal transactions={[]} allExpCats={[]} allIncCats={[]} cards={[]} onSave={onSave} onClose={vi.fn()}/>);
+ fireEvent.change(screen.getByLabelText('Chart name'),{target:{value:'Count target'}});
+ fireEvent.click(screen.getByRole('button',{name:'Progress',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Count',exact:true}));
+ const target=screen.getByLabelText('Target count');expect(target.closest('.big-input').textContent).not.toContain('Rs.');
+ fireEvent.change(target,{target:{value:'2.5'}});expect(screen.getByRole('button',{name:'Create chart'}).disabled).toBe(true);expect(screen.getByRole('alert').textContent).toContain('whole-number');
+ fireEvent.change(target,{target:{value:'10'}});expect(screen.getByRole('button',{name:'Create chart'}).disabled).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'Sum',exact:true}));expect(screen.getByLabelText('Target amount').closest('.big-input').textContent).toContain('Rs.');
+});
 it('retains chart settings after a rejected save and prevents duplicate pending writes',async()=>{
  let reject;const onSave=vi.fn(()=>new Promise((resolve,no)=>{reject=no;})),onClose=vi.fn();
  render(<ChartFormModal transactions={[]} allExpCats={[]} allIncCats={[]} cards={[]} onSave={onSave} onClose={onClose}/>);

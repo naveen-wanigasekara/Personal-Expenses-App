@@ -4,6 +4,7 @@ const bank = vi.hoisted(() => ({ rows: [], load: vi.fn(), save: vi.fn() }));
 vi.mock('../src/lib/bankDetails.js', () => ({ bankDetailsStore: bank }));
 import BankDetailsView from '../src/components/BankDetailsView.jsx';
 import LoanCalculatorView from '../src/components/LoanCalculatorView.jsx';
+import BudgetView from '../src/components/BudgetView.jsx';
 
 beforeEach(() => {
   vi.resetAllMocks(); bank.rows = [];
@@ -13,6 +14,11 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockRejectedValue(Error('Clipboard unavailable')) } });
 });
 afterEach(cleanup);
+it('does not display a negative-zero savings percentage for a small budget deficit',()=>{
+  render(<BudgetView fixedPlan={{income:{total:480000,categories:{}},expense:{total:480001,categories:{}}}} monthPlans={{}} viewMonth="2026-11" stats={{byIncCat:{},byExpCat:{}}} allExpCats={[]} allIncCats={[]}/>);
+  const savings=screen.getByText('Planned savings').parentElement.textContent;
+  expect(savings).toContain('-1.00');expect(savings).toContain('0%');expect(savings).not.toContain('-0%');
+});
 const change = (label, value) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const account = { id: 'account-1', bank: 'QA Bank', branch: 'QA Branch', accountName: 'Synthetic account', accountNumber: '001234500' };
 

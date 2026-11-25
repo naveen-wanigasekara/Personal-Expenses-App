@@ -45,7 +45,7 @@
     grid-template-columns: repeat(12, minmax(0, 1fr));
     column-count: auto;
     gap: 22px;
-    align-items: stretch;
+    align-items: start;
   }
   .dash-sections > * { grid-column: span 6; min-width: 0; margin: 0; }
   .dash-sections > :is(.card, .summary-net, .running-bal, .debt-banner) {
@@ -173,8 +173,6 @@
 }
 
 @media (min-width: 1280px) {
-  .dash-sections > :is(.running-bal, .debt-banner) { grid-column: span 3; }
-  .dash-sections:not(:has(> .debt-banner:not(.inv-banner))) > :is(.running-bal, .inv-banner) { grid-column: span 4; }
   .view-cards:has(.cards-detail-pane) .cards-master,
   .view-investments:has(.investments-detail-pane) .investments-master { width: 380px; }
 }

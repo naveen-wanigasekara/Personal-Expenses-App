@@ -92,6 +92,7 @@ export default function ChartFormModal({
   const { saving, saveError, runSave } = useAsyncSave();
   const [cfg, setCfg] = useState(() => (editing ? { ...editing } : { ...DEFAULT_CONFIG }));
   const set = (patch) => setCfg((c) => ({ ...c, ...patch }));
+  const invalidCountTarget = cfg.chartType === "progress" && cfg.metric === "count" && cfg.target != null && (!Number.isSafeInteger(cfg.target) || cfg.target < 1);
 
   const categoryList =
     cfg.txType === "income" ? allIncCats : cfg.txType === "all" ? [...allIncCats, ...allExpCats] : allExpCats;
@@ -114,7 +115,7 @@ export default function ChartFormModal({
   };
 
   const handleSave = () => {
-    if (!cfg.name.trim()) return;
+    if (!cfg.name.trim() || invalidCountTarget) return;
     return runSave(() => onSave({
       ...cfg,
       id: editing?.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -224,11 +225,14 @@ export default function ChartFormModal({
 
       {cfg.chartType === "progress" && (
         <>
-          <label className="field-lbl">Target amount</label>
+          <label className="field-lbl">{cfg.metric === "count" ? "Target count" : "Target amount"}</label>
           <div className="big-input">
-            <span className="big-cur">{CURRENCY}</span>
-            <AmountInput aria-label="Target amount" value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
+            {cfg.metric === "count" ? <input type="number" aria-label="Target count" min="1" step="1" value={cfg.target ?? ""} onChange={e => set({target:e.target.value === "" ? null : +e.target.value})} placeholder="e.g. 10" /> : <>
+              <span className="big-cur">{CURRENCY}</span>
+              <AmountInput aria-label="Target amount" value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
+            </>}
           </div>
+          {invalidCountTarget && <p role="alert" className="auth-err">Enter a positive whole-number target count.</p>}
         </>
       )}
 
@@ -253,7 +257,7 @@ export default function ChartFormModal({
         </>
       )}
 
-      <button className={`save-btn ${!cfg.name.trim() ? "disabled" : ""}`} onClick={handleSave} disabled={!cfg.name.trim()}>
+      <button className={`save-btn ${!cfg.name.trim() || invalidCountTarget ? "disabled" : ""}`} onClick={handleSave} disabled={!cfg.name.trim() || invalidCountTarget}>
         {isEditing ? "Save changes" : "Create chart"}
       </button>
       </fieldset>
