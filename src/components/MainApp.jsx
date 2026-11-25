@@ -1,3 +1,4 @@
+import { compareLedgerTransactions } from '../utils/ledgerSort.js';
 import { latestValuationValue } from '../utils/investmentValues.js';
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
@@ -29,6 +30,7 @@ import {
   fetchMoneyWorkspace,
   commitMoneyChanges,
   fetchTransactions,
+  savedCreationTime,
   insertTransaction,
   updateTransaction,
   deleteTransaction,
@@ -317,6 +319,7 @@ export default function MainApp({ user }) {
             cardId: r.card_id,
             note: r.note || "",
             date: r.date,
+            createdAt: r.created_at,
             installmentId: r.installment_id || null,
             account:r.account || "cash",
           })),
@@ -433,7 +436,7 @@ export default function MainApp({ user }) {
   };
 
   const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
-  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
+  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort(compareLedgerTransactions),[transactions,projectedMoney]);
   const openMoneyForm=(kind,loanId=null,borrowerId=null)=>{
     const group=['repayment','withdrawal'].includes(kind)?'income':'expense';
     setEntryGroup(group);setEntryTask(kind);setEntryContext({loanId,borrowerId});setShowAdd(true);
@@ -455,7 +458,7 @@ export default function MainApp({ user }) {
     const old=new Map(moneyRecords.map(record=>[record.id,record]));
     const changes=next.filter(record=>JSON.stringify(old.get(record.id))!==JSON.stringify(record)).map(record=>({table:'money_records',op:old.has(record.id)?'update':'insert',id:record.id,data:{data:record}}));
     if(changes.length) await writeTracked(changes);
-    setMoneyRecords(next);
+    setMoneyRecords(next.map(record=>({...record,createdAt:savedCreationTime('money_records',record.id)||record.createdAt})));
   };
   const saveMoneyRecord=async(draft)=>{
     const id=draft.id||`money_${crypto.randomUUID()}`;
@@ -506,7 +509,7 @@ export default function MainApp({ user }) {
     validateSavingsChange(allTransactions,[...allTransactions,{...tx,id}]);
     if(moneyEnabled) await writeTracked([{table:'transactions',op:'insert',id,data:transactionRow(tx)}]);
     else await insertTransaction({id,user_id:user.id,...transactionRow(tx)});
-    setTransactions(p=>[{...tx,id},...p]);
+    setTransactions(p=>[{...tx,id,createdAt:savedCreationTime('transactions',id)},...p]);
   };
   const editTx = async(id,updates)=>{
     const next=transactions.map(t=>t.id===id?{...t,...updates}:t);
@@ -906,6 +909,7 @@ export default function MainApp({ user }) {
             card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
           } })),
         ]);
+        setTransactions(prev=>prev.map(t=>txs.some(row=>row.id===t.id)?{...t,createdAt:savedCreationTime('transactions',t.id)}:t));
       } catch {
         rollbackLocal();
         showError("Couldn't confirm the installment save. Refresh your records.");
@@ -1025,6 +1029,7 @@ export default function MainApp({ user }) {
           } })),
         );
         await commitBatch(changes);
+        setTransactions(prev=>prev.map(t=>newFutureTxs.some(row=>row.id===t.id)?{...t,createdAt:savedCreationTime('transactions',t.id)}:t));
       } catch (e) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
