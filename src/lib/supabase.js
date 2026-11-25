@@ -26,6 +26,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 const financeBatch = createFinanceBatchStore(supabase, encryptFields, ENCRYPTED_FIELDS);
 const rememberRows = (table, rows) => financeBatch.remember(table, rows);
+export const savedCreationTime = (table, id) => financeBatch.createdAt(table, id);
 export const clearDataSnapshots = () => financeBatch.clear();
 export const commitFinanceChanges = (changes) => financeBatch.commit(changes);
 
@@ -416,7 +417,7 @@ export async function fetchMoneyWorkspace() {
     Promise.all(data.cards.map(r=>decryptFields(r,CARD_ENC))),
     Promise.all(data.records.map(r=>decryptFields(r,['data']))),
   ]);
-  return {transactions,cards,records:records.map(r=>({...r.data,id:r.id})),revision:data.revision};
+  return {transactions,cards,records:records.map(r=>({...r.data,id:r.id,createdAt:r.created_at || r.data.createdAt})),revision:data.revision};
 }
 export async function commitMoneyChanges(changes,revision) {
   // Reuse encryption/preconditions, but keep all related writes and the revision
