@@ -39,7 +39,7 @@ beforeEach(()=>{
  store.cards=[{id:'hnb',name:'HNB',credit_limit:500000,opening_balance:0,colors:['#222','#555']}];store.records=[];store.revision=0;store.fail=false;
  window.scrollTo=vi.fn();window.matchMedia=vi.fn(()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));window.confirm=vi.fn(()=>true);sessionStorage.clear();
 });
-afterEach(cleanup);
+afterEach(()=>{cleanup();vi.useRealTimers();});
 async function mount(){render(<ThemeProvider><MainApp user={user}/></ThemeProvider>);await screen.findByText('Your Money',{selector:'h3'});}
 async function lend({borrower='Person',amount='50000',account='savings',rate='0',date='2026-01-02'}={}){
  await entry('Money lent');const existing=Array.from(screen.getByLabelText('Borrower',{exact:true}).options).find(o=>o.text===borrower);if(existing) change('Borrower',existing.value);else {change('Borrower','__new');change('Borrower name',borrower);}change('Amount lent',amount);change('Funding source',account);if(Number(rate)>0){fireEvent.click(screen.getByLabelText('Charge interest'));change('Interest rate (%)',rate);}change('Date lent',date);await save();
@@ -231,6 +231,7 @@ it('repayment entry retains a borrower until their last loan is paid, then remov
 });
 
 it('integrates CC reminders and future installments with occurrence-specific completion and reload',async()=>{
+ vi.setSystemTime(new Date(2026,10,20,12));
  const date=new Date();const month=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;const following=new Date(date.getFullYear(),date.getMonth()+1,1);const nextMonth=`${following.getFullYear()}-${String(following.getMonth()+1).padStart(2,'0')}`;
  localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
  store.cards[0].opening_balance=100000;store.cards[0].payment_due_date=`${month}-25`;
