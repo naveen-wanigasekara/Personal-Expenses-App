@@ -7,12 +7,13 @@ vi.mock('../src/lib/supabase.js',()=>{
  const empty=async()=>[];
  return {
   fetchMoneyWorkspace:async()=>structuredClone(store),
+  savedCreationTime:(table,id)=>store[table==='money_records'?'records':table]?.find(r=>r.id===id)?.created_at,
   commitMoneyChanges:vi.fn(async(changes,revision)=>{
    if(store.fail) throw new Error('Records changed on another device');
    if(revision!==store.revision) throw new Error('stale revision');
    for(const c of changes){const key=c.table==='money_records'?'records':c.table;const rows=store[key] || (store[key]=[]);
     if(c.op==='delete') store[key]=rows.filter(r=>r.id!==c.id);
-    else {const data=c.table==='money_records'?{...c.data.data,id:c.id}:{...c.data,id:c.id};const i=rows.findIndex(r=>r.id===c.id);if(i<0) rows.push(data);else rows[i]={...rows[i],...data};}
+    else {const data=c.table==='money_records'?{...c.data.data,id:c.id}:{...c.data,id:c.id};const i=rows.findIndex(r=>r.id===c.id);if(i<0) {const created_at=new Date(Date.UTC(2026,0,1,0,0,store.revision)).toISOString();rows.push({...data,created_at,...(c.table==='money_records'?{createdAt:created_at}:{})});}else rows[i]={...rows[i],...data};}
    } return ++store.revision;
   }),
   commitFinanceChanges:vi.fn(),fetchTransactions:empty,insertTransaction:vi.fn(),updateTransaction:vi.fn(),deleteTransaction:vi.fn(),fetchCards:empty,upsertCard:vi.fn(),deleteCard:vi.fn(),fetchBudgets:async()=>structuredClone(store.budgets||[]),upsertBudget:vi.fn(async row=>{if(store.fail)throw Error('Save failed');store.budgets=[...(store.budgets||[]).filter(r=>r.month_key!==row.month_key),row];}),fetchInstallmentPlans:async()=>structuredClone((store.installment_plans||store.notificationPlans||[]).map(p=>({active:true,...p}))),fetchRecurringReminders:async()=>structuredClone(store.recurring_reminders||store.notificationReminders||[]),insertRecurringReminder:vi.fn(async row=>{store.recurring_reminders=[...(store.recurring_reminders||[]),row];}),updateRecurringReminder:vi.fn(async(id,row)=>{store.recurring_reminders=store.recurring_reminders.map(r=>r.id===id?{...r,...row}:r);}),deleteRecurringReminder:vi.fn(async id=>{store.recurring_reminders=store.recurring_reminders.filter(r=>r.id!==id);}),fetchInvestments:async()=>structuredClone(store.investments||[]),fetchInvestmentValuations:async()=>structuredClone(store.investment_valuations||[]),fetchUserSettings:async()=>store.settings||null,upsertUserSettings:vi.fn(async(id,data)=>{if(store.fail)throw Error('Save failed');store.settings=JSON.parse(JSON.stringify({...store.settings,...data}));}),supabase:{auth:{getUser:vi.fn(),mfa:{listFactors:vi.fn()}}},signOut:vi.fn(),resetPassword:vi.fn(),
