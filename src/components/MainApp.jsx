@@ -206,17 +206,21 @@ export default function MainApp({ user }) {
   );
 
   const updateCustomCharts = useCallback(
-    async (next) => {
+    async (next, nextLayout) => {
       const prev = customCharts;
+      const prevLayout = insightsLayout;
       setCustomCharts(next);
+      if (nextLayout) setInsightsLayout(nextLayout);
       try {
-        await upsertUserSettings(user.id, { custom_charts: next });
+        await upsertUserSettings(user.id, { custom_charts: next, ...(nextLayout ? { insights_layout: nextLayout } : {}) });
       } catch (e) {
         setCustomCharts(prev);
+        if (nextLayout) setInsightsLayout(prevLayout);
         showError("Couldn't save your chart. Try again.");
+        throw new Error("Couldn't save your chart. Try again.");
       }
     },
-    [user.id, customCharts],
+    [user.id, customCharts, insightsLayout],
   );
 
   const allExpCats = userCats.expense;
@@ -232,6 +236,7 @@ export default function MainApp({ user }) {
       } catch (e) {
         setUserCats(prevCats);
         showError("Couldn't save category. Try again.");
+        throw new Error("Couldn't save category. Try again.");
       }
     },
     [user.id, userCats],
@@ -257,6 +262,7 @@ export default function MainApp({ user }) {
       } catch (e) {
         setUserCats(prevCats);
         showError("Couldn't save category. Try again.");
+        throw new Error("Couldn't save category. Try again.");
       }
     },
     [user.id, userCats],
@@ -586,6 +592,10 @@ export default function MainApp({ user }) {
   const removeCard = useCallback(
     async (id) => {
       if(moneyRecords.some(r=>r.kind==="loan"&&r.account==="card"&&r.cardId===id)) {showError("This card funds a recorded loan. Keep it to preserve the debt history.");return;}
+      if (transactions.some(t => t.cardId === id) || installmentPlans.some(p => p.cardId === id) || cards.some(c => c.id === id && (+c.openingBalance || 0) !== 0)) {
+        showError("This card has a balance or financial history. Keep it to preserve your records.");
+        return;
+      }
       const prev = cards;
       setCards((p) => p.filter((c) => c.id !== id));
       try {
@@ -596,7 +606,7 @@ export default function MainApp({ user }) {
         showError("Couldn't delete card.");
       }
     },
-    [cards, moneyRecords, moneyEnabled, commitBatch],
+    [cards, moneyRecords, moneyEnabled, commitBatch, transactions, installmentPlans],
   );
 
   const saveInvestment = useCallback(
@@ -1058,6 +1068,7 @@ export default function MainApp({ user }) {
         } catch (e) {
           setRecurringReminders(prev);
           showError("Couldn't update reminder.");
+          throw new Error("Couldn't update reminder. Try again.");
         }
       } else {
         const id = `rem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -1076,6 +1087,7 @@ export default function MainApp({ user }) {
         } catch (e) {
           setRecurringReminders((p) => p.filter((r) => r.id !== id));
           showError("Couldn't save reminder.");
+          throw new Error("Couldn't save reminder. Try again.");
         }
       }
     },
@@ -1084,16 +1096,15 @@ export default function MainApp({ user }) {
 
   const removeRecurringReminder = useCallback(
     async (id) => {
-      const prev = recurringReminders;
-      setRecurringReminders((p) => p.filter((r) => r.id !== id));
       try {
         await deleteRecurringReminder(id);
+        setRecurringReminders((p) => p.filter((r) => r.id !== id));
       } catch (e) {
-        setRecurringReminders(prev);
         showError("Couldn't delete reminder.");
+        throw new Error("Couldn't delete reminder. Try again.");
       }
     },
-    [recurringReminders],
+    [],
   );
 
   // Notifications live here (not in DashView) so the bell in the shared

@@ -89,8 +89,8 @@ export default function CategoriesModal({
           editing={editingCat}
           initialType={tab}
           onClose={() => setEditingCat(null)}
-          onSave={(type, updated) => {
-            onEdit(type, editingCat.id, updated);
+          onSave={async (type, updated) => {
+            await onEdit(type, editingCat.id, updated);
             setEditingCat(null);
           }}
         />
@@ -100,8 +100,8 @@ export default function CategoriesModal({
         <CategoryFormModal
           initialType={tab}
           onClose={() => setShowAdd(false)}
-          onSave={(type, cat) => {
-            onAdd(type, cat);
+          onSave={async (type, cat) => {
+            await onAdd(type, cat);
             setShowAdd(false);
           }}
         />

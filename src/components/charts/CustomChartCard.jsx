@@ -17,7 +17,7 @@ import ProgressStat from "./ProgressStat.jsx";
 // built-in Insights section so it's indistinguishable in placement.
 export default function CustomChartCard({ config, transactions, allExpCats, allIncCats, cards }) {
   const CURRENCY = useContext(CurrencyCtx);
-  const formatValue = (v) => `${CURRENCY} ${fmtCompact(v)}`;
+  const formatValue = (v) => config.metric === "count" ? String(v) : `${CURRENCY} ${fmtCompact(v)}`;
 
   const result = useMemo(() => {
     const ctx = { allExpCats, allIncCats, cards };

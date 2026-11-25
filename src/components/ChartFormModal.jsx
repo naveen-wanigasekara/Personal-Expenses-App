@@ -11,6 +11,7 @@ import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
 import CustomChartCard from "./charts/CustomChartCard.jsx";
 import { CHART_COLOR_TOKENS } from "../utils/chartData.js";
+import { useAsyncSave } from "../hooks/useAsyncSave.js";
 
 const CHART_TYPES = [
   { id: "bar", label: "Bar", icon: BarChart3 },
@@ -88,6 +89,7 @@ export default function ChartFormModal({
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const isEditing = !!editing;
+  const { saving, saveError, runSave } = useAsyncSave();
   const [cfg, setCfg] = useState(() => (editing ? { ...editing } : { ...DEFAULT_CONFIG }));
   const set = (patch) => setCfg((c) => ({ ...c, ...patch }));
 
@@ -113,19 +115,19 @@ export default function ChartFormModal({
 
   const handleSave = () => {
     if (!cfg.name.trim()) return;
-    onSave({
+    return runSave(() => onSave({
       ...cfg,
       id: editing?.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: cfg.name.trim(),
       target: cfg.chartType === "progress" ? cfg.target : null,
       groupBy: cfg.chartType === "progress" ? undefined : cfg.groupBy,
-    });
+    }));
   };
 
   return (
     <Sheet
       title={isEditing ? "Edit chart" : "New chart"}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
       className="sheet-split"
     >
       <div className="chart-form-preview">
@@ -145,6 +147,8 @@ export default function ChartFormModal({
       </div>
 
       <div className="chart-form-fields">
+      <fieldset className="save-fields" disabled={saving}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}
       <label className="field-lbl">Name</label>
       <input
         type="text"
@@ -223,7 +227,7 @@ export default function ChartFormModal({
           <label className="field-lbl">Target amount</label>
           <div className="big-input">
             <span className="big-cur">{CURRENCY}</span>
-            <AmountInput value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
+            <AmountInput aria-label="Target amount" value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
           </div>
         </>
       )}
@@ -252,6 +256,7 @@ export default function ChartFormModal({
       <button className={`save-btn ${!cfg.name.trim() ? "disabled" : ""}`} onClick={handleSave} disabled={!cfg.name.trim()}>
         {isEditing ? "Save changes" : "Create chart"}
       </button>
+      </fieldset>
       </div>
     </Sheet>
   );
