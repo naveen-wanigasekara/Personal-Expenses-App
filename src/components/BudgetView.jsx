@@ -225,7 +225,7 @@ export default function BudgetView({
               <span>Planned savings</span>
               <strong className={plannedSavings >= 0 ? "pos" : "neg"}>
                 {CURRENCY} {fmt(plannedSavings)} ·{" "}
-                {((plannedSavings / incomeTotal) * 100).toFixed(0)}%
+                {Math.round((plannedSavings / incomeTotal) * 100)}%
               </strong>
             </div>
           )}

@@ -432,28 +432,27 @@ export default function DashView({
       })),
     ]);
 
-  const saveChart = (chart) => {
+  const saveChart = async (chart) => {
     const exists = customCharts.some((c) => c.id === chart.id);
     const nextCharts = exists
       ? customCharts.map((c) => (c.id === chart.id ? chart : c))
       : [...customCharts, chart];
-    onCustomChartsChange(nextCharts);
     // Renaming an existing chart needs no sections update — sections
     // re-derives its label from the fresh customCharts prop automatically.
     // A brand-new chart does need appending, so it shows up immediately.
-    if (!exists) {
-      updateSections([
-        ...sections,
-        { id: chart.id, label: chart.name, desc: "Custom chart", visible: true },
-      ]);
-    }
+    const nextSections = exists ? sections : [
+      ...sections,
+      { id: chart.id, label: chart.name, desc: "Custom chart", visible: true },
+    ];
+    await onCustomChartsChange(nextCharts, nextSections.map(({id, visible}) => ({id, visible})));
   };
 
-  const deleteChart = (id) => {
-    onCustomChartsChange(customCharts.filter((c) => c.id !== id));
+  const deleteChart = async (id) => {
     // Drop it from the persisted layout immediately too, instead of leaving
     // a stale entry that mergeLayout would just filter out silently forever.
-    updateSections(sections.filter((s) => s.id !== id));
+    try {
+      await onCustomChartsChange(customCharts.filter((c) => c.id !== id), sections.filter((s) => s.id !== id).map(({id, visible}) => ({id, visible})));
+    } catch { /* MainApp reports the failed write and restores the chart and layout. */ }
   };
 
   const sectionContent = {
@@ -1339,8 +1338,8 @@ export default function DashView({
             setShowAddChart(false);
             setEditingChart(null);
           }}
-          onSave={(chart) => {
-            saveChart(chart);
+          onSave={async (chart) => {
+            await saveChart(chart);
             setShowAddChart(false);
             setEditingChart(null);
           }}

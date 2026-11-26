@@ -22,6 +22,7 @@ vi.mock('../src/lib/supabase.js',()=>{
 import MainApp from '../src/components/MainApp.jsx';
 import ThemeProvider from '../src/components/ThemeProvider.jsx';
 import MoneyForm from '../src/components/MoneyForm.jsx';
+import { insertRecurringReminder, upsertUserSettings } from '../src/lib/supabase.js';
 const user={id:'qa-user',email:'synthetic@example.com',created_at:'2026-01-01'};
 const change=(name,value)=>fireEvent.change(screen.getByLabelText(name,{exact:true}),{target:{value}});
 const entry=async kind=>{
@@ -41,6 +42,32 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();vi.useRealTimers();});
 async function mount(){render(<ThemeProvider><MainApp user={user}/></ThemeProvider>);await screen.findByText('Your Money',{selector:'h3'});}
+it('keeps a rejected reminder draft in the real app and saves the retry once',async()=>{
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Recurring Reminders',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Add reminder',exact:true}));
+ change('Reminder label','Retry reminder');change('Estimated amount (optional)','7500');
+ insertRecurringReminder.mockRejectedValueOnce(Error('Connection failed'));
+ fireEvent.click(screen.getByRole('button',{name:'Save Reminder'}));await screen.findByRole('alert');
+ expect(screen.getByLabelText('Reminder label').value).toBe('Retry reminder');expect(store.recurring_reminders||[]).toHaveLength(0);
+ fireEvent.click(screen.getByRole('button',{name:'Save Reminder'}));await waitFor(()=>expect(screen.queryByLabelText('Reminder label')).toBeNull());
+ expect(store.recurring_reminders).toHaveLength(1);expect(store.recurring_reminders[0].amount).toBe(7500);
+});
+it('keeps a rejected category draft in the real app and persists its retry',async()=>{
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Manage Categories',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Add category',exact:true}));change('Category name','Retry category');
+ upsertUserSettings.mockRejectedValueOnce(Error('Connection failed'));
+ fireEvent.click(within(screen.getByRole('dialog',{name:'New category'})).getByRole('button',{name:'Add category',exact:true}));await screen.findByRole('alert');
+ expect(screen.getByLabelText('Category name').value).toBe('Retry category');
+ fireEvent.click(within(screen.getByRole('dialog',{name:'New category'})).getByRole('button',{name:'Add category',exact:true}));await waitFor(()=>expect(screen.queryByLabelText('Category name')).toBeNull());
+ expect(store.settings.categories.expense.some(c=>c.label==='Retry category')).toBe(true);
+});
+it('retries chart creation and persists chart plus dashboard layout in a single write',async()=>{
+ await mount();fireEvent.click(screen.getByRole('button',{name:'Customize sections'}));fireEvent.click(screen.getByRole('button',{name:'Create custom chart'}));change('Chart name','QA chart');
+ const prior=structuredClone(store.settings||{});upsertUserSettings.mockRejectedValueOnce(Error('Connection failed'));
+ fireEvent.click(screen.getByRole('button',{name:'Create chart',exact:true}));await screen.findByRole('alert');expect(store.settings||{}).toEqual(prior);expect(screen.getByLabelText('Chart name').value).toBe('QA chart');
+ const before=upsertUserSettings.mock.calls.length;fireEvent.click(screen.getByRole('button',{name:'Create chart',exact:true}));await waitFor(()=>expect(screen.queryByLabelText('Chart name')).toBeNull());
+ expect(upsertUserSettings.mock.calls.length).toBe(before+1);const chart=store.settings.custom_charts[0];expect(store.settings.insights_layout.find(s=>s.id===chart.id)).toEqual({id:chart.id,visible:true});
+ cleanup();await mount();expect(screen.getByRole('heading',{name:'QA chart'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Customize sections'}));fireEvent.click(screen.getByRole('button',{name:'Edit QA chart chart'}));change('Chart name','Renamed chart');fireEvent.click(screen.getByRole('button',{name:'Save changes',exact:true}));await waitFor(()=>expect(screen.queryByLabelText('Chart name')).toBeNull());expect(store.settings.custom_charts[0].name).toBe('Renamed chart');
+ fireEvent.click(screen.getByRole('button',{name:'Delete Renamed chart chart'}));await waitFor(()=>expect(store.settings.custom_charts).toHaveLength(0));expect(store.settings.insights_layout.some(s=>s.id===chart.id)).toBe(false);
+});
 async function lend({borrower='Person',amount='50000',account='savings',rate='0',date='2026-01-02'}={}){
  await entry('Money lent');const existing=Array.from(screen.getByLabelText('Borrower',{exact:true}).options).find(o=>o.text===borrower);if(existing) change('Borrower',existing.value);else {change('Borrower','__new');change('Borrower name',borrower);}change('Amount lent',amount);change('Funding source',account);if(Number(rate)>0){fireEvent.click(screen.getByLabelText('Charge interest'));change('Interest rate (%)',rate);}change('Date lent',date);await save();
 }
@@ -262,6 +289,17 @@ it('creates, edits, reloads and deletes an unused card with its payment date int
 it('protects a card linked to a loan created after the card list was loaded',async()=>{
  await mount();await lend({account:'card'});fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));
  fireEvent.click(screen.getByRole('button',{name:'Delete card',exact:true}));expect(screen.getByText(/This card funds a recorded loan/)).toBeTruthy();expect(store.cards).toHaveLength(1);expect(store.records.some(r=>r.kind==='loan')).toBe(true);
+});
+it('keeps card debt and its linked purchase when card deletion is requested',async()=>{
+ await mount();await entry('Expense');change('Pay with','card');change('Amount','15000');await save();
+ expect(moneyValue('You owe · credit cards')).toContain('15,000');const before=structuredClone(store.transactions);
+ fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));fireEvent.click(screen.getByRole('button',{name:'Delete card',exact:true}));
+ expect(screen.getByText('This card has a balance or financial history. Keep it to preserve your records.')).toBeTruthy();expect(store.cards).toHaveLength(1);expect(store.transactions).toEqual(before);
+ cleanup();await mount();expect(moneyValue('You owe · credit cards')).toContain('15,000');
+});
+it.each([10000,-10000])('protects an opening card balance of %s even with no transaction history',async balance=>{
+ store.cards[0].opening_balance=balance;await mount();fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/HNB.*Outstanding Balance/}));fireEvent.click(screen.getByRole('button',{name:'Delete card',exact:true}));
+ expect(screen.getByText('This card has a balance or financial history. Keep it to preserve your records.')).toBeTruthy();expect(store.cards).toHaveLength(1);expect(store.cards[0].opening_balance).toBe(balance);
 });
 it('cancels only future installments and preserves the original billed charge after reload',async()=>{
  await mount();await entry('Expense');change('Pay with','card');fireEvent.click(screen.getByLabelText('Split into installments'));

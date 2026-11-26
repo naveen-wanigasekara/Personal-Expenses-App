@@ -8,6 +8,7 @@ import {
   getProtectedCategory,
 } from "../constants/categories.js";
 import Sheet from "./Sheet.jsx";
+import { useAsyncSave } from "../hooks/useAsyncSave.js";
 
 export default function CategoryFormModal({
   initialType,
@@ -16,6 +17,7 @@ export default function CategoryFormModal({
   onSave,
 }) {
   const isEditing = !!editing;
+  const { saving, saveError, runSave } = useAsyncSave();
   const protectedCat = editing
     ? getProtectedCategory(editing.type, editing.id)
     : null;
@@ -28,7 +30,7 @@ export default function CategoryFormModal({
 
   const handleSave = () => {
     if (!label.trim()) return;
-    onSave(type, {
+    return runSave(() => onSave(type, {
       ...(editing || {}),
       id:
         editing?.id ||
@@ -37,14 +39,16 @@ export default function CategoryFormModal({
       iconName,
       icon: ICON_MAP[iconName] || MoreHorizontal,
       color,
-    });
+    }));
   };
 
   return (
     <Sheet
       title={isEditing ? "Edit category" : "New category"}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
     >
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}
+      <fieldset className="save-fields" disabled={saving}>
       {!isEditing && (
         <div className="mode-toggle" style={{ marginBottom: 16 }}>
           <div
@@ -141,6 +145,7 @@ export default function CategoryFormModal({
       >
         {isEditing ? "Save changes" : "Add category"}
       </button>
+      </fieldset>
     </Sheet>
   );
 }
