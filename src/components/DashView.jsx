@@ -1,4 +1,4 @@
-import { useState, useMemo, useContext, useEffect, Fragment, cloneElement } from "react";
+import { useState, useMemo, useContext, useEffect, Fragment } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -148,7 +148,6 @@ export default function DashView({
   onCustomChartsChange,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
-  const [showReports, setShowReports] = useState(false);
   const [showSavings, setShowSavings] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [editingChart, setEditingChart] = useState(null);
@@ -526,9 +525,9 @@ export default function DashView({
     ),
 
     total_savings: (
-      <div className="running-bal">
+      <div className="running-bal savings-summary">
         <span className="running-bal-label">Total Savings</span>
-        <span className="running-bal-amt">
+        <span className={`running-bal-amt ${totalSavings < 0 ? "neg" : ""}`}>
           {totalSavings < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(totalSavings))}
         </span>
         <button className="text-btn" onClick={()=>setShowSavings(true)}>View savings activity</button>
@@ -1134,8 +1133,21 @@ export default function DashView({
   const getSectionContent = (id) => {
     if (id in sectionContent) {
       const content = sectionContent[id];
-      const detail = ["net_this_month","income_in","expense_out","net_worth","budget_pulse","plan_vs_actual","cashflow","income_cats","expense_cats"].includes(id);
-      return content && detail ? cloneElement(content, {className: `${content.props.className || ""} ${showReports ? "" : "mobile-detail-hidden"}`}) : content;
+      if (content) return content;
+      // An enabled report should explain missing data instead of disappearing.
+      const emptyMessages = {
+        card_debt: "No outstanding credit card balance.",
+        net_worth: "No cash balance history yet.",
+        budget_pulse: "No income target or expense budget set for this month.",
+        plan_vs_actual: "Set a budget for this month to compare your plan and actual amounts.",
+        income_cats: "No income or income targets this month.",
+      };
+      return emptyMessages[id] ? (
+        <div className="card">
+          <div className="card-hd"><h3>{SECTION_DEFS.find(section => section.id === id).label}</h3></div>
+          <div className="empty-sm">{emptyMessages[id]}</div>
+        </div>
+      ) : null;
     }
     const chart = customCharts.find((c) => c.id === id);
     if (!chart) return null;
@@ -1214,7 +1226,6 @@ export default function DashView({
         </div>
       </div>
 
-      <button className="text-btn dashboard-detail-toggle" aria-expanded={showReports} onClick={()=>setShowReports(value=>!value)}>{showReports ? "Hide reports and breakdowns" : "Show reports and breakdowns"}</button>
       <div className="dash-sections">
         {(() => {
           const isInOut = (id) => id === "income_in" || id === "expense_out";
