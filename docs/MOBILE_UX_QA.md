@@ -74,24 +74,41 @@ page overflow; Dark and November were restored.
 Live QA found that the short-height keyboard selector also matched theme radio
 buttons, hiding navigation after theme selection. The selector now only matches
 text-entry controls; a new regression test verifies radio focus retains nav and
-text focus hides it. Final-preview verification of this CSS correction is pending.
-The earlier immutable preview's GitHub CI and Vercel build both passed.
+text focus hides it. The final immutable preview at f8eeab9 passed the live
+regression check at 454 x 312: Light and Dark radio focus left navigation
+visible (display: flex), Insights remained directly reachable, and no horizontal
+overflow occurred. Dark mode and 100% browser zoom were restored. No application-
+origin console errors were captured; recorded errors came from the browser
+extension. GitHub Security checks run 45944184246 and the Vercel preview build
+both passed on that exact application head.
 
-## Remaining live test gate
+## Remaining physical-device test gate
 
-- Confirm final GitHub CI and Vercel preview build on the exact head.
-- Sign in to that preview through authorized access to the isolated development
-  backend. Do not test these changes on an older preview or production.
-- Check entry draft dismissal, normal and formatted Ledger search, historical
-  budget context, card payment preselection, savings drill-down, lending filters,
-  reminder wording and restored settings in the live browser.
-- Inspect normal desktop and narrow/short layouts in light/dark, including
-  scrolling, fixed navigation, keyboard focus and Save reachability.
-- Verify real browser Back and nested layers; synthetic popstate tests alone
-  are not equivalent to operating-system Back.
-- Physical iPhone 15 / Samsung S24 Ultra installed-PWA, native keyboard,
-  installation, offline/reconnect, update and concurrent-device scenarios are
-  not verified by this workspace. Keep that coverage limit explicit.
+All available automated checks and the browser scenarios above passed. Browser
+zoom produced narrow, short CSS viewports; it is not mobile device emulation
+and does not establish physical-device or installed-PWA behavior.
 
+On both iPhone 15 and Samsung S24 Ultra, against the isolated development
+preview, the remaining scenarios are:
+
+- Install and launch the PWA; verify naming, icons, standalone launch and safe
+  areas in portrait and landscape.
+- Open entry and budget forms with the native keyboard. Reach each field and
+  Save by scrolling; confirm focused fields, validation and dismissal do not
+  leave controls obscured.
+- Exercise native Back and nested sheet/detail navigation, cancelling draft
+  discard and then accepting it. Confirm no accidental exit or duplicate saves.
+- Disconnect and reconnect during reading and editing. Confirm the offline
+  message, retained draft and blocked save; retry after reconnect and verify
+  exactly one persisted record. Remove only the disposable QA record.
+- Exercise an app update with a clean screen, dirty draft and pending save,
+  including activation from another tab/device. Confirm no draft loss or
+  duplicated write and that the update eventually applies after work finishes.
+- Make independent disposable edits from both devices; refresh and confirm
+  persisted results, understandable conflict/error behavior and no stale totals.
+
+These scenarios cannot be certified by the current workspace, which has no
+physical-phone session. No device results have been assumed or marked passed.
 Do not claim universal zero bugs or full device certification. The user requires
-successful tests before a dev merge; no merge has been performed for this work.
+successful tests before a dev merge; PR #29 remains draft and unmerged until
+this outstanding verification is completed. Production is unchanged.
