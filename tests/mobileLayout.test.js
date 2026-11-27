@@ -27,3 +27,10 @@ test('compact report classes do not dissolve desktop cards or alter desktop hit 
   assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.card')).display,'block');assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.icon-btn')).minWidth,'28px');dom.window.close();
  }
 });
+test('short-view keyboard rules keep navigation visible for theme radios and hide it for text entry',()=>{
+ const dom=new JSDOM('<style>.nav {display:flex}</style><div class="app"><input type="radio"><input type="text"><nav class="nav">Navigation</nav></div>',{pretendToBeVisual:true});
+ dom.window.document.querySelector('style').textContent+='\n'+stylesAt(454,312);
+ const nav=dom.window.document.querySelector('.nav');
+ dom.window.document.querySelector('[type=radio]').focus();assert.equal(dom.window.getComputedStyle(nav).display,'flex');
+ dom.window.document.querySelector('[type=text]').focus();assert.equal(dom.window.getComputedStyle(nav).display,'none');dom.window.close();
+});

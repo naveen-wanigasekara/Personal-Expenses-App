@@ -41,5 +41,5 @@
   .entry-footer { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
   .entry-back { min-height: 32px; }
   /* Keyboard focus gets the space reserved for navigation. */
-  .app:has(input:focus, textarea:focus, select:focus) .nav { display: none; }
+  .app:has(input:is([type="text"], [type="search"], [type="email"], [type="number"]):focus, textarea:focus) .nav { display: none; }
 }

@@ -1,12 +1,12 @@
 # Mobile UX fixes - 27 November 2026
 
 Development integration only. Base: dev b018f5543439e922e15dab75c3db4fc2887501f1.
-No production, schema, authentication-policy or financial-data changes.
+No production, schema or authentication-policy changes. Existing financial records were not edited; a labeled disposable development entry was created, edited, reloaded and removed during QA, restoring the original balance.
 
 ## Automated evidence
 
-The current local build and complete suite pass: 134 Node tests and 121 React
-tests (255 total), with zero failures, cancellations or skipped tests. The full
+The current local build and complete suite pass: 135 Node tests and 121 React
+tests (256 total), with zero failures, cancellations or skipped tests. The full
 dependency audit reports zero vulnerabilities; whitespace checks pass.
 
 New checks cover formatted amount queries, text-search separation, historical
@@ -53,7 +53,31 @@ The eight larger feature proposals in the review are not a claim of completed
 implementation: favorites, goals, report export, calendar, push delivery and
 encrypted offline queues require separate product and verification work.
 
-## Live test gate - pending
+## Live browser evidence
+
+The signed-in immutable preview at application commit 7d9a319 was exercised in
+Chrome. Passed: comma/currency-prefixed amount search; Close and real browser
+Back cancellation retaining a draft; return to the previous tab; savings
+activity and Back; card payment preselection; October budget labels and guarded
+navigation; loan payment-due filtering and priority sorting; leading reminder
+explanations and Dismiss wording. A labeled 1.25 QA expense was saved, edited to
+1.50, verified after reload, deleted and verified absent after another reload.
+The original cash balance was restored. No existing financial record was edited.
+
+At 454 x 312 effective CSS pixels, header controls measured 44 x 44, report
+expansion worked and the independent entry footer remained reachable. At
+340 x 234, the entry sheet had no horizontal overflow and Save remained within
+the viewport; budget input text measured 16px and the current Budget menu item
+was marked. Light-mode installation guidance displayed without horizontal
+page overflow; Dark and November were restored.
+
+Live QA found that the short-height keyboard selector also matched theme radio
+buttons, hiding navigation after theme selection. The selector now only matches
+text-entry controls; a new regression test verifies radio focus retains nav and
+text focus hides it. Final-preview verification of this CSS correction is pending.
+The earlier immutable preview's GitHub CI and Vercel build both passed.
+
+## Remaining live test gate
 
 - Confirm final GitHub CI and Vercel preview build on the exact head.
 - Sign in to that preview through authorized access to the isolated development
