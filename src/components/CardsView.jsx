@@ -13,6 +13,7 @@ export default function CardsView({
   onDelete,
   onDeleteTx,
   onEditTx,
+  onRecordPayment,
   installmentPlans,
   onCancelPlan,
   onEditPlan,
@@ -162,6 +163,7 @@ export default function CardsView({
             }}
             onDeleteTx={onDeleteTx}
             onEditTx={onEditTx}
+            onRecordPayment={onRecordPayment ? ()=>onRecordPayment(currentSelected.id) : undefined}
             installmentPlans={installmentPlans}
             onCancelPlan={onCancelPlan}
             onEditPlan={onEditPlan}

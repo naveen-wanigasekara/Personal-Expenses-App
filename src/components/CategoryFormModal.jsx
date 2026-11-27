@@ -43,7 +43,7 @@ export default function CategoryFormModal({
   };
 
   return (
-    <Sheet
+    <Sheet protectDraft busy={saving}
       title={isEditing ? "Edit category" : "New category"}
       onClose={() => { if (!saving) onClose(); }}
     >

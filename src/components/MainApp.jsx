@@ -1,3 +1,5 @@
+import {useAppBack} from "../hooks/useAppBack.js";
+import ConnectionStatus from "./ConnectionStatus.jsx";
 import { compareLedgerTransactions } from '../utils/ledgerSort.js';
 import { latestValuationValue } from '../utils/investmentValues.js';
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -91,10 +93,11 @@ export default function MainApp({ user }) {
   // sessionStorage is what lets the app land back on the same tab instead
   // of resetting to Insights, since navigation is in-memory state, not a
   // URL route.
-  const [tab, setTab] = useState(() => {
+  const [tab, setTabState] = useState(() => {
     const saved = sessionStorage.getItem(LAST_TAB_KEY);
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
+  const setTab = useAppBack(tab, setTabState);
   const moneyRevision = useRef(null);
   const moneyWriteLock = useRef(false);
   const [moneyRecords,setMoneyRecords]=useState([]);
@@ -164,7 +167,7 @@ export default function MainApp({ user }) {
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
-  const { isStandalone, updateApp } = usePWA();
+  const { isStandalone, updateApp, canInstall, install } = usePWA();
 
   const handleQuickRefresh = useCallback(() => {
     sessionStorage.setItem(LAST_TAB_KEY, tab);
@@ -1295,6 +1298,7 @@ export default function MainApp({ user }) {
         <div className="app-glow" />
 
         <PWABanners />
+        <ConnectionStatus />
 
         {errorBanner && <div className="error-banner">{errorBanner}</div>}
 
@@ -1395,6 +1399,7 @@ export default function MainApp({ user }) {
               onDelete={removeCard}
               onDeleteTx={deleteTx}
               onEditTx={editEntry}
+              onRecordPayment={cardId=>{setEntryGroup("expense");setEntryTask("card-payment");setEntryContext({cardId});setShowAdd(true);}}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
               onEditPlan={setEditingPlan}
@@ -1469,6 +1474,7 @@ export default function MainApp({ user }) {
           )}
           {tab === "user" && (
             <UserView
+              pwa={{isStandalone, canInstall, install}}
               user={user}
               currency={currency}
               onChangeCurrency={updateCurrency}
@@ -1597,7 +1603,7 @@ export default function MainApp({ user }) {
           onSave={saveMoneyRecord} onClose={()=>setShowAdd(false)}/>}
         {showAdd && entryGroup && !['loan','repayment','withdrawal','savings'].includes(entryTask) && (
           <AddModal key={entryTask}
-            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask}
+            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask} initialCardId={entryContext.cardId}
             entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)}
             onClose={() => setShowAdd(false)}
             onSave={async(tx) => {await addTx(tx);setShowAdd(false);}}
@@ -1714,6 +1720,7 @@ export default function MainApp({ user }) {
 
         {showDrawer && (
           <NavDrawer
+            activeTab={tab}
             moneyEnabled={moneyEnabled}
             onClose={() => setShowDrawer(false)}
             onNavigate={(destination) => {

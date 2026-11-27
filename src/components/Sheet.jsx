@@ -1,6 +1,8 @@
-import { useEffect, useRef, useId } from "react";
+import { useEffect, useRef, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBackLayer } from '../hooks/useAppBack.js';
 import { X } from "lucide-react";
+import { DISCARD_MESSAGE, registerDraftGuard } from '../utils/draftGuard.js';
 
 const FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -16,11 +18,29 @@ let previousBodyOverflow = "";
 // a centered dialog at desktop widths (see app.css RESPONSIVE section).
 // Owns body-scroll-lock, Escape-to-close, and a basic focus trap so each
 // modal doesn't have to reimplement them.
-export default function Sheet({ title, onClose, children, className, portal = true }) {
+export default function Sheet({ title, onClose, children, className, portal = true, protectDraft = false, busy = false }) {
   const sheetRef = useRef(null);
   const backdropRef = useRef(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const dirty = useRef(false);
+  const [offlineError, setOfflineError] = useState(false);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  const isBusy = () => busyRef.current || !!sheetRef.current?.querySelector('fieldset[disabled]');
+  const requestClose = () => {
+    if (isBusy()) return;
+    if (protectDraft && dirty.current && !window.confirm(DISCARD_MESSAGE)) return;
+    onClose();
+  };
+  onCloseRef.current = requestClose;
+  useBackLayer(() => onCloseRef.current());
+  useEffect(() => {
+    if (!protectDraft) return;
+    const unregister = registerDraftGuard({dirty: () => dirty.current, busy: isBusy});
+    const beforeUnload = event => { if (dirty.current || isBusy()) {event.preventDefault();event.returnValue = '';} };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {unregister();window.removeEventListener('beforeunload', beforeUnload);};
+  }, [protectDraft]);
   const idRef = useRef(null);
   if (idRef.current === null) idRef.current = Symbol("sheet");
   const titleId = useId();
@@ -110,10 +130,21 @@ export default function Sheet({ title, onClose, children, className, portal = tr
   }, []);
 
   const dialog = (
-    <div className="backdrop" onClick={onClose} ref={backdropRef}>
+    <div className="backdrop" onClick={requestClose} ref={backdropRef}>
       <div
         className={`sheet ${className || ""}`}
         onClick={(e) => e.stopPropagation()}
+        onClickCapture={event => {
+          if (protectDraft && event.target.closest('fieldset button:not([disabled])')) dirty.current = true;
+        }}
+        onChangeCapture={event => {
+          if (protectDraft && !event.target.closest('.entry-navigation')) dirty.current = true;
+        }}
+        onSubmitCapture={event => {
+          if (navigator.onLine === false) {
+            event.preventDefault(); event.stopPropagation(); setOfflineError(true);
+          } else setOfflineError(false);
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -123,10 +154,11 @@ export default function Sheet({ title, onClose, children, className, portal = tr
         <div className="sheet-handle" />
         <div className="sheet-hd">
           <h2 id={titleId}>{title}</h2>
-          <button className="close-btn" onClick={onClose} aria-label="Close">
+          <button className="close-btn" onClick={requestClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
+        {offlineError && <p className="money-error" role="alert">Offline. Reconnect to save; your draft is still on this screen.</p>}
         {children}
       </div>
     </div>

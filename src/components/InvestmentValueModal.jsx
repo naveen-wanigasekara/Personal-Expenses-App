@@ -33,7 +33,7 @@ export default function InvestmentValueModal({
   };
 
   return (
-    <Sheet
+    <Sheet protectDraft busy={saving}
       title={`${isEditing ? "Edit value" : "Record value"} — ${investment.name}`}
       onClose={() => { if (!saving) onClose(); }}
     >
