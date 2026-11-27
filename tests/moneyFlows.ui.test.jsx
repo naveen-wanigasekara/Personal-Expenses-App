@@ -268,10 +268,10 @@ it('integrates CC reminders and future installments with occurrence-specific com
  await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);const dialog=screen.getByRole('dialog',{name:'Notifications'});
  expect(within(dialog).getByRole('heading',{name:/Monthly Credit Card/})).toBeTruthy();expect(within(dialog).getByRole('heading',{name:/Due Payments/})).toBeTruthy();
  const before=JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records});
- const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`}));
- expect(within(dialog).queryByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(1);
+ const nextLabel=following.toLocaleDateString('en-US',{month:'long',year:'numeric'});fireEvent.click(within(dialog).getByRole('button',{name:`Dismiss Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01`}));
+ expect(within(dialog).queryByRole('button',{name:`Dismiss Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01`})).toBeNull();expect(within(dialog).getAllByText('Notification laptop')).toHaveLength(1);
  expect(JSON.stringify({transactions:store.transactions,cards:store.cards,records:store.records})).toBe(before);
- cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Mark Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01 as completed`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(1);
+ cleanup();await mount();fireEvent.click(screen.getAllByRole('button',{name:'Notifications'})[0]);expect(screen.queryByRole('button',{name:`Dismiss Notification laptop for ${nextLabel}, installment 2 due ${nextMonth}-01`})).toBeNull();expect(screen.getAllByText('Notification laptop')).toHaveLength(1);
  localStorage.removeItem(`completed_notifs_${user.id}_${nextMonth}`);
 });
 
@@ -345,9 +345,9 @@ it('creates, edits, values, reloads and removes an investment with its linked hi
 it('saves and reloads fixed and monthly budgets without losing the fixed plan',async()=>{
  await mount();fireEvent.click(screen.getByRole('button',{name:'Budget',exact:true}));change('Fixed monthly expense budget','100000');change('Groceries budget','20000');fireEvent.click(screen.getByRole('button',{name:'Save fixed plan',exact:true}));
  await waitFor(()=>expect(store.budgets.find(r=>r.month_key==='fixed').expense_total).toBe(100000));
- fireEvent.click(screen.getByRole('button',{name:'This month',exact:true}));change('This month’s expense budget','120000');fireEvent.click(screen.getByRole('button',{name:'Save for this month',exact:true}));
+ fireEvent.click(screen.getByRole('button',{name:'Selected month',exact:true}));change(`${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})} expense budget`,'120000');fireEvent.click(screen.getByRole('button',{name:`Save for ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}`,exact:true}));
  await waitFor(()=>expect(store.budgets.find(r=>r.month_key!=='fixed').expense_total).toBe(120000));
- cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'Budget',exact:true}));expect(screen.getByLabelText('Fixed monthly expense budget').value).toBe('100,000.00');fireEvent.click(screen.getByRole('button',{name:'This month',exact:true}));expect(screen.getByLabelText('This month’s expense budget').value).toBe('120,000.00');
+ cleanup();await mount();fireEvent.click(screen.getByRole('button',{name:'Budget',exact:true}));expect(screen.getByLabelText('Fixed monthly expense budget').value).toBe('100,000.00');fireEvent.click(screen.getByRole('button',{name:'Selected month',exact:true}));expect(screen.getByLabelText(`${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})} expense budget`).value).toBe('120,000.00');
 });
 it('creates, reloads and deletes a recurring reminder through Profile',async()=>{
  await mount();fireEvent.click(screen.getAllByRole('button',{name:'Profile',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:'Recurring Reminders',exact:true}));fireEvent.click(screen.getByRole('button',{name:'Add reminder',exact:true}));
@@ -387,4 +387,15 @@ it('failed borrower deletion preserves the saved identity and requires refreshed
  await mount();const dialog=await openBorrowerForDeletion('Empty borrower');store.fail=true;
  fireEvent.click(within(dialog).getByRole('button',{name:'Delete borrower'}));
  await screen.findByRole('heading',{name:'Refresh your saved records'});expect(store.records).toHaveLength(1);expect(store.records[0].id).toBe('empty');
+});
+
+it('starts a payment from card details with that card selected and preserves repayment classification',async()=>{
+ store.cards.push({id:'other-card',name:'Other card',credit_limit:100000,opening_balance:2500,colors:['#222','#555']});
+ await mount();fireEvent.click(screen.getAllByRole('button',{name:'Cards',exact:true})[0]);fireEvent.click(screen.getByRole('button',{name:/Other card.*Outstanding Balance/}));
+ fireEvent.click(screen.getByRole('button',{name:'Record payment',exact:true}));expect(screen.getByLabelText('Credit card').value).toBe('other-card');expect(Number(screen.getByLabelText('Amount').value.replaceAll(',',''))).toBe(2500);
+ await save();expect(store.transactions.find(t=>t.type==='card-payment')).toMatchObject({card_id:'other-card',amount:2500,account:'cash'});
+});
+it('shows savings movements without adding projected entries to the database',async()=>{
+ await mount();await entry('Savings');change('Amount','2500');await save();const before=structuredClone(store.transactions);const records=structuredClone(store.records);
+ fireEvent.click(screen.getByRole('button',{name:'View savings activity'}));const dialog=screen.getByRole('dialog',{name:'Savings activity'});expect(dialog.textContent).toContain('Available savings');expect(dialog.textContent).toContain('Added to savings');expect(dialog.textContent).toContain('2,500.00');expect(store.transactions).toEqual(before);expect(store.records).toEqual(records);
 });

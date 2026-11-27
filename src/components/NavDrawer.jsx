@@ -6,13 +6,13 @@ import Sheet from "./Sheet.jsx";
 // hides .nav-drawer at >=1024px). Built on top of Sheet for its existing
 // scroll-lock/Escape/focus-trap behavior, just reshaped via the
 // .nav-drawer class into a left-anchored panel instead of a bottom sheet.
-export default function NavDrawer({ onClose, onNavigate, moneyEnabled }) {
+export default function NavDrawer({ onClose, onNavigate, moneyEnabled, activeTab }) {
   return (
     <Sheet title="Menu" onClose={onClose} className="nav-drawer">
-      {moneyEnabled && <button className="settings-menu-row" onClick={()=>onNavigate("money-lent")}><LineChart size={16}/><span>Money Lent</span><ChevronRight size={15} style={{marginLeft:"auto"}}/></button>}
+      {moneyEnabled && <button className="settings-menu-row" aria-current={activeTab === "money-lent" ? "page" : undefined} onClick={()=>onNavigate("money-lent")}><LineChart size={16}/><span>Money Lent</span><ChevronRight size={15} style={{marginLeft:"auto"}}/></button>}
       <button
         className="settings-menu-row"
-        onClick={() => onNavigate("budget")}
+        aria-current={activeTab === "budget" ? "page" : undefined} onClick={() => onNavigate("budget")}
       >
         <Target size={16} />
         <span>Budget</span>
@@ -23,7 +23,7 @@ export default function NavDrawer({ onClose, onNavigate, moneyEnabled }) {
       </button>
       <button
         className="settings-menu-row"
-        onClick={() => onNavigate("investments")}
+        aria-current={activeTab === "investments" ? "page" : undefined} onClick={() => onNavigate("investments")}
       >
         <LineChart size={16} />
         <span>Investments</span>
@@ -32,12 +32,12 @@ export default function NavDrawer({ onClose, onNavigate, moneyEnabled }) {
           style={{ marginLeft: "auto", color: "var(--ink-faint)" }}
         />
       </button>
-      <button className="settings-menu-row" onClick={() => onNavigate("loan-calculator")}>
+      <button className="settings-menu-row" aria-current={activeTab === "loan-calculator" ? "page" : undefined} onClick={() => onNavigate("loan-calculator")}>
         <Calculator size={16} />
         <span>Loan Calculator</span>
         <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />
       </button>
-      <button className="settings-menu-row" onClick={() => onNavigate("bank-details")}>
+      <button className="settings-menu-row" aria-current={activeTab === "bank-details" ? "page" : undefined} onClick={() => onNavigate("bank-details")}>
         <Building2 size={16} />
         <span>Bank Details</span>
         <ChevronRight size={15} style={{ marginLeft: "auto", color: "var(--ink-faint)" }} />

@@ -14,6 +14,7 @@ import { fmt, monthKey, monthLabel, shiftMonth } from "../utils/format.js";
 import { getCat } from "../constants/categories.js";
 import { entryDirection } from "../utils/money.js";
 import TxRow from "./TxRow.jsx";
+import { matchesTransactionAmount } from '../utils/transactionSearch.js';
 
 export default function HomeView({
   stats,
@@ -95,16 +96,15 @@ export default function HomeView({
       if (!typeMatch || !catMatch) return false;
       if (!q) return true;
       const note = (t.note || "").toLowerCase();
-      const amt = String(t.amount);
       const catLabel = getCat(
         t.category,
         t.type === "income" ? "income" : "expense",
         allExpCats,
         allIncCats,
       ).label.toLowerCase();
-      return note.includes(q) || amt.includes(q) || catLabel.includes(q);
+      return note.includes(q) || matchesTransactionAmount(t.amount, search, CURRENCY) || catLabel.includes(q);
     });
-  }, [transactions, filterCat, filterType, search, allExpCats, allIncCats]);
+  }, [transactions, filterCat, filterType, search, allExpCats, allIncCats, CURRENCY]);
 
   const activeCats = useMemo(() => {
     // Build a map of effective category IDs → category objects (mirrors how TxRow resolves cats)

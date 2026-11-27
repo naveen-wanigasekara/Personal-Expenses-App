@@ -1,3 +1,4 @@
+import {useBackLayer} from "../hooks/useAppBack.js";
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { Archive, ArrowLeft, Menu, Users, ArrowDownLeft, ArrowUpRight, Pencil, Trash2, Bell, RefreshCw, Search, Wallet } from 'lucide-react';
 import { CurrencyCtx } from '../context.js';
@@ -17,7 +18,10 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
   const currency = useContext(CurrencyCtx);
   const [mode, setMode] = useState('active');
   const [selectedId, setSelectedId] = useState(null);
+  useBackLayer(selectedId ? ()=>setSelectedId(null) : null);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [form, setForm] = useState(null), [merge, setMerge] = useState(null), [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   useEffect(() => { onModalChange?.(!!form || !!merge || !!deleting); return () => onModalChange?.(false); }, [form, merge, deleting, onModalChange]);
@@ -105,7 +109,21 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
   const filteredGroups = groups.filter(group => (mode === 'directory' || visibleLoans(group).length > 0) && group.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const activeLoans = groups.flatMap(group => group.loans.filter(loan => !isArchived(loan)).map(loan => ({ loan, group })))
     .filter(({ group }) => group.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
-    .sort((a, b) => b.loan.date.localeCompare(a.loan.date) || a.loan.id.localeCompare(b.loan.id));
+    .filter(({loan}) => {
+      if (statusFilter === 'all') return true;
+      const summary = summaryFor(loan);
+      if (statusFilter === 'overdue') return summary.status === 'Payment due';
+      const horizon = new Date(`${through}T12:00:00`); horizon.setDate(horizon.getDate() + 20);
+      const end = `${horizon.getFullYear()}-${String(horizon.getMonth()+1).padStart(2,'0')}-${String(horizon.getDate()).padStart(2,'0')}`;
+      return [summary.nextPrincipalDate, summary.nextInterestDate].some(date => date && date >= through && date <= end);
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'due') {
+        const due = loan => { const summary = summaryFor(loan); return summary.status === 'Payment due' ? '0000-00-00' : [summary.nextPrincipalDate, summary.nextInterestDate].filter(Boolean).sort()[0] || '9999-12-31'; };
+        const order = due(a.loan).localeCompare(due(b.loan)); if (order) return order;
+      }
+      return b.loan.date.localeCompare(a.loan.date) || a.loan.id.localeCompare(b.loan.id);
+    });
   const hasVisibleEntries = mode === 'active' ? activeLoans.length > 0 : filteredGroups.length > 0;
   return <div className="view money-view">
     <div className="dash-topbar">
@@ -144,6 +162,7 @@ export default function MoneyLentView({ records, cards, onRepay, onEdit, onDelet
       </> : <>
         <p className="money-hint lending-intro">{mode === 'archive' ? 'Settled and archived loans. All history is retained.' : mode === 'directory' ? 'One record per person, across all lending dates.' : 'Active loans only. Settled loans move to Archive automatically.'}</p>
         {groups.length > 0 && <div className="tx-search-bar borrower-search"><Search size={14} className="tx-search-icon" aria-hidden="true" /><input type="search" aria-label="Find a borrower" className="tx-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a borrower…" /></div>}
+        {mode === 'active' && <div className="money-fields"><label className="money-field"><span>Loan status</span><select className="text-input" aria-label="Loan status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">All active loans</option><option value="overdue">Payment due</option><option value="soon">Due within 20 days</option></select></label><label className="money-field"><span>Sort loans</span><select className="text-input" aria-label="Sort loans" value={sortOrder} onChange={e=>setSortOrder(e.target.value)}><option value="newest">Newest first</option><option value="due">Payment priority</option></select></label></div>}
         {mode === 'active' ? <div className="lending-loan-list">{activeLoans.map(({ loan, group }) => loanCard(loan, group))}</div> : <div className="lending-borrower-grid">{filteredGroups.map(group => {
           const total = totals(group), visible = visibleLoans(group);
           return <article className="card borrower-card" key={group.id}><div className="lending-loan-heading"><h2>{group.name}</h2><span className="money-status">{visible.length} {mode === 'archive' ? 'archived' : mode === 'directory' ? '' : 'active'} {visible.length === 1 ? 'loan' : 'loans'}</span></div>

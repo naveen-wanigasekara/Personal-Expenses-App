@@ -1,3 +1,4 @@
+import {useBackLayer} from "../hooks/useAppBack.js";
 import { useContext } from "react";
 import {
   ChevronLeft,
@@ -26,6 +27,7 @@ export default function CardDetailView({
   onDelete,
   onDeleteTx,
   onEditTx,
+  onRecordPayment,
   installmentPlans,
   onCancelPlan,
   onEditPlan,
@@ -34,6 +36,7 @@ export default function CardDetailView({
   viewMonth,
   setViewMonth,
 }) {
+  useBackLayer(onBack);
   const CURRENCY = useContext(CurrencyCtx);
   const [from, to] = card.colors || CARD_COLORS[0];
 
@@ -155,6 +158,8 @@ export default function CardDetailView({
         </div>
       </div>
 
+      {onRecordPayment && <button className="save-btn card-payment-action" onClick={onRecordPayment}>Record payment</button>}
+      <details className="card credit-explanation"><summary>How available credit is calculated</summary><p>Credit limit minus current outstanding balance minus future installments reserved.</p><p>Limit: {CURRENCY} {fmt(+card.limit || 0)}<br/>Current balance: {CURRENCY} {fmt(card.currentBalance)}<br/>Future installments: {CURRENCY} {fmt(card.futureInstallmentTotal || 0)}<br/>Available to spend: {CURRENCY} {fmt(available)}</p><p>These figures are not statement or minimum-payment amounts.</p></details>
       <div
         className="ct-visual big"
         style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}

@@ -1,4 +1,6 @@
-import { useState, useEffect, useContext } from "react";
+import {useDraftState} from "../hooks/useDraftState.js";
+import {canLeaveDrafts} from "../utils/draftGuard.js";
+import { useState, useEffect, useContext, useRef } from "react";
 import {
   Lock,
   Unlock,
@@ -44,19 +46,27 @@ export default function BudgetView({
   const [side, setSide] = useState("expense");
   const [fixedEdit, setFixedEdit] = useState(fixedPlan);
   const [monthEdit, setMonthEdit] = useState(
-    monthPlans[viewMonth] || emptyPlan(),
+    monthPlans[viewMonth] || JSON.parse(JSON.stringify(fixedPlan)),
   );
+  const fixedSource = useRef(fixedPlan);
+  const monthSource = useRef({month: viewMonth, plan: monthPlans[viewMonth] || fixedPlan});
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const fixedDirty = JSON.stringify(fixedEdit) !== JSON.stringify(fixedPlan);
+  const monthDirty = JSON.stringify(monthEdit) !== JSON.stringify(monthPlans[viewMonth] || fixedPlan);
+  useDraftState(fixedDirty || monthDirty, saving);
 
   useEffect(() => {
-    setFixedEdit(fixedPlan);
+    const previous = fixedSource.current;
+    setFixedEdit(current => JSON.stringify(current) === JSON.stringify(previous) ? fixedPlan : current);
+    fixedSource.current = fixedPlan;
   }, [fixedPlan]);
   useEffect(() => {
-    setMonthEdit(
-      monthPlans[viewMonth] || JSON.parse(JSON.stringify(fixedPlan)),
-    );
+    const previous = monthSource.current;
+    const next = monthPlans[viewMonth] || fixedPlan;
+    setMonthEdit(current => previous.month !== viewMonth || JSON.stringify(current) === JSON.stringify(previous.plan) ? JSON.parse(JSON.stringify(next)) : current);
+    monthSource.current = {month: viewMonth, plan: next};
   }, [viewMonth, monthPlans, fixedPlan]);
 
   useEffect(() => {
@@ -66,10 +76,11 @@ export default function BudgetView({
     };
   }, []);
 
-  const changeMonth = (dir) => setViewMonth(shiftMonth(viewMonth, dir));
+  const changeMonth = (dir) => { if (canLeaveDrafts()) setViewMonth(shiftMonth(viewMonth, dir)); };
 
   const handleSave = async () => {
     if (saving) return;
+    if (navigator.onLine === false) {setSaveError('Offline. Reconnect to save; your budget edits are still on this screen.');return;}
     setSaving(true);
     setSaved(false);
     setSaveError("");
@@ -86,6 +97,7 @@ export default function BudgetView({
   };
 
   const copyFromFixed = () => {
+    if (monthDirty && !canLeaveDrafts()) return;
     setSaved(false); setSaveError("");
     setMonthEdit(JSON.parse(JSON.stringify(fixedPlan)));
   };
@@ -167,7 +179,7 @@ export default function BudgetView({
           className={!isFixed ? "active" : ""}
           onClick={() => setMode("month")}
         >
-          <Unlock size={13} strokeWidth={2.5} /> This month
+          <Unlock size={13} strokeWidth={2.5} /> Selected month
         </button>
       </div>
 
@@ -194,7 +206,7 @@ export default function BudgetView({
               <div className="copy-btn-text">
                 <span className="copy-btn-title">Copy from fixed plan</span>
                 <span className="copy-btn-sub">
-                  Apply your fixed budget to this month
+                  Apply your fixed budget to {monthLabel(viewMonth)}
                 </span>
               </div>
               <ChevronRight size={15} className="copy-btn-arrow" />
@@ -253,16 +265,16 @@ export default function BudgetView({
           {side === "income"
             ? isFixed
               ? "Fixed monthly income target"
-              : "This month's income target"
+              : `${monthLabel(viewMonth)} income target`
             : isFixed
               ? "Fixed monthly expense budget"
-              : "This month's expense budget"}
+              : `${monthLabel(viewMonth)} expense budget`}
         </label>
         <div className={`big-input ${side === "income" ? "in-accent" : ""}`}>
           <span className="big-cur">{CURRENCY}</span>
           <AmountInput
             disabled={saving}
-            aria-label={`${isFixed ? "Fixed monthly" : "This month’s"} ${side === "income" ? "income target" : "expense budget"}`}
+            aria-label={`${isFixed ? "Fixed monthly" : monthLabel(viewMonth)} ${side === "income" ? "income target" : "expense budget"}`}
             value={total}
             onChange={updateTotal}
             placeholder="0.00"
@@ -363,7 +375,7 @@ export default function BudgetView({
         ) : isFixed ? (
           "Save fixed plan"
         ) : (
-          "Save for this month"
+          `Save for ${monthLabel(viewMonth)}`
         )}
       </button>
       <div style={{ height: "80px" }} />

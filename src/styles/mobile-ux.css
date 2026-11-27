@@ -1,0 +1,45 @@
+/* Phone controls keep a consistent hit area; desktop spacing stays independent. */
+@media (max-width: 1023px) {
+  .icon-btn, .bell-btn, .close-btn, .back-btn,
+  .month-pill button, .detail-actions button {
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .mheader-center { min-width: 0; }
+  .month-pill { gap: 0; }
+  .month-pill > span { white-space: nowrap; }
+  .nav-btn span { font-size: 11px; }
+  .money-overview dt, .field-lbl, .summary-label { font-size: 12px; }
+  .cb-input input { font-size: 16px; min-height: 44px; }
+  .cb-input { min-height: 48px; }
+  .tx-search-bar { min-height: 48px; }
+  .tx-search-input { font-size: 16px; }
+  .settings-menu-row[aria-current="page"] { outline: 2px solid var(--accent-2); outline-offset: -2px; }
+  .credit-explanation { font-size: 14px; line-height: 1.6; }
+  .card-payment-action { margin: 12px 0; }
+  .dashboard-detail-toggle { width: 100%; min-height: 44px; margin: 12px 0; }
+  .dash-sections .mobile-detail-hidden { display: none; }
+}
+.sync-status { font-size: 12px; line-height: 1.5; padding: 8px 18px; color: var(--ink-soft); }
+.sync-status.offline { background: var(--surface); color: var(--danger); border-bottom: 1px solid currentColor; }
+.savings-history-list { display: grid; gap: 14px; overflow-y: auto; }
+.savings-history-list article { padding: 12px; border-bottom: 1px solid var(--line); }
+.savings-history-list p { margin: 5px 0; overflow-wrap: anywhere; }
+.install-help { margin: 16px 0; padding: 12px; font-size: 14px; line-height: 1.6; }
+.install-help summary { cursor: pointer; min-height: 44px; }
+.dashboard-detail-toggle { display: none; }
+@media (max-width: 1023px) { .dashboard-detail-toggle { display: block; } }
+@media (max-width: 1023px) and (max-height: 500px) {
+  .sheet-handle { margin-top: 6px; margin-bottom: 2px; }
+  .sheet-hd { padding-top: 4px; padding-bottom: 4px; }
+  .entry-scroll { padding-top: 4px; min-height: 0; }
+  .entry-navigation { margin-bottom: 8px; }
+  .entry-intro { display: none; }
+  .entry-footer { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  .entry-back { min-height: 32px; }
+  /* Keyboard focus gets the space reserved for navigation. */
+  .app:has(input:is([type="text"], [type="search"], [type="email"], [type="number"]):focus, textarea:focus) .nav { display: none; }
+}

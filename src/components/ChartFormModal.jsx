@@ -126,7 +126,7 @@ export default function ChartFormModal({
   };
 
   return (
-    <Sheet
+    <Sheet protectDraft busy={saving}
       title={isEditing ? "Edit chart" : "New chart"}
       onClose={() => { if (!saving) onClose(); }}
       className="sheet-split"

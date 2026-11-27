@@ -75,7 +75,7 @@ export default function InvestmentFormModal({ investment, onClose, onSave }) {
   };
 
   return (
-    <Sheet
+    <Sheet protectDraft busy={saving}
       title={investment ? "Edit investment" : "New investment"}
       onClose={() => { if (!saving) onClose(); }}
     >

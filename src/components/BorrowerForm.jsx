@@ -14,7 +14,7 @@ export default function BorrowerForm({ borrower, onSave, onClose }) {
     catch (err) { setError(err.message || 'Could not save borrower.'); }
     finally { lock.current = false; setSaving(false); }
   };
-  return <Sheet title={borrower ? 'Edit borrower' : 'Add borrower'} className="entry-sheet" onClose={() => { if (!lock.current) onClose(); }}>
+  return <Sheet protectDraft busy={saving} title={borrower ? 'Edit borrower' : 'Add borrower'} className="entry-sheet" onClose={() => { if (!lock.current) onClose(); }}>
     <form className="entry-form" onSubmit={submit}>
       <div className="entry-scroll" role="region" aria-label="Borrower details">
         <fieldset disabled={saving}>

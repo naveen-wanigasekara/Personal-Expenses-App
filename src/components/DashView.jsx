@@ -1,4 +1,4 @@
-import { useState, useMemo, useContext, useEffect, Fragment } from "react";
+import { useState, useMemo, useContext, useEffect, Fragment, cloneElement } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -148,6 +148,8 @@ export default function DashView({
   onCustomChartsChange,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const [showReports, setShowReports] = useState(false);
+  const [showSavings, setShowSavings] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [editingChart, setEditingChart] = useState(null);
   const [showAddChart, setShowAddChart] = useState(false);
@@ -164,8 +166,8 @@ export default function DashView({
     [insightsLayout, customCharts],
   );
   useEffect(() => {
-    onModalChange?.(showCustomize);
-  }, [showCustomize]);
+    onModalChange?.(showCustomize || showSavings);
+  }, [showCustomize, showSavings]);
 
   // .view-dashboard is a fixed-height flex frame with an inner scroll pane
   // (.dash-scroll) only below 1024px — see app.css. Desktop keeps the
@@ -527,8 +529,9 @@ export default function DashView({
       <div className="running-bal">
         <span className="running-bal-label">Total Savings</span>
         <span className="running-bal-amt">
-          +{CURRENCY} {fmt(totalSavings)}
+          {totalSavings < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(totalSavings))}
         </span>
+        <button className="text-btn" onClick={()=>setShowSavings(true)}>View savings activity</button>
       </div>
     ),
 
@@ -1129,7 +1132,11 @@ export default function DashView({
   };
 
   const getSectionContent = (id) => {
-    if (id in sectionContent) return sectionContent[id];
+    if (id in sectionContent) {
+      const content = sectionContent[id];
+      const detail = ["net_this_month","income_in","expense_out","net_worth","budget_pulse","plan_vs_actual","cashflow","income_cats","expense_cats"].includes(id);
+      return content && detail ? cloneElement(content, {className: `${content.props.className || ""} ${showReports ? "" : "mobile-detail-hidden"}`}) : content;
+    }
     const chart = customCharts.find((c) => c.id === id);
     if (!chart) return null;
     return (
@@ -1207,6 +1214,7 @@ export default function DashView({
         </div>
       </div>
 
+      <button className="text-btn dashboard-detail-toggle" aria-expanded={showReports} onClick={()=>setShowReports(value=>!value)}>{showReports ? "Hide reports and breakdowns" : "Show reports and breakdowns"}</button>
       <div className="dash-sections">
         {(() => {
           const isInOut = (id) => id === "income_in" || id === "expense_out";
@@ -1327,6 +1335,7 @@ export default function DashView({
         </Sheet>
       )}
 
+      {showSavings && <Sheet title="Savings activity" onClose={()=>setShowSavings(false)}><p>Available savings: {CURRENCY} {fmt(totalSavings)}. Money currently lent from savings is excluded until it is returned. Transfers of your own money are not income earned or spending.</p><div className="savings-history-list">{transactions.filter(tx=>tx.date<=through && moneyBalances([tx]).savings !== 0).sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>{const delta=moneyBalances([tx]).savings;return <article key={tx.id}><time>{tx.date}</time><p>{tx.note || (delta > 0 ? "Added to savings" : "Money out of savings")}</p><strong>{delta < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(delta))}</strong></article>;})}{!transactions.some(tx=>tx.date<=through && moneyBalances([tx]).savings !== 0) && <p>No savings movements yet.</p>}</div></Sheet>}
       {(showAddChart || editingChart) && (
         <ChartFormModal
           editing={editingChart}
