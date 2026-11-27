@@ -148,6 +148,7 @@ export default function DashView({
   onCustomChartsChange,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const [showSavings, setShowSavings] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
   const [editingChart, setEditingChart] = useState(null);
   const [showAddChart, setShowAddChart] = useState(false);
@@ -164,8 +165,8 @@ export default function DashView({
     [insightsLayout, customCharts],
   );
   useEffect(() => {
-    onModalChange?.(showCustomize);
-  }, [showCustomize]);
+    onModalChange?.(showCustomize || showSavings);
+  }, [showCustomize, showSavings]);
 
   // .view-dashboard is a fixed-height flex frame with an inner scroll pane
   // (.dash-scroll) only below 1024px — see app.css. Desktop keeps the
@@ -432,28 +433,27 @@ export default function DashView({
       })),
     ]);
 
-  const saveChart = (chart) => {
+  const saveChart = async (chart) => {
     const exists = customCharts.some((c) => c.id === chart.id);
     const nextCharts = exists
       ? customCharts.map((c) => (c.id === chart.id ? chart : c))
       : [...customCharts, chart];
-    onCustomChartsChange(nextCharts);
     // Renaming an existing chart needs no sections update — sections
     // re-derives its label from the fresh customCharts prop automatically.
     // A brand-new chart does need appending, so it shows up immediately.
-    if (!exists) {
-      updateSections([
-        ...sections,
-        { id: chart.id, label: chart.name, desc: "Custom chart", visible: true },
-      ]);
-    }
+    const nextSections = exists ? sections : [
+      ...sections,
+      { id: chart.id, label: chart.name, desc: "Custom chart", visible: true },
+    ];
+    await onCustomChartsChange(nextCharts, nextSections.map(({id, visible}) => ({id, visible})));
   };
 
-  const deleteChart = (id) => {
-    onCustomChartsChange(customCharts.filter((c) => c.id !== id));
+  const deleteChart = async (id) => {
     // Drop it from the persisted layout immediately too, instead of leaving
     // a stale entry that mergeLayout would just filter out silently forever.
-    updateSections(sections.filter((s) => s.id !== id));
+    try {
+      await onCustomChartsChange(customCharts.filter((c) => c.id !== id), sections.filter((s) => s.id !== id).map(({id, visible}) => ({id, visible})));
+    } catch { /* MainApp reports the failed write and restores the chart and layout. */ }
   };
 
   const sectionContent = {
@@ -525,11 +525,12 @@ export default function DashView({
     ),
 
     total_savings: (
-      <div className="running-bal">
+      <div className="running-bal savings-summary">
         <span className="running-bal-label">Total Savings</span>
-        <span className="running-bal-amt">
-          +{CURRENCY} {fmt(totalSavings)}
+        <span className={`running-bal-amt ${totalSavings < 0 ? "neg" : ""}`}>
+          {totalSavings < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(totalSavings))}
         </span>
+        <button className="text-btn" onClick={()=>setShowSavings(true)}>View savings activity</button>
       </div>
     ),
 
@@ -1130,7 +1131,24 @@ export default function DashView({
   };
 
   const getSectionContent = (id) => {
-    if (id in sectionContent) return sectionContent[id];
+    if (id in sectionContent) {
+      const content = sectionContent[id];
+      if (content) return content;
+      // An enabled report should explain missing data instead of disappearing.
+      const emptyMessages = {
+        card_debt: "No outstanding credit card balance.",
+        net_worth: "No cash balance history yet.",
+        budget_pulse: "No income target or expense budget set for this month.",
+        plan_vs_actual: "Set a budget for this month to compare your plan and actual amounts.",
+        income_cats: "No income or income targets this month.",
+      };
+      return emptyMessages[id] ? (
+        <div className="card">
+          <div className="card-hd"><h3>{SECTION_DEFS.find(section => section.id === id).label}</h3></div>
+          <div className="empty-sm">{emptyMessages[id]}</div>
+        </div>
+      ) : null;
+    }
     const chart = customCharts.find((c) => c.id === id);
     if (!chart) return null;
     return (
@@ -1328,6 +1346,7 @@ export default function DashView({
         </Sheet>
       )}
 
+      {showSavings && <Sheet title="Savings activity" onClose={()=>setShowSavings(false)}><p>Available savings: {CURRENCY} {fmt(totalSavings)}. Money currently lent from savings is excluded until it is returned. Transfers of your own money are not income earned or spending.</p><div className="savings-history-list">{transactions.filter(tx=>tx.date<=through && moneyBalances([tx]).savings !== 0).sort((a,b)=>b.date.localeCompare(a.date)).map(tx=>{const delta=moneyBalances([tx]).savings;return <article key={tx.id}><time>{tx.date}</time><p>{tx.note || (delta > 0 ? "Added to savings" : "Money out of savings")}</p><strong>{delta < 0 ? "−" : "+"}{CURRENCY} {fmt(Math.abs(delta))}</strong></article>;})}{!transactions.some(tx=>tx.date<=through && moneyBalances([tx]).savings !== 0) && <p>No savings movements yet.</p>}</div></Sheet>}
       {(showAddChart || editingChart) && (
         <ChartFormModal
           editing={editingChart}
@@ -1339,8 +1358,8 @@ export default function DashView({
             setShowAddChart(false);
             setEditingChart(null);
           }}
-          onSave={(chart) => {
-            saveChart(chart);
+          onSave={async (chart) => {
+            await saveChart(chart);
             setShowAddChart(false);
             setEditingChart(null);
           }}

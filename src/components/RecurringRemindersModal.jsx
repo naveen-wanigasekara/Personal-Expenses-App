@@ -3,6 +3,7 @@ import { Plus, Trash2, Bell } from "lucide-react";
 import { CurrencyCtx } from "../context.js";
 import { fmt, ordinal } from "../utils/format.js";
 import Sheet from "./Sheet.jsx";
+import { useAsyncSave } from "../hooks/useAsyncSave.js";
 
 export default function RecurringRemindersModal({
   reminders,
@@ -12,6 +13,7 @@ export default function RecurringRemindersModal({
   allExpCats,
 }) {
   const CURRENCY = useContext(CurrencyCtx);
+  const { saving, saveError, runSave } = useAsyncSave();
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
@@ -36,13 +38,15 @@ export default function RecurringRemindersModal({
       (amount && (!Number.isFinite(+amount) || +amount < 0))
     )
       return;
-    onSave({
+    return runSave(async () => {
+    await onSave({
       label: label.trim(),
       amount: amount ? +amount : null,
       dayOfMonth: +dayOfMonth,
       category: category || null,
     });
     resetForm();
+    });
   };
 
   const valid =
@@ -54,7 +58,9 @@ export default function RecurringRemindersModal({
     !(amount && (!Number.isFinite(+amount) || +amount < 0));
 
   return (
-    <Sheet title="Recurring Reminders" onClose={onClose}>
+    <Sheet title="Recurring Reminders" onClose={() => { if (!saving) onClose(); }}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}
+      <fieldset className="save-fields" disabled={saving}>
       {reminders.filter((r) => r.active).length === 0 && !adding && (
         <div className="empty-sm">No recurring reminders set up yet.</div>
       )}
@@ -85,7 +91,7 @@ export default function RecurringRemindersModal({
                     aria-label={`Delete reminder: ${r.label}`}
                     onClick={() => {
                       if (confirm(`Delete the "${r.label}" reminder?`))
-                        onDelete(r.id);
+                        void runSave(() => onDelete(r.id));
                     }}
                   >
                     <Trash2 size={14} />
@@ -171,6 +177,7 @@ export default function RecurringRemindersModal({
           <Plus size={16} /> Add reminder
         </button>
       )}
+      </fieldset>
     </Sheet>
   );
 }

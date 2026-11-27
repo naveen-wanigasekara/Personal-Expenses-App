@@ -1,3 +1,4 @@
+import {useBackLayer} from "../hooks/useAppBack.js";
 import { compareValuations } from '../utils/investmentValues.js';
 import { useContext } from "react";
 import {
@@ -32,6 +33,7 @@ export default function InvestmentDetailView({
   onEditValue,
   onDeleteValue,
 }) {
+  useBackLayer(onBack);
   const CURRENCY = useContext(CurrencyCtx);
   const isFd = isFixedDeposit(investment);
   const fdInfo = isFd ? getFdInfo(investment) : null;

@@ -83,7 +83,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
   };
   const valid = draft.kind === 'repayment' ? !!chosenGroup?.loans.some(loan => loan.id === selected?.id) && (+draft.principal > 0 || +draft.interest > 0)
     : +draft.amount > 0 && (draft.kind !== 'loan' || draft.borrower.trim());
-  return <Sheet title={title} className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
+  return <Sheet title={title} protectDraft className="sheet-wide entry-sheet money-sheet" onClose={() => { if (!lock.current) onClose(); }}>
     <form onSubmit={submit} className="entry-form money-form">
       <div className="entry-scroll" role="region" aria-label="Entry details">
       {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
@@ -100,7 +100,7 @@ export default function MoneyForm({ kind, editing, cards, records, initialLoanId
           {draft.kind === 'repayment' && <>
             {repaymentGroups.length ? <>
               {borrowerPicker(true)}
-              {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, borrowerLoanLabel(loan, groups.find(group => group.id === chosenGroup.id)?.loans || chosenGroup.loans)]))}
+              {select('loanId', 'Loan', (chosenGroup?.loans || []).map(loan => [loan.id, `${borrowerLoanLabel(loan, groups.find(group => group.id === chosenGroup.id)?.loans || chosenGroup.loans)}${loan.note ? ` · ${loan.note.slice(0,60)}` : ''}`]))}
               {summary && <div className="entry-balance"><span>Principal still owed</span><strong>{currency} {summary.outstanding.toLocaleString()}</strong>{showInterestPayment && <small>Interest due: {currency} {summary.interestDue.toLocaleString()}</small>}</div>}
               <div className={showInterestPayment ? 'money-fields' : ''}>{amount('principal', 'Principal returned')}{showInterestPayment && amount('interest', 'Interest received')}</div>
               {select('account', 'Received into', accounts, true)}

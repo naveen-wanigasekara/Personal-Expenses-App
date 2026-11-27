@@ -12,7 +12,7 @@ import AmountInput from './AmountInput.jsx';
 import EntryNavigation from './EntryNavigation.jsx';
 
 export default function AddModal({ cards, onClose, onSave, onSaveInstallment, allExpCats, allIncCats,
-  editing, userId, initialType = 'expense', initialTask, onBack, moneyEnabled = false, entryGroup, entryTask, onSubtypeChange }) {
+  editing, userId, initialType = 'expense', initialTask, onBack, moneyEnabled = false, entryGroup, entryTask, onSubtypeChange, initialCardId }) {
   const CURRENCY = useContext(CurrencyCtx);
   const isEditing = !!editing;
   const [type, setType] = useState(editing?.type || initialType);
@@ -21,7 +21,7 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
   const [category, setCategory] = useState(editing?.category || '');
   const [note, setNote] = useState(editing?.note || '');
   const [date, setDate] = useState(() => editing?.date || todayLocal());
-  const [cardId, setCardId] = useState(editing?.cardId || cards[0]?.id || '');
+  const [cardId, setCardId] = useState(editing?.cardId || initialCardId || cards[0]?.id || '');
   const [isInstallment, setIsInstallment] = useState(false);
   const [installLabel, setInstallLabel] = useState('');
   const [installMonths, setInstallMonths] = useState('12');
@@ -85,16 +85,16 @@ export default function AddModal({ cards, onClose, onSave, onSaveInstallment, al
   const availableCredit = selectedCard ? +selectedCard.limit - selectedCard.currentBalance - (selectedCard.futureInstallmentTotal || 0) : 0;
   const title = isEditing ? 'Edit entry' : entryGroup ? (entryGroup === 'income' ? 'Income' : 'Expenses') : initialTask === 'credit-card' ? 'Credit card' : type === 'income' ? 'Income' : isCardAction ? 'Credit card' : 'Expense';
   const close = () => { if (!savingRef.current) onClose(); };
-  return <Sheet title={title} onClose={close} className="sheet-wide entry-sheet">
+  return <Sheet title={title} onClose={close} protectDraft className="sheet-wide entry-sheet">
     <form className="entry-form" onSubmit={submit}>
       <div className="entry-scroll" role="region" aria-label="Entry details">
       {entryGroup && <EntryNavigation group={entryGroup} task={entryTask} onChange={onSubtypeChange} onBack={onBack} moneyEnabled={moneyEnabled} hasCards={cards.length > 0} disabled={saving} />}
       {!entryGroup && onBack && <button className="entry-back" type="button" onClick={onBack} disabled={saving}><ArrowLeft size={15} /> Entry types</button>}
         <fieldset disabled={saving}>
-          {isEditing && <label className="money-field"><span>Entry type</span><select aria-label="Entry type" className="text-input" value={type} onChange={e => changeType(e.target.value)}>
-            <option value="income">Income</option><option value="expense">Expense · Cash</option>
-            {cards.length > 0 && <><option value="card-purchase">Expense · Credit card</option><option value="card-payment">Card payment</option><option value="card-interest">Card interest & fees</option></>}
-          </select></label>}
+          {isEditing && <>
+            <label className="money-field"><span>Entry group</span><select aria-label="Entry group" className="text-input" value={type === 'income' ? 'income' : 'expense'} onChange={e=>changeType(e.target.value)}><option value="income">Income</option><option value="expense">Expenses</option></select></label>
+            {type !== 'income' && <label className="money-field"><span>Expense type</span><select aria-label="Expense type" className="text-input" value={isExpense ? 'purchase' : type} onChange={e=>changeType(e.target.value === 'purchase' ? 'expense' : e.target.value)}><option value="purchase">Purchase or bill</option>{cards.length > 0 && <><option value="card-payment">Pay credit card</option><option value="card-interest">Card interest or fees</option></>}</select></label>}
+          </>}
           {isCardAction && !isEditing && !entryGroup && <label className="money-field"><span>Action</span><select aria-label="Card action" className="text-input" value={type} onChange={e => changeType(e.target.value)}><option value="card-payment">Pay card balance</option><option value="card-interest">Add interest or fees</option></select></label>}
           <label className="money-field"><span>{isInstallment ? 'Monthly installment amount' : 'Amount'}</span><div className="amount-input"><span className="amt-cur">{CURRENCY}</span><AmountInput aria-label={isInstallment ? 'Monthly installment amount' : 'Amount'} value={amount} onChange={v => {amountUserEdited.current = true; setAmount(v);}} placeholder="0.00" /></div></label>
           {isExpense && <label className="money-field"><span>Pay with</span><select aria-label="Pay with" className="text-input" value={type === 'card-purchase' ? 'card' : 'cash'} onChange={e => changeType(e.target.value === 'card' ? 'card-purchase' : 'expense')}><option value="cash">Cash</option>{cards.length > 0 && <option value="card">Credit card</option>}</select></label>}

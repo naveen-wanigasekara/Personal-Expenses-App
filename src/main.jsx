@@ -9,6 +9,7 @@ import "./styles/loan-calculator.css";
 import "./styles/bank-details.css";
 import "./styles/desktop.css";
 import "./styles/money.css";
+import "./styles/mobile-ux.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -53,7 +53,7 @@ export default function InstallmentPlanFormModal({
   };
 
   return (
-    <Sheet title="Edit installment plan" onClose={() => { if (!saving) onClose(); }}>
+    <Sheet protectDraft busy={saving} title="Edit installment plan" onClose={() => { if (!saving) onClose(); }}>
       {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <label className="field-lbl">What is this for?</label>
       <input

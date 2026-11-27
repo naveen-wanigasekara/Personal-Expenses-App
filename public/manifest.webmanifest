@@ -1,6 +1,6 @@
 {
-  "name": "Personal Expenses Tracker",
-  "short_name": "Expensetracker",
+  "name": "Ledger - Personal Expenses",
+  "short_name": "Ledger",
   "description": "Personal expense tracker with budgets, credit cards, and cloud sync.",
   "theme_color": "#0d1117",
   "background_color": "#0d1117",

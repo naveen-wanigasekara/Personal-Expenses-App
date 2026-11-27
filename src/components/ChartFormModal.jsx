@@ -11,6 +11,7 @@ import Sheet from "./Sheet.jsx";
 import AmountInput from "./AmountInput.jsx";
 import CustomChartCard from "./charts/CustomChartCard.jsx";
 import { CHART_COLOR_TOKENS } from "../utils/chartData.js";
+import { useAsyncSave } from "../hooks/useAsyncSave.js";
 
 const CHART_TYPES = [
   { id: "bar", label: "Bar", icon: BarChart3 },
@@ -88,8 +89,10 @@ export default function ChartFormModal({
 }) {
   const CURRENCY = useContext(CurrencyCtx);
   const isEditing = !!editing;
+  const { saving, saveError, runSave } = useAsyncSave();
   const [cfg, setCfg] = useState(() => (editing ? { ...editing } : { ...DEFAULT_CONFIG }));
   const set = (patch) => setCfg((c) => ({ ...c, ...patch }));
+  const invalidCountTarget = cfg.chartType === "progress" && cfg.metric === "count" && cfg.target != null && (!Number.isSafeInteger(cfg.target) || cfg.target < 1);
 
   const categoryList =
     cfg.txType === "income" ? allIncCats : cfg.txType === "all" ? [...allIncCats, ...allExpCats] : allExpCats;
@@ -112,20 +115,20 @@ export default function ChartFormModal({
   };
 
   const handleSave = () => {
-    if (!cfg.name.trim()) return;
-    onSave({
+    if (!cfg.name.trim() || invalidCountTarget) return;
+    return runSave(() => onSave({
       ...cfg,
       id: editing?.id || `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: cfg.name.trim(),
       target: cfg.chartType === "progress" ? cfg.target : null,
       groupBy: cfg.chartType === "progress" ? undefined : cfg.groupBy,
-    });
+    }));
   };
 
   return (
-    <Sheet
+    <Sheet protectDraft busy={saving}
       title={isEditing ? "Edit chart" : "New chart"}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
       className="sheet-split"
     >
       <div className="chart-form-preview">
@@ -145,6 +148,8 @@ export default function ChartFormModal({
       </div>
 
       <div className="chart-form-fields">
+      <fieldset className="save-fields" disabled={saving}>
+      {saveError && <p role="alert" className="auth-err">{saveError}</p>}
       <label className="field-lbl">Name</label>
       <input
         type="text"
@@ -220,11 +225,14 @@ export default function ChartFormModal({
 
       {cfg.chartType === "progress" && (
         <>
-          <label className="field-lbl">Target amount</label>
+          <label className="field-lbl">{cfg.metric === "count" ? "Target count" : "Target amount"}</label>
           <div className="big-input">
-            <span className="big-cur">{CURRENCY}</span>
-            <AmountInput value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
+            {cfg.metric === "count" ? <input type="number" aria-label="Target count" min="1" step="1" value={cfg.target ?? ""} onChange={e => set({target:e.target.value === "" ? null : +e.target.value})} placeholder="e.g. 10" /> : <>
+              <span className="big-cur">{CURRENCY}</span>
+              <AmountInput aria-label="Target amount" value={cfg.target || ""} onChange={(v) => set({ target: +v || null })} placeholder="0.00" />
+            </>}
           </div>
+          {invalidCountTarget && <p role="alert" className="auth-err">Enter a positive whole-number target count.</p>}
         </>
       )}
 
@@ -249,9 +257,10 @@ export default function ChartFormModal({
         </>
       )}
 
-      <button className={`save-btn ${!cfg.name.trim() ? "disabled" : ""}`} onClick={handleSave} disabled={!cfg.name.trim()}>
+      <button className={`save-btn ${!cfg.name.trim() || invalidCountTarget ? "disabled" : ""}`} onClick={handleSave} disabled={!cfg.name.trim() || invalidCountTarget}>
         {isEditing ? "Save changes" : "Create chart"}
       </button>
+      </fieldset>
       </div>
     </Sheet>
   );

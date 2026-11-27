@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { canLeaveDrafts, hasBlockingDrafts } from '../utils/draftGuard.js';
 import { activateAppUpdate } from "../utils/pwaUpdate.js";
 
 /**
@@ -48,6 +49,7 @@ export function usePWA() {
     let refreshing = false;
     const onControllerChange = () => {
       if (refreshing) return;
+      if (hasBlockingDrafts()) {setNeedsRefresh(true);return;}
       refreshing = true;
       window.location.reload();
     };
@@ -116,6 +118,7 @@ export function usePWA() {
   };
 
   const updateApp = async () => {
+    if (!canLeaveDrafts()) return;
     try {
       const reg = registration || ("serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null);
       await activateAppUpdate(reg);

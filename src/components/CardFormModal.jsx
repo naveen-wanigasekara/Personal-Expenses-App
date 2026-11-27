@@ -38,7 +38,7 @@ export default function CardFormModal({ card, onClose, onSave, moneyEnabled = fa
   const [from, to] = CARD_COLORS[colorIdx];
 
   return (
-    <Sheet title={card ? "Edit card" : "New card"} onClose={() => { if (!saving) onClose(); }}>
+    <Sheet protectDraft busy={saving} title={card ? "Edit card" : "New card"} onClose={() => { if (!saving) onClose(); }}>
       {saveError && <p role="alert" className="auth-err">{saveError}</p>}<fieldset className="save-fields" disabled={saving}>
       <div
         className="ct-visual preview"

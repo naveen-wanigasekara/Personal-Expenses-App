@@ -3,6 +3,7 @@ export function createFinanceBatchStore(client, encryptFields, encryptedFields) 
   const keyFor = (table, row) => table === 'budgets' ? row.month_key : table === 'user_settings' ? row.user_id : row.id;
   return {
     clear() { snapshots.clear(); },
+    createdAt(table, id) { return snapshots.get(`${table}:${id}`)?.created_at; },
     remember(table, rows) {
       for (const row of Array.isArray(rows) ? rows : rows ? [rows] : []) snapshots.set(`${table}:${keyFor(table, row)}`, row);
     },

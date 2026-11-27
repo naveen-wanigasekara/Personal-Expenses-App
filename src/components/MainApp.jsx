@@ -1,3 +1,6 @@
+import {useAppBack} from "../hooks/useAppBack.js";
+import ConnectionStatus from "./ConnectionStatus.jsx";
+import { compareLedgerTransactions } from '../utils/ledgerSort.js';
 import { latestValuationValue } from '../utils/investmentValues.js';
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
@@ -29,6 +32,7 @@ import {
   fetchMoneyWorkspace,
   commitMoneyChanges,
   fetchTransactions,
+  savedCreationTime,
   insertTransaction,
   updateTransaction,
   deleteTransaction,
@@ -89,10 +93,11 @@ export default function MainApp({ user }) {
   // sessionStorage is what lets the app land back on the same tab instead
   // of resetting to Insights, since navigation is in-memory state, not a
   // URL route.
-  const [tab, setTab] = useState(() => {
+  const [tab, setTabState] = useState(() => {
     const saved = sessionStorage.getItem(LAST_TAB_KEY);
     return VALID_TABS.includes(saved) ? saved : "dashboard";
   });
+  const setTab = useAppBack(tab, setTabState);
   const moneyRevision = useRef(null);
   const moneyWriteLock = useRef(false);
   const [moneyRecords,setMoneyRecords]=useState([]);
@@ -162,7 +167,7 @@ export default function MainApp({ user }) {
   const [recordingValueFor, setRecordingValueFor] = useState(null);
   const [editingValuation, setEditingValuation] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
-  const { isStandalone, updateApp } = usePWA();
+  const { isStandalone, updateApp, canInstall, install } = usePWA();
 
   const handleQuickRefresh = useCallback(() => {
     sessionStorage.setItem(LAST_TAB_KEY, tab);
@@ -204,17 +209,21 @@ export default function MainApp({ user }) {
   );
 
   const updateCustomCharts = useCallback(
-    async (next) => {
+    async (next, nextLayout) => {
       const prev = customCharts;
+      const prevLayout = insightsLayout;
       setCustomCharts(next);
+      if (nextLayout) setInsightsLayout(nextLayout);
       try {
-        await upsertUserSettings(user.id, { custom_charts: next });
+        await upsertUserSettings(user.id, { custom_charts: next, ...(nextLayout ? { insights_layout: nextLayout } : {}) });
       } catch (e) {
         setCustomCharts(prev);
+        if (nextLayout) setInsightsLayout(prevLayout);
         showError("Couldn't save your chart. Try again.");
+        throw new Error("Couldn't save your chart. Try again.");
       }
     },
-    [user.id, customCharts],
+    [user.id, customCharts, insightsLayout],
   );
 
   const allExpCats = userCats.expense;
@@ -230,6 +239,7 @@ export default function MainApp({ user }) {
       } catch (e) {
         setUserCats(prevCats);
         showError("Couldn't save category. Try again.");
+        throw new Error("Couldn't save category. Try again.");
       }
     },
     [user.id, userCats],
@@ -255,6 +265,7 @@ export default function MainApp({ user }) {
       } catch (e) {
         setUserCats(prevCats);
         showError("Couldn't save category. Try again.");
+        throw new Error("Couldn't save category. Try again.");
       }
     },
     [user.id, userCats],
@@ -317,6 +328,7 @@ export default function MainApp({ user }) {
             cardId: r.card_id,
             note: r.note || "",
             date: r.date,
+            createdAt: r.created_at,
             installmentId: r.installment_id || null,
             account:r.account || "cash",
           })),
@@ -433,7 +445,7 @@ export default function MainApp({ user }) {
   };
 
   const projectedMoney = useMemo(()=>moneyTransactions(moneyRecords),[moneyRecords]);
-  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)),[transactions,projectedMoney]);
+  const allTransactions = useMemo(()=>[...transactions,...projectedMoney].sort(compareLedgerTransactions),[transactions,projectedMoney]);
   const openMoneyForm=(kind,loanId=null,borrowerId=null)=>{
     const group=['repayment','withdrawal'].includes(kind)?'income':'expense';
     setEntryGroup(group);setEntryTask(kind);setEntryContext({loanId,borrowerId});setShowAdd(true);
@@ -455,7 +467,7 @@ export default function MainApp({ user }) {
     const old=new Map(moneyRecords.map(record=>[record.id,record]));
     const changes=next.filter(record=>JSON.stringify(old.get(record.id))!==JSON.stringify(record)).map(record=>({table:'money_records',op:old.has(record.id)?'update':'insert',id:record.id,data:{data:record}}));
     if(changes.length) await writeTracked(changes);
-    setMoneyRecords(next);
+    setMoneyRecords(next.map(record=>({...record,createdAt:savedCreationTime('money_records',record.id)||record.createdAt})));
   };
   const saveMoneyRecord=async(draft)=>{
     const id=draft.id||`money_${crypto.randomUUID()}`;
@@ -506,7 +518,7 @@ export default function MainApp({ user }) {
     validateSavingsChange(allTransactions,[...allTransactions,{...tx,id}]);
     if(moneyEnabled) await writeTracked([{table:'transactions',op:'insert',id,data:transactionRow(tx)}]);
     else await insertTransaction({id,user_id:user.id,...transactionRow(tx)});
-    setTransactions(p=>[{...tx,id},...p]);
+    setTransactions(p=>[{...tx,id,createdAt:savedCreationTime('transactions',id)},...p]);
   };
   const editTx = async(id,updates)=>{
     const next=transactions.map(t=>t.id===id?{...t,...updates}:t);
@@ -583,6 +595,10 @@ export default function MainApp({ user }) {
   const removeCard = useCallback(
     async (id) => {
       if(moneyRecords.some(r=>r.kind==="loan"&&r.account==="card"&&r.cardId===id)) {showError("This card funds a recorded loan. Keep it to preserve the debt history.");return;}
+      if (transactions.some(t => t.cardId === id) || installmentPlans.some(p => p.cardId === id) || cards.some(c => c.id === id && (+c.openingBalance || 0) !== 0)) {
+        showError("This card has a balance or financial history. Keep it to preserve your records.");
+        return;
+      }
       const prev = cards;
       setCards((p) => p.filter((c) => c.id !== id));
       try {
@@ -593,7 +609,7 @@ export default function MainApp({ user }) {
         showError("Couldn't delete card.");
       }
     },
-    [cards, moneyRecords, moneyEnabled, commitBatch],
+    [cards, moneyRecords, moneyEnabled, commitBatch, transactions, installmentPlans],
   );
 
   const saveInvestment = useCallback(
@@ -906,6 +922,7 @@ export default function MainApp({ user }) {
             card_id: t.cardId, note: t.note, date: t.date, installment_id: planId,
           } })),
         ]);
+        setTransactions(prev=>prev.map(t=>txs.some(row=>row.id===t.id)?{...t,createdAt:savedCreationTime('transactions',t.id)}:t));
       } catch {
         rollbackLocal();
         showError("Couldn't confirm the installment save. Refresh your records.");
@@ -1025,6 +1042,7 @@ export default function MainApp({ user }) {
           } })),
         );
         await commitBatch(changes);
+        setTransactions(prev=>prev.map(t=>newFutureTxs.some(row=>row.id===t.id)?{...t,createdAt:savedCreationTime('transactions',t.id)}:t));
       } catch (e) {
         setTransactions(prevTransactions);
         setInstallmentPlans(prevPlans);
@@ -1053,6 +1071,7 @@ export default function MainApp({ user }) {
         } catch (e) {
           setRecurringReminders(prev);
           showError("Couldn't update reminder.");
+          throw new Error("Couldn't update reminder. Try again.");
         }
       } else {
         const id = `rem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -1071,6 +1090,7 @@ export default function MainApp({ user }) {
         } catch (e) {
           setRecurringReminders((p) => p.filter((r) => r.id !== id));
           showError("Couldn't save reminder.");
+          throw new Error("Couldn't save reminder. Try again.");
         }
       }
     },
@@ -1079,16 +1099,15 @@ export default function MainApp({ user }) {
 
   const removeRecurringReminder = useCallback(
     async (id) => {
-      const prev = recurringReminders;
-      setRecurringReminders((p) => p.filter((r) => r.id !== id));
       try {
         await deleteRecurringReminder(id);
+        setRecurringReminders((p) => p.filter((r) => r.id !== id));
       } catch (e) {
-        setRecurringReminders(prev);
         showError("Couldn't delete reminder.");
+        throw new Error("Couldn't delete reminder. Try again.");
       }
     },
-    [recurringReminders],
+    [],
   );
 
   // Notifications live here (not in DashView) so the bell in the shared
@@ -1279,6 +1298,7 @@ export default function MainApp({ user }) {
         <div className="app-glow" />
 
         <PWABanners />
+        <ConnectionStatus />
 
         {errorBanner && <div className="error-banner">{errorBanner}</div>}
 
@@ -1379,6 +1399,7 @@ export default function MainApp({ user }) {
               onDelete={removeCard}
               onDeleteTx={deleteTx}
               onEditTx={editEntry}
+              onRecordPayment={cardId=>{setEntryGroup("expense");setEntryTask("card-payment");setEntryContext({cardId});setShowAdd(true);}}
               installmentPlans={installmentPlans}
               onCancelPlan={cancelInstallmentPlan}
               onEditPlan={setEditingPlan}
@@ -1453,6 +1474,7 @@ export default function MainApp({ user }) {
           )}
           {tab === "user" && (
             <UserView
+              pwa={{isStandalone, canInstall, install}}
               user={user}
               currency={currency}
               onChangeCurrency={updateCurrency}
@@ -1581,7 +1603,7 @@ export default function MainApp({ user }) {
           onSave={saveMoneyRecord} onClose={()=>setShowAdd(false)}/>}
         {showAdd && entryGroup && !['loan','repayment','withdrawal','savings'].includes(entryTask) && (
           <AddModal key={entryTask}
-            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask}
+            cards={cardsWithBalance} moneyEnabled={moneyEnabled} initialType={entryTask} initialCardId={entryContext.cardId}
             entryGroup={entryGroup} entryTask={entryTask} onSubtypeChange={chooseEntryTask} onBack={()=>setEntryGroup(null)}
             onClose={() => setShowAdd(false)}
             onSave={async(tx) => {await addTx(tx);setShowAdd(false);}}
@@ -1698,6 +1720,7 @@ export default function MainApp({ user }) {
 
         {showDrawer && (
           <NavDrawer
+            activeTab={tab}
             moneyEnabled={moneyEnabled}
             onClose={() => setShowDrawer(false)}
             onNavigate={(destination) => {

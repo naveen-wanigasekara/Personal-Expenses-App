@@ -9,6 +9,7 @@ export function useAsyncSave() {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const runSave = async action => {
     if (lock.current) return;
+    if (navigator.onLine === false) {setSaveError('Offline. Reconnect to save; your draft is still on this screen.');return;}
     lock.current = true;
     setSaving(true); setSaveError('');
     try { await action(); }

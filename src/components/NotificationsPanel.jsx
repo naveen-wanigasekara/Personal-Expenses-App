@@ -16,6 +16,8 @@ export default function NotificationsPanel({ notifications = [], onClose, onComp
   const currency = useContext(CurrencyCtx);
   return <Sheet title="Notifications" onClose={onClose} className="payment-notifications-sheet">
     <div className="payment-notifications-scroll">
+      <p className="notif-explanation">Dismiss only hides a reminder on this device; it does not record a payment.</p>
+      <p className="notif-explanation">Card amounts are current outstanding balances, not statement or minimum-payment amounts. Installments are included in card payments, not extra debt.</p>
       <p className="notif-intro">Saved card payment dates. Installments due within 20 days, plus current-month due reminders. Recurring bills for this month and next.</p>
       {!notifications.length && <div className="empty-sm">No upcoming or due payment reminders.</div>}
       {paymentNotificationSections(notifications).map(section => section.rows.length > 0 && <section key={section.id} className="payment-notif-section" aria-labelledby={`payment-notif-${section.id}`}>
@@ -30,12 +32,12 @@ export default function NotificationsPanel({ notifications = [], onClose, onComp
               <div className="notif-meta payment-notif-date">{displayDate(row)}</div>
               {row.amount != null && <div className="notif-amt"><span>{row.amountLabel}: </span>{currency} {fmt(row.amount)}</div>}
             </div>
-            <button className="notif-complete-btn" onClick={() => onComplete(row.completionId, row.completionMonth || row.month)} aria-label={`Mark ${row.title} for ${monthLabel(row.month)}${row.sequence ? `, installment ${row.sequence} due ${row.date}` : ""} as completed`} title="Mark as completed"><Check size={16} /></button>
+            <button className="notif-complete-btn" onClick={() => onComplete(row.completionId, row.completionMonth || row.month)} aria-label={`Dismiss ${row.title} for ${monthLabel(row.month)}${row.sequence ? `, installment ${row.sequence} due ${row.date}` : ""}`} title="Dismiss reminder on this device"><Check size={16} /></button>
           </article></Fragment>;
         })}</div>
       </section>)}
       <p className="notif-explanation">Card amounts are current outstanding balances, not statement or minimum-payment amounts. Installments are part of card payments, not extra debt.</p>
-      <p className="notif-explanation">Marking completed hides this reminder on this device; it does not record a payment. Past months without tracked payment status are not assumed overdue.</p>
+      <p className="notif-explanation">Past months without tracked payment status are not assumed overdue.</p>
     </div>
   </Sheet>;
 }
